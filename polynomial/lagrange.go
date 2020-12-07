@@ -1,8 +1,14 @@
-package common
+package polynomial
 
 import (
+	"gkr-mimc/common"
+
 	"github.com/consensys/gurvy/bn256/fr"
 )
+
+func init() {
+	initLagrangePolynomials()
+}
 
 // GetLagrangePolynomial returns a precalculated array representing the univariate
 // lagrange polynomials on domainSize.
@@ -60,7 +66,7 @@ func LagrangeCoefficient(domainSize int) [][]fr.Element {
 			// Computes X(X-1)(X-2)..(X-i)..(X-domainSize-1) for i != l
 			updated := make([]fr.Element, domainSize)
 			for j := 0; j < domainSize; j++ {
-				for k := 0; k < Min(2, domainSize-j); k++ {
+				for k := 0; k < common.Min(2, domainSize-j); k++ {
 					tmp.Set(&accumulator[j])
 					tmp.Mul(&tmp, &binomials[i][k])
 					updated[j+k].Add(&updated[j+k], &tmp)

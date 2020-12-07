@@ -1,7 +1,6 @@
-package gkr
+package polynomial
 
 import (
-	"gkr-mimc/common"
 	"testing"
 
 	"github.com/consensys/gurvy/bn256/fr"
@@ -140,7 +139,7 @@ func TestGetFoldedEqTable(t *testing.T) {
 	// a.SetUint64(1776)
 	qPrime := []fr.Element{a, b, c, d}
 
-	computedResult := common.GetFoldedEqTable(qPrime)
+	computedResult := GetFoldedEqTable(qPrime)
 
 	assert.Equal(
 		t,

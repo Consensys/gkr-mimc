@@ -2,6 +2,7 @@ package sumcheck
 
 import (
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -17,9 +18,9 @@ func (p *Prover) ProveMultiThreaded(nChunk int) (proof Proof, qPrime, qL, qR, fi
 	// Define usefull constants
 	n := len(p.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
 	g := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
-	bN := common.Log2(n)
-	bG := common.Log2(g)
-	logNChunk := common.Log2(nChunk)
+	bN := common.Log2Ceil(n)
+	bG := common.Log2Ceil(g)
+	logNChunk := common.Log2Ceil(nChunk)
 
 	// Initialized the results
 	proof.PolyCoeffs = make([][]fr.Element, bN+2*bG)
@@ -42,7 +43,7 @@ func (p *Prover) ProveMultiThreaded(nChunk int) (proof Proof, qPrime, qL, qR, fi
 	// Process on all values until all the subprover are completely fold
 	for i := 0; i < 2*bG+bN-logNChunk; i++ {
 		evals := ConsumeAccumulate(evalsChan, nChunk)
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		Broadcast(rChans, r)
 		if i < bG {
@@ -59,7 +60,7 @@ func (p *Prover) ProveMultiThreaded(nChunk int) (proof Proof, qPrime, qL, qR, fi
 	// Finishes on hPrime. Identical to the single-threaded implementation
 	for i := 2*bG + bN - logNChunk; i < bN+2*bG; i++ {
 		evals := p.GetEvalsOnHPrime()
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHPrime(r)
 		qPrime[i-2*bG] = r
@@ -103,9 +104,9 @@ func (p *Prover) ConsumeMergeProvers(ch chan indexedProver, nToMerge int) {
 		newEq[indexed.I] = indexed.P.eq.Table[0]
 	}
 
-	p.vL = NewBookKeepingTable(newVL)
-	p.vR = NewBookKeepingTable(newVR)
-	p.eq = NewBookKeepingTable(newEq)
+	p.vL = polynomial.NewBookKeepingTable(newVL)
+	p.vR = polynomial.NewBookKeepingTable(newVR)
+	p.eq = polynomial.NewBookKeepingTable(newEq)
 
 }
 
@@ -137,7 +138,7 @@ func (p *Prover) RunForChunk(
 	finChan chan indexedProver,
 ) {
 	// Deep-copies the static tables
-	staticTablesCopy := make([]BookKeepingTable, len(p.staticTables))
+	staticTablesCopy := make([]polynomial.BookKeepingTable, len(p.staticTables))
 	for i := range staticTablesCopy {
 		staticTablesCopy[i] = p.staticTables[i].DeepCopy()
 	}
@@ -153,8 +154,8 @@ func (p *Prover) RunForChunk(
 	// Define usefull constants
 	n := len(subProver.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
 	g := len(subProver.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
-	bN := common.Log2(n)
-	bG := common.Log2(g)
+	bN := common.Log2Ceil(n)
+	bG := common.Log2Ceil(g)
 
 	// Run on hL
 	for i := 0; i < bG; i++ {

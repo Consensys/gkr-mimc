@@ -2,6 +2,7 @@ package sumcheck
 
 import (
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -14,12 +15,12 @@ type Proof struct {
 // Prover computes the
 type Prover struct {
 	// Contains the values of the previous layer
-	vL BookKeepingTable
-	vR BookKeepingTable
+	vL polynomial.BookKeepingTable
+	vR polynomial.BookKeepingTable
 	// Contains the static tables defining the circuit structure
-	eq           BookKeepingTable
+	eq           polynomial.BookKeepingTable
 	gates        []Gate
-	staticTables []BookKeepingTable
+	staticTables []polynomial.BookKeepingTable
 	// Degrees for the differents variables
 	degreeHL     int
 	degreeHR     int
@@ -28,11 +29,11 @@ type Prover struct {
 
 // NewProver constructs a new prover
 func NewProver(
-	vL BookKeepingTable,
-	vR BookKeepingTable,
-	eq BookKeepingTable,
+	vL polynomial.BookKeepingTable,
+	vR polynomial.BookKeepingTable,
+	eq polynomial.BookKeepingTable,
 	gates []Gate,
-	staticTables []BookKeepingTable,
+	staticTables []polynomial.BookKeepingTable,
 ) Prover {
 	// Auto-computes the degree on each variables
 	degreeHL, degreeHR, degreeHPrime := 0, 0, 0
@@ -60,8 +61,8 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 	// Define usefull constants
 	n := len(p.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
 	g := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
-	bN := common.Log2(n)
-	bG := common.Log2(g)
+	bN := common.Log2Ceil(n)
+	bG := common.Log2Ceil(g)
 
 	// Initialized the results
 	proof.PolyCoeffs = make([][]fr.Element, bN+2*bG)
@@ -73,7 +74,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 	// Run on hL
 	for i := 0; i < bG; i++ {
 		evals := p.GetEvalsOnHL()
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHL(r)
 		qL[i] = r
@@ -82,7 +83,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 	// Run on hR
 	for i := bG; i < 2*bG; i++ {
 		evals := p.GetEvalsOnHR()
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHR(r)
 		qR[i-bG] = r
@@ -91,7 +92,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 	// Run on hPrime
 	for i := 2 * bG; i < bN+2*bG; i++ {
 		evals := p.GetEvalsOnHPrime()
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHPrime(r)
 		qPrime[i-2*bG] = r

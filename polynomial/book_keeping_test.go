@@ -1,4 +1,4 @@
-package sumcheck
+package polynomial
 
 import (
 	"fmt"

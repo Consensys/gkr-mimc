@@ -1,4 +1,4 @@
-package gkr
+package circuit
 
 import (
 	"gkr-mimc/sumcheck"

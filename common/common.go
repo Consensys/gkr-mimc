@@ -6,10 +6,6 @@ import (
 	"github.com/consensys/gurvy/bn256/fr"
 )
 
-func init() {
-	initLagrangePolynomials()
-}
-
 // PrettyStringFr returns Fr in a nice way (like showing negative numbers in an elegant way)
 func PrettyStringFr(x fr.Element) string {
 	negX := x
