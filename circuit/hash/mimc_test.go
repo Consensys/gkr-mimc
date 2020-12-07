@@ -3,6 +3,8 @@ package hash
 import (
 	"gkr-mimc/common"
 	"gkr-mimc/hash"
+	"os"
+	"strconv"
 	"testing"
 
 	"github.com/consensys/gnark/backend/groth16"
@@ -66,4 +68,38 @@ func TestMimc(t *testing.T) {
 	witness := Allocate(5, 5)
 	witness.Assign(x)
 	assert.SolvingSucceeded(r1cs, &witness)
+}
+
+func BenchmarkMimc(b *testing.B) {
+
+	bN, _ := strconv.Atoi(os.Getenv("BN_GKR"))
+
+	c := Allocate(1<<bN, 1)
+	r1cs, _ := frontend.Compile(gurvy.BN256, &c)
+
+	x := make([][]fr.Element, 1<<bN)
+	for i := range x {
+		x[i] = common.RandomFrArray(1)
+	}
+
+	// Generate the witness values by running the prover
+	var witness TestMimcCircuit
+
+	b.Run("Gnark circuit assignment", func(b *testing.B) {
+		b.StopTimer()
+		for i := 0; i < b.N; i++ {
+			witness = Allocate(1<<bN, 1)
+			b.StartTimer()
+			witness.Assign(x)
+			b.StopTimer()
+		}
+	})
+
+	pk := groth16.DummySetup(r1cs)
+	b.Run("Gnark prover", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = groth16.Prove(r1cs, pk, &witness)
+		}
+	})
+
 }
