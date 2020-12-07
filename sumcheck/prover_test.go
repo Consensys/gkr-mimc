@@ -3,6 +3,7 @@ package sumcheck
 import (
 	"fmt"
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 	"testing"
 
 	"github.com/consensys/gurvy/bn256/fr"
@@ -24,12 +25,12 @@ func TestGetEvals(t *testing.T) {
 	add := []fr.Element{zero, zero, one, zero}
 	eQ := []fr.Element{zero, one}
 
-	vLTable := NewBookKeepingTable(v)
+	vLTable := polynomial.NewBookKeepingTable(v)
 	vRTable := vLTable.DeepCopy()
-	eQTable := NewBookKeepingTable(eQ)
-	addTable := NewBookKeepingTable(add)
+	eQTable := polynomial.NewBookKeepingTable(eQ)
+	addTable := polynomial.NewBookKeepingTable(add)
 
-	prover := NewProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []BookKeepingTable{addTable})
+	prover := NewProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []polynomial.BookKeepingTable{addTable})
 
 	claim := prover.GetClaim()
 	assert.Equal(t, claim, four, "Error on get claims")
@@ -69,16 +70,16 @@ func TestSumcheck(t *testing.T) {
 	eQ := []fr.Element{zero, one}
 
 	// Creates the tables
-	vLTable := NewBookKeepingTable(v)
+	vLTable := polynomial.NewBookKeepingTable(v)
 	vRTable := vLTable.DeepCopy()
 	vForEval := vLTable.DeepCopy()
-	eQTable := NewBookKeepingTable(eQ)
+	eQTable := polynomial.NewBookKeepingTable(eQ)
 	eQForEvals := eQTable.DeepCopy()
-	addTable := NewBookKeepingTable(add)
+	addTable := polynomial.NewBookKeepingTable(add)
 	addForEval := addTable.DeepCopy()
 
 	// Check that the prover and the verifier are on-par
-	prover := NewProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []BookKeepingTable{addTable})
+	prover := NewProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []polynomial.BookKeepingTable{addTable})
 	claim := prover.GetClaim()
 	proof, expectedQPrime, expectedQL, expectedQR, subClaims := prover.ProveSingleThread()
 	verifier := Verifier{}
