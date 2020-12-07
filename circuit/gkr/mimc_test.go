@@ -72,8 +72,6 @@ func TestMimcCircuit(t *testing.T) {
 		assert.NoError(err)
 	}
 
-	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
-
 	// Generate the witness values by running the prover
 	var witness GKRMimcTestCircuit
 
@@ -112,6 +110,8 @@ func BenchmarkMimcCircuit(b *testing.B) {
 		// Attempt to compile the circuit
 		r1cs, _ = frontend.Compile(gurvy.BN256, &mimcCircuit)
 	}
+
+	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
 
 	// Generate the witness values by running the prover
 	var witness GKRMimcTestCircuit
