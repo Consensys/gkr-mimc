@@ -72,6 +72,8 @@ func TestMimcCircuit(t *testing.T) {
 		assert.NoError(err)
 	}
 
+	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
+
 	// Generate the witness values by running the prover
 	var witness GKRMimcTestCircuit
 

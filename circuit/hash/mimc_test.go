@@ -1,6 +1,7 @@
 package hash
 
 import (
+	"fmt"
 	"gkr-mimc/common"
 	"gkr-mimc/hash"
 	"os"
@@ -81,6 +82,8 @@ func BenchmarkMimc(b *testing.B) {
 	for i := range x {
 		x[i] = common.RandomFrArray(1)
 	}
+
+	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
 
 	// Generate the witness values by running the prover
 	var witness TestMimcCircuit
