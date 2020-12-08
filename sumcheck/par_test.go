@@ -10,13 +10,44 @@ import (
 )
 
 func TestMultiThreaded(t *testing.T) {
+	// General parameters of the test
 	bN := 8
 	nChunks := 4 // nChunks < 2 ** bN
-	prover := InitializeMultiThreadedProver(bN, nChunks)
-	claim := prover.GetClaim(1)
-	proof, _, _, _, _ := prover.Prove(1)
+
+	// Compare the multi-threaded and the single threaded prover
+	mTProver := InitializeMultiThreadedProver(bN, nChunks)
+	sTProver := InitializeProverForTests(bN)
+
+	// Compare both provers on the claims
+	mTClaim := mTProver.GetClaim(3)
+	mTClaim1 := mTProver.GetClaim(1)
+	sTClaim := sTProver.GetClaim()
+	assert.Equal(t, sTClaim, mTClaim, "Error in get claim")
+	assert.Equal(t, sTClaim, mTClaim1, "Error in get claim")
+
+	// Run both prover and compare their outputs
+	mTProof, _, _, _, _ := mTProver.Prove(1)
+	sTProof, _, _, _, _ := sTProver.Prove()
+
+	// Compare their proofs
+	assert.Equal(t, len(sTProof.PolyCoeffs), len(mTProof.PolyCoeffs), "Bad proof length")
+	for k := range mTProof.PolyCoeffs {
+		assert.Equal(t,
+			len(sTProof.PolyCoeffs[k]),
+			len(mTProof.PolyCoeffs[k]),
+			"Bad proof length at k = %v", k,
+		)
+		for l := range mTProof.PolyCoeffs[k] {
+			assert.Equal(t,
+				sTProof.PolyCoeffs[k][l],
+				mTProof.PolyCoeffs[k][l],
+				"Bad proof at k = %v, l=%v", k, l,
+			)
+		}
+	}
+
 	verifier := Verifier{}
-	valid, _, _, _, _ := verifier.Verify(claim, proof, 1, 1)
+	valid, _, _, _, _ := verifier.Verify(mTClaim, mTProof, 1, 1)
 	assert.True(t, valid, "Verifier failed")
 }
 

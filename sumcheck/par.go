@@ -149,8 +149,6 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 // by concatenating their bookkeeping tables.
 func ConsumeMergeProvers(ch chan indexedProver, nToMerge int) SingleThreadedProver {
 
-	p := SingleThreadedProver{}
-
 	// Allocate the new Table
 	newVL := make([]fr.Element, nToMerge)
 	newVR := make([]fr.Element, nToMerge)
@@ -162,8 +160,8 @@ func ConsumeMergeProvers(ch chan indexedProver, nToMerge int) SingleThreadedProv
 	newVR[indexed.I] = indexed.P.vR.Table[0]
 	newEq[indexed.I] = indexed.P.eq.Table[0]
 	// All subProvers have the same staticTables. So we can take the first one
-	p.staticTables = indexed.P.staticTables
-	p.gates = indexed.P.gates
+	staticTables := indexed.P.staticTables
+	gates := indexed.P.gates
 
 	for i := 0; i < nToMerge-1; i++ {
 		indexed = <-ch
@@ -172,11 +170,13 @@ func ConsumeMergeProvers(ch chan indexedProver, nToMerge int) SingleThreadedProv
 		newEq[indexed.I] = indexed.P.eq.Table[0]
 	}
 
-	p.vL = polynomial.NewBookKeepingTable(newVL)
-	p.vR = polynomial.NewBookKeepingTable(newVR)
-	p.eq = polynomial.NewBookKeepingTable(newEq)
-
-	return p
+	return NewSingleThreadedProver(
+		polynomial.NewBookKeepingTable(newVL),
+		polynomial.NewBookKeepingTable(newVR),
+		polynomial.NewBookKeepingTable(newEq),
+		gates,
+		staticTables,
+	)
 }
 
 // ConsumeAccumulate consumes `nToConsume` elements from `ch`,
