@@ -27,14 +27,43 @@ type indexedProver struct {
 	P SingleThreadedProver
 }
 
+// NewMultiThreadedProver constructs a new prover
+func NewMultiThreadedProver(
+	vL []polynomial.BookKeepingTable,
+	vR []polynomial.BookKeepingTable,
+	eq []polynomial.BookKeepingTable,
+	gates []Gate,
+	staticTables []polynomial.BookKeepingTable,
+) MultiThreadedProver {
+	// Auto-computes the degree on each variables
+	degreeHL, degreeHR, degreeHPrime := 0, 0, 0
+	for _, gate := range gates {
+		dL, dR, dPrime := gate.Degrees()
+		degreeHL = common.Max(degreeHL, dL)
+		degreeHR = common.Max(degreeHR, dR)
+		degreeHPrime = common.Max(degreeHPrime, dPrime)
+	}
+	return MultiThreadedProver{
+		vL:           vL,
+		vR:           vR,
+		eq:           eq,
+		gates:        gates,
+		staticTables: staticTables,
+		degreeHL:     degreeHL + 1,
+		degreeHR:     degreeHR + 1,
+		degreeHPrime: degreeHPrime + 1,
+	}
+}
+
 // GetClaim returns the sum of all evaluations don't call after folding
 func (p *MultiThreadedProver) GetClaim(nCore int) fr.Element {
 	// Define usefull constants
 	nChunks := len(p.eq)
 	evalsChan := make(chan fr.Element, len(p.eq))
+	semaphore := common.NewSemaphore(nCore)
 
 	for i := 0; i < nChunks; i++ {
-		go p.GetClaimForChunk(i, evalsChan)
+		go p.GetClaimForChunk(i, evalsChan, semaphore)
 	}
 
 	var res fr.Element
@@ -68,11 +97,12 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 	evalsChan := make(chan []fr.Element, nChunks)
 	finChan := make(chan indexedProver, nChunks)
 	rChans := make([]chan fr.Element, nChunks)
+	semaphore := common.NewSemaphore(nCore)
 
 	// Starts the sub-provers
 	for i := 0; i < nChunks; i++ {
 		rChans[i] = make(chan fr.Element, 1)
-		go p.RunForChunk(i, evalsChan, rChans[i], finChan)
+		go p.RunForChunk(i, evalsChan, rChans[i], finChan, semaphore)
 	}
 
 	// Process on all values until all the subprover are completely fold
@@ -170,7 +200,10 @@ func Broadcast(chs []chan fr.Element, r fr.Element) {
 }
 
 // GetClaimForChunk runs GetClaim on a chunk, and is aimed at being run in the Background
-func (p *MultiThreadedProver) GetClaimForChunk(chunkIndex int, evalsChan chan fr.Element) {
+func (p *MultiThreadedProver) GetClaimForChunk(chunkIndex int, evalsChan chan fr.Element, semaphore common.Semaphore) {
+	semaphore.Acquire()
+	defer semaphore.Release()
+
 	// Deep-copies the static tables
 	staticTablesCopy := make([]polynomial.BookKeepingTable, len(p.staticTables))
 	for i := range staticTablesCopy {
@@ -194,7 +227,9 @@ func (p *MultiThreadedProver) RunForChunk(
 	evalsChan chan []fr.Element,
 	rChan chan fr.Element,
 	finChan chan indexedProver,
+	semaphore common.Semaphore,
 ) {
+	semaphore.Acquire()
 	// Deep-copies the static tables
 	staticTablesCopy := make([]polynomial.BookKeepingTable, len(p.staticTables))
 	for i := range staticTablesCopy {
@@ -218,24 +253,31 @@ func (p *MultiThreadedProver) RunForChunk(
 	// Run on hL
 	for i := 0; i < bG; i++ {
 		evalsChan <- subProver.GetEvalsOnHL()
+		semaphore.Release()
 		r := <-rChan
+		semaphore.Acquire()
 		subProver.FoldHL(r)
 	}
 
 	// Run on hR
 	for i := 0; i < bG; i++ {
 		evalsChan <- subProver.GetEvalsOnHR()
+		semaphore.Release()
 		r := <-rChan
+		semaphore.Acquire()
 		subProver.FoldHR(r)
 	}
 
 	// Run on hPrime
 	for i := 0; i < bN; i++ {
 		evalsChan <- subProver.GetEvalsOnHPrime()
+		semaphore.Release()
 		r := <-rChan
+		semaphore.Acquire()
 		subProver.FoldHPrime(r)
 	}
 
 	finChan <- indexedProver{I: chunkIndex, P: subProver}
+	semaphore.Release()
 	close(rChan)
 }

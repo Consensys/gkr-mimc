@@ -20,7 +20,8 @@ func InitializeMultiThreadedProver(bN, nChunks int) MultiThreadedProver {
 	for i := range qPrime {
 		qPrime[i] = two
 	}
-	eq := polynomial.PrefoldedEqTable(qPrime)
+
+	eq := polynomial.GetChunkedEqTable(qPrime, nChunks)
 	cipher := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, one, zero, zero, zero, zero, zero})
 	copy := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, zero, zero, zero, zero, one, zero})
 	cipher.Fold(two)
@@ -28,7 +29,6 @@ func InitializeMultiThreadedProver(bN, nChunks int) MultiThreadedProver {
 
 	vL := make([]polynomial.BookKeepingTable, nChunks)
 	vR := make([]polynomial.BookKeepingTable, nChunks)
-	eqs := make([]polynomial.BookKeepingTable, nChunks)
 	for k := range vL {
 		// Initialize the values of V
 		v := make([]fr.Element, (1<<(bN+1))/nChunks)
@@ -39,7 +39,7 @@ func InitializeMultiThreadedProver(bN, nChunks int) MultiThreadedProver {
 		vR[k] = vL[k].DeepCopy()
 	}
 
-	return NewSingleThreadedProver(
+	return NewMultiThreadedProver(
 		vL, vR, eq,
 		[]Gate{CopyGate{}, CipherGate{Ark: two}},
 		[]polynomial.BookKeepingTable{copy, cipher},
@@ -60,7 +60,7 @@ func InitializeProverForTests(bN int) SingleThreadedProver {
 	for i := range qPrime {
 		qPrime[i] = two
 	}
-	eq := polynomial.PrefoldedEqTable(qPrime)
+	eq := polynomial.GetFoldedEqTable(qPrime)
 	cipher := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, one, zero, zero, zero, zero, zero})
 	copy := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, zero, zero, zero, zero, one, zero})
 	cipher.Fold(two)
