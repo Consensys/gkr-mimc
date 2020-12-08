@@ -40,8 +40,8 @@ func EvaluateChunked(bkts []BookKeepingTable, q []fr.Element) fr.Element {
 // EvaluateMixedChunked evaluates a chunked bookeeping table
 func EvaluateMixedChunked(bkts []BookKeepingTable, hPrime, hL, hR []fr.Element) (fr.Element, fr.Element) {
 	logNChunks := common.Log2Ceil(len(bkts))
-	if logNChunks != len(hL) {
-		panic("q and bkts sizes are not compatible")
+	if logNChunks > len(hPrime) {
+		panic("We can only chunks on hPrime")
 	}
 
 	recombined := chunkedEvalRecombine(bkts, hPrime[len(hPrime)-logNChunks:])

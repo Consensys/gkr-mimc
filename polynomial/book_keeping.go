@@ -140,7 +140,7 @@ func (bkt *BookKeepingTable) Add(left, right BookKeepingTable) {
 	}
 	// Reallocate the table if necessary
 	if cap(bkt.Table) < size {
-		bkt.Table = make([]fr.Element, len(bkt.Table))
+		bkt.Table = make([]fr.Element, size)
 	}
 	// Resize the destination table
 	bkt.Table = bkt.Table[:size]
@@ -159,7 +159,7 @@ func (bkt *BookKeepingTable) Sub(left, right BookKeepingTable) {
 	}
 	// Reallocate the table if necessary
 	if cap(bkt.Table) < size {
-		bkt.Table = make([]fr.Element, len(bkt.Table))
+		bkt.Table = make([]fr.Element, size)
 	}
 	// Resize the destination table
 	bkt.Table = bkt.Table[:size]
@@ -174,7 +174,7 @@ func (bkt *BookKeepingTable) Mul(lambda fr.Element, x BookKeepingTable) {
 	size := len(x.Table)
 	// Reallocate the table if necessary
 	if cap(bkt.Table) < size {
-		bkt.Table = make([]fr.Element, len(bkt.Table))
+		bkt.Table = make([]fr.Element, size)
 	}
 	// Resize the destination table
 	bkt.Table = bkt.Table[:size]
