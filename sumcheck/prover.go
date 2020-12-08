@@ -12,8 +12,8 @@ type Proof struct {
 	PolyCoeffs [][]fr.Element
 }
 
-// Prover computes the
-type Prover struct {
+// SingleThreadedProver computes the
+type SingleThreadedProver struct {
 	// Contains the values of the previous layer
 	vL polynomial.BookKeepingTable
 	vR polynomial.BookKeepingTable
@@ -27,14 +27,14 @@ type Prover struct {
 	degreeHPrime int
 }
 
-// NewProver constructs a new prover
-func NewProver(
+// NewSingleThreadedProver constructs a new prover
+func NewSingleThreadedProver(
 	vL polynomial.BookKeepingTable,
 	vR polynomial.BookKeepingTable,
 	eq polynomial.BookKeepingTable,
 	gates []Gate,
 	staticTables []polynomial.BookKeepingTable,
-) Prover {
+) SingleThreadedProver {
 	// Auto-computes the degree on each variables
 	degreeHL, degreeHR, degreeHPrime := 0, 0, 0
 	for _, gate := range gates {
@@ -43,7 +43,7 @@ func NewProver(
 		degreeHR = common.Max(degreeHR, dR)
 		degreeHPrime = common.Max(degreeHPrime, dPrime)
 	}
-	return Prover{
+	return SingleThreadedProver{
 		vL:           vL,
 		vR:           vR,
 		eq:           eq,
@@ -55,8 +55,8 @@ func NewProver(
 	}
 }
 
-// ProveSingleThread runs the prover of a sumcheck
-func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims []fr.Element) {
+// Prove runs the prover of a sumcheck
+func (p *SingleThreadedProver) Prove() (proof Proof, qPrime, qL, qR, finalClaims []fr.Element) {
 
 	// Define usefull constants
 	n := len(p.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
@@ -109,7 +109,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 }
 
 // FoldHL folds on the first variable of hR
-func (p *Prover) FoldHL(r fr.Element) {
+func (p *SingleThreadedProver) FoldHL(r fr.Element) {
 	for i := range p.staticTables {
 		p.staticTables[i].Fold(r)
 	}
@@ -117,7 +117,7 @@ func (p *Prover) FoldHL(r fr.Element) {
 }
 
 // FoldHR folds on the first variable of hR
-func (p *Prover) FoldHR(r fr.Element) {
+func (p *SingleThreadedProver) FoldHR(r fr.Element) {
 	for i := range p.staticTables {
 		p.staticTables[i].Fold(r)
 	}
@@ -125,7 +125,7 @@ func (p *Prover) FoldHR(r fr.Element) {
 }
 
 // FoldHPrime folds on the first variable of Eq
-func (p *Prover) FoldHPrime(r fr.Element) {
+func (p *SingleThreadedProver) FoldHPrime(r fr.Element) {
 	p.vR.Fold(r)
 	p.vL.Fold(r)
 	p.eq.Fold(r)

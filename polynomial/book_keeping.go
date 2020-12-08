@@ -130,3 +130,56 @@ func LinearCombinationOfBookKeepingTables(
 
 	return prefoldedBKT1
 }
+
+// Add two bookKeepingTable
+func (bkt *BookKeepingTable) Add(left, right BookKeepingTable) {
+	size := len(left.Table)
+	// Check that left and right have the same size
+	if len(right.Table) != size {
+		panic("Left and right do not have the right size")
+	}
+	// Reallocate the table if necessary
+	if cap(bkt.Table) < size {
+		bkt.Table = make([]fr.Element, len(bkt.Table))
+	}
+	// Resize the destination table
+	bkt.Table = bkt.Table[:size]
+	// Then performs the addition
+	for i := 0; i < size; i++ {
+		bkt.Table[i].Add(&left.Table[i], &right.Table[i])
+	}
+}
+
+// Sub two bookKeepingTable
+func (bkt *BookKeepingTable) Sub(left, right BookKeepingTable) {
+	size := len(left.Table)
+	// Check that left and right have the same size
+	if len(right.Table) != size {
+		panic("Left and right do not have the right size")
+	}
+	// Reallocate the table if necessary
+	if cap(bkt.Table) < size {
+		bkt.Table = make([]fr.Element, len(bkt.Table))
+	}
+	// Resize the destination table
+	bkt.Table = bkt.Table[:size]
+	// Then performs the addition
+	for i := 0; i < size; i++ {
+		bkt.Table[i].Sub(&left.Table[i], &right.Table[i])
+	}
+}
+
+// Mul a bookkeeping table by a constant
+func (bkt *BookKeepingTable) Mul(lambda fr.Element, x BookKeepingTable) {
+	size := len(x.Table)
+	// Reallocate the table if necessary
+	if cap(bkt.Table) < size {
+		bkt.Table = make([]fr.Element, len(bkt.Table))
+	}
+	// Resize the destination table
+	bkt.Table = bkt.Table[:size]
+	// Then performs the addition
+	for i := 0; i < size; i++ {
+		bkt.Table[i].Mul(&x.Table[i], &lambda)
+	}
+}

@@ -5,7 +5,7 @@ import (
 )
 
 // GetClaim returns the sum of all evaluations don't call after folding
-func (p Prover) GetClaim() fr.Element {
+func (p SingleThreadedProver) GetClaim() fr.Element {
 
 	// Define usefull constants
 	n := len(p.eq.Table)         // Number of subcircuit. Since we haven't fold on h' yet
@@ -59,7 +59,7 @@ func (p Prover) GetClaim() fr.Element {
 }
 
 // GetEvalsOnHL get the values of the partial on the first variable on hL
-func (p Prover) GetEvalsOnHL() []fr.Element {
+func (p SingleThreadedProver) GetEvalsOnHL() []fr.Element {
 
 	// Define usefull constants
 	n := len(p.eq.Table)                      // Number of subcircuit. Since we haven't fold on h' yet
@@ -96,7 +96,7 @@ func (p Prover) GetEvalsOnHL() []fr.Element {
 }
 
 // GetEvalsOnHR get the values of the partial on the first variable on hR
-func (p Prover) GetEvalsOnHR() []fr.Element {
+func (p SingleThreadedProver) GetEvalsOnHR() []fr.Element {
 	// Define usefull constants
 	n := len(p.eq.Table)         // Number of subcircuit. Since we haven't fold on h' yet
 	lenHR := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
@@ -130,7 +130,7 @@ func (p Prover) GetEvalsOnHR() []fr.Element {
 }
 
 // GetEvalsOnHPrime get the values of the partial on the first variable on hPrime
-func (p *Prover) GetEvalsOnHPrime() []fr.Element {
+func (p *SingleThreadedProver) GetEvalsOnHPrime() []fr.Element {
 	// Define usefull constants
 	nGate := len(p.staticTables) // Number of different gates
 
@@ -143,7 +143,7 @@ func (p *Prover) GetEvalsOnHPrime() []fr.Element {
 	return p.accumulateEvalsOnHPrime(staticTablesVals)
 }
 
-func (p Prover) accumulateEvalsOnHL(
+func (p SingleThreadedProver) accumulateEvalsOnHL(
 	evaledStaticTables [][][]fr.Element,
 	staticIsNotZero [][]bool,
 ) []fr.Element {
@@ -218,7 +218,7 @@ func (p Prover) accumulateEvalsOnHL(
 	return res
 }
 
-func (p Prover) accumulateEvalsOnHR(
+func (p SingleThreadedProver) accumulateEvalsOnHR(
 	staticIsNotZero [][]bool,
 	evaledStaticTables [][][]fr.Element,
 ) []fr.Element {
@@ -288,7 +288,7 @@ func (p Prover) accumulateEvalsOnHR(
 	return res
 }
 
-func (p Prover) accumulateEvalsOnHPrime(
+func (p SingleThreadedProver) accumulateEvalsOnHPrime(
 	staticTablesVals []fr.Element,
 ) []fr.Element {
 
