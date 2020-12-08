@@ -16,13 +16,84 @@ type Wire struct {
 
 // Layer describes how a layer feeds its inputs
 type Layer struct {
-	Wires []Wire
+	Wires               []Wire
+	BGInputs, BGOutputs int
+	Gates               []Gate
+}
+
+// NewLayer construct a new layer from a list of wires
+func NewLayer(wires []Wire) Layer {
+	return Layer{
+		Wires:     wires,
+		Gates:     Gates(wires),
+		BGInputs:  BGInputs(wires),
+		BGOutputs: BGOutputs(wires),
+	}
+}
+
+// GetStaticTable returns the prefolded static tables
+// They are returned in the same order as l.Gates
+func (l *Layer) GetStaticTable(q []fr.Element) []polynomial.BookKeepingTable {
+	// Computes the gates to ensure we return the bookeeping tables in a deterministic order
+	gates := l.Gates
+	res := make([]polynomial.BookKeepingTable, len(gates))
+	// Usefull integer constants
+	gO, gL := (1 << (2 * l.BGInputs)), 1<<l.BGInputs
+	var one fr.Element
+	one.SetOne()
+
+	for i, gate := range l.Gates {
+		// The tab is filled with zeroes
+		tab := make([]fr.Element, (1<<l.BGOutputs)*(1<<(2*l.BGInputs)))
+		for _, w := range l.Wires {
+			if w.Gate.ID() == gate.ID() {
+				k := gO*w.O + gL*w.L + w.R
+				tab[k].Add(&tab[k], &one)
+			}
+		}
+		// Prefold the bookkeeping table before returning
+		bkt := polynomial.NewBookKeepingTable(tab)
+		for _, r := range q {
+			bkt.Fold(r)
+		}
+		res[i] = bkt
+	}
+
+	return res
+}
+
+// Evaluate returns the assignment of the next layer
+// It can be multi-threaded
+func (l *Layer) Evaluate(inputs [][]fr.Element, nCore int) [][]fr.Element {
+	res := make([][]fr.Element, len(inputs))
+	// Multi-thread the evaluation
+	for i := range inputs {
+		go func(i int) {
+			inps := inputs[i]
+			N := len(inps) / l.BGInputs
+			subRes := make([]fr.Element, N*l.BGOutputs)
+			var tmp fr.Element
+			for _, w := range l.Wires {
+				// Precompute the indices
+				wON := w.O * N
+				wLN := w.L * N
+				wRN := w.R * N
+				for h := 0; h < N; h++ {
+					// Runs the gate evaluator
+					w.Gate.Eval(&tmp, inps[wLN+h], inps[wRN*N+h])
+					subRes[wON+h].Add(&subRes[wON+h], &tmp)
+				}
+			}
+			res[i] = subRes
+		}(i)
+	}
+	return res
 }
 
 // BGOutputs return the log-size of the input layer of the layer
-func (l *Layer) BGOutputs() int {
+func BGOutputs(wires []Wire) int {
 	res := 0
-	for _, wire := range l.Wires {
+	for _, wire := range wires {
 		if res < wire.O {
 			res = wire.O
 		}
@@ -31,9 +102,9 @@ func (l *Layer) BGOutputs() int {
 }
 
 // BGInputs return the log-size of the input layer of the layer
-func (l *Layer) BGInputs() int {
+func BGInputs(wires []Wire) int {
 	res := 0
-	for _, wire := range l.Wires {
+	for _, wire := range wires {
 		if res < wire.L {
 			res = wire.L
 		}
@@ -45,17 +116,13 @@ func (l *Layer) BGInputs() int {
 }
 
 // Gates returns a deduplicated list of gates used by this layer
-func (l *Layer) Gates() []Gate {
+func Gates(wires []Wire) []Gate {
 	gates := make(map[string]Gate)
 	res := []Gate{}
-	for i, wire := range l.Wires {
+	for _, wire := range wires {
 		if _, ok := gates[wire.Gate.ID()]; !ok {
 			res = append(res, wire.Gate)
 		}
 	}
-}
-
-// GetStaticTable returns the prefolded static tables
-func (l *Layer) GetStaticTable(q []fr.Element) []polynomial.BookKeepingTable {
-
+	return res
 }
