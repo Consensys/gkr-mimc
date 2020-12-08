@@ -26,25 +26,15 @@ func TestMultiThreaded(t *testing.T) {
 	assert.Equal(t, sTClaim, mTClaim1, "Error in get claim")
 
 	// Run both prover and compare their outputs
-	mTProof, _, _, _, _ := mTProver.Prove(1)
-	sTProof, _, _, _, _ := sTProver.Prove()
+	mTProof, mQPrime, mQL, mQR, mFClaim := mTProver.Prove(1)
+	sTProof, sQPrime, sQL, sQR, sFClaim := sTProver.Prove()
 
 	// Compare their proofs
-	assert.Equal(t, len(sTProof.PolyCoeffs), len(mTProof.PolyCoeffs), "Bad proof length")
-	for k := range mTProof.PolyCoeffs {
-		assert.Equal(t,
-			len(sTProof.PolyCoeffs[k]),
-			len(mTProof.PolyCoeffs[k]),
-			"Bad proof length at k = %v", k,
-		)
-		for l := range mTProof.PolyCoeffs[k] {
-			assert.Equal(t,
-				sTProof.PolyCoeffs[k][l],
-				mTProof.PolyCoeffs[k][l],
-				"Bad proof at k = %v, l=%v", k, l,
-			)
-		}
-	}
+	assert.Equal(t, sTProof, mTProof, "Bad proof length")
+	assert.Equal(t, sQPrime, mQPrime, "Bad qPrime")
+	assert.Equal(t, sQL, mQL, "Bad qL")
+	assert.Equal(t, sQR, mQR, "Bad qR")
+	assert.Equal(t, sFClaim, mFClaim, "Bad final claim")
 
 	verifier := Verifier{}
 	valid, _, _, _, _ := verifier.Verify(mTClaim, mTProof, 1, 1)
@@ -65,7 +55,7 @@ func benchmarkFullSumcheckMultiThreaded(b *testing.B, bN, nChunks, nCore int, pr
 
 func BenchmarkSumcheckMultiThreaded(b *testing.B) {
 	bNs := [1]int{20}
-	nChunk := 8
+	nChunk := 128
 	nCore := runtime.GOMAXPROCS(0)
 
 	for _, bN := range bNs {
