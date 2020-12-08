@@ -1,21 +1,11 @@
 package circuit
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy/bn256/fr"
 )
-
-// EvaluateCombinator evaluate eq * \sum_i{ statics_i * gates_i(vL, vR) }
-func EvaluateCombinator(vL, vR, eq fr.Element, gates []Gate, statics []fr.Element) fr.Element {
-	var tmp, res fr.Element
-	for i := range gates {
-		gates[i].Eval(&tmp, vL, vR)
-		tmp.Mul(&statics[i], &tmp)
-		res.Add(&res, &tmp)
-	}
-	res.Mul(&res, &eq)
-	return res
-}
 
 // Gate assumes the gate can only have 2 inputs
 type Gate interface {
@@ -33,12 +23,33 @@ type Gate interface {
 	Degrees() (degHL, degHR, degHPrime int)
 }
 
+// EvaluateCombinator evaluate eq * \sum_i{ statics_i * gates_i(vL, vR) }
+func EvaluateCombinator(vL, vR, eq fr.Element, gates []Gate, statics []fr.Element) fr.Element {
+	var tmp, res fr.Element
+	for i := range gates {
+		gates[i].Eval(&tmp, vL, vR)
+		tmp.Mul(&statics[i], &tmp)
+		res.Add(&res, &tmp)
+	}
+	res.Mul(&res, &eq)
+	return res
+}
+
 // AddGate performs an addition
 type AddGate struct{}
+
+// ID returns the gate ID
+func (a AddGate) ID() string { return "AddGate" }
 
 // Eval return the result vL + vR
 func (a AddGate) Eval(res *fr.Element, vL, vR fr.Element) {
 	res.Add(&vL, &vR)
+}
+
+// GnarkEval compute the gate on a gnark circuit
+func (a AddGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+	// Unoptimized, but unlikely to cause any significant performance loss
+	return cs.Add(vL, vR)
 }
 
 // EvalManyVR performs an element-wise addition of many vRs values by one vL value
@@ -64,9 +75,17 @@ func (a AddGate) Degrees() (degHL, degHR, degHPrime int) {
 // MulGate performs a multiplication
 type MulGate struct{}
 
+// ID returns the MulGate as ID
+func (m MulGate) ID() string { return "MulGate" }
+
 // Eval returns vL * vR
 func (m MulGate) Eval(res *fr.Element, vL, vR fr.Element) {
 	res.Mul(&vL, &vR)
+}
+
+// GnarkEval performs the gate operation on gnark variables
+func (m MulGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+	return cs.Mul(vL, vR)
 }
 
 // EvalManyVR performs an element-wise multiplication of many vRs values by one vL value
@@ -91,9 +110,17 @@ func (m MulGate) Degrees() (degHL, degHR, degHPrime int) {
 // CopyGate performs a copy of the vL value and ignores the vR value
 type CopyGate struct{}
 
+// ID returns "CopyGate" as an ID for CopyGate
+func (c CopyGate) ID() string { return "CopyGate" }
+
 // Eval returns vL
 func (c CopyGate) Eval(res *fr.Element, vL, vR fr.Element) {
 	*res = vL
+}
+
+// GnarkEval performs the copy on gnark variable
+func (c CopyGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+	return vL
 }
 
 // EvalManyVR performs an element-wise copy of vL for many vRs. (ignoring the values of the vRs)
@@ -120,6 +147,14 @@ type CipherGate struct {
 	Ark fr.Element
 }
 
+// NewCipherGate construct a new cipher gate given an ark
+func NewCipherGate(ark fr.Element) CipherGate {
+	return CipherGate{Ark: ark}
+}
+
+// ID returns the id of the cipher gate and print the ark as well
+func (c CipherGate) ID() string { return fmt.Sprintf("CipherGate-%v", c.Ark.String()) }
+
 // Eval returns vL + (vR + c)^7
 func (c CipherGate) Eval(res *fr.Element, vL, vR fr.Element) {
 	// tmp = vR + Ark
@@ -133,6 +168,16 @@ func (c CipherGate) Eval(res *fr.Element, vL, vR fr.Element) {
 	res.Mul(res, &tmp)
 	// Then add vL
 	res.Add(res, &vL)
+}
+
+// GnarkEval performs the cipher operation on gnark variables
+func (c CipherGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+	tmp := cs.Add(vR, cs.Constant(c.Ark))
+	cipher := cs.Mul(tmp, tmp)
+	cipher = cs.Mul(cipher, tmp)
+	cipher = cs.Mul(cipher, cipher)
+	cipher = cs.Mul(cipher, tmp)
+	return cs.Add(cipher, vL)
 }
 
 // EvalManyVR performs cipher evaluations of many vRs values by one vL value
