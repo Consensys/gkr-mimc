@@ -1,6 +1,8 @@
 package gkr
 
 import (
+	"math/big"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -11,7 +13,10 @@ type Gate func(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend
 // CipherGate returns a cipher gate
 func CipherGate(ark fr.Element) Gate {
 	return func(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
-		tmp := cs.Add(vR, cs.Constant(ark))
+		tmp := cs.LinearExpression(
+			cs.Term(vR, big.NewInt(1)),
+			cs.Term(cs.Constant(ark), big.NewInt(1)),
+		)
 		cipher := cs.Mul(tmp, tmp)
 		cipher = cs.Mul(cipher, tmp)
 		cipher = cs.Mul(cipher, cipher)

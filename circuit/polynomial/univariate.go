@@ -2,12 +2,13 @@ package polynomial
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy/bn256/fr"
 )
 
-// Univariate encodes a univariate: a0 + a1X + ... + ad X^d <=> {a0, a1, ... , ad}
+// Univariate encodes a univariate polynomial: a0 + a1X + ... + ad X^d <=> {a0, a1, ... , ad}
 type Univariate struct {
 	Coefficients []frontend.Variable
 }
@@ -37,14 +38,21 @@ func (u *Univariate) Eval(cs *frontend.ConstraintSystem, x frontend.Variable) (r
 
 	res = cs.Constant(0)
 
+	aux := cs.LinearExpression(
+		cs.Term(cs.Constant(0), big.NewInt(0)),
+	)
+
 	for i := len(u.Coefficients) - 1; i >= 0; i-- {
 		if i != len(u.Coefficients)-1 {
-			res = cs.Mul(res, x)
+			res = cs.Mul(aux, x)
 		}
-		res = cs.Add(res, u.Coefficients[i])
+		aux = cs.LinearExpression(
+			cs.Term(res, big.NewInt(1)),
+			cs.Term(u.Coefficients[i], big.NewInt(1)),
+		)
 	}
 
-	return res
+	return cs.Mul(aux, cs.Constant(1))
 }
 
 // ZeroAndOne returns p(0) + p(1)
