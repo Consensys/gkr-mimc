@@ -6,9 +6,7 @@ import (
 	"gkr-mimc/common"
 	"gkr-mimc/gkr"
 	"gkr-mimc/hash"
-	"os"
 	"runtime"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -124,10 +122,12 @@ func benchmarkMIMCCircuit(b *testing.B, bN, nCore, nChunks int, profiled, traced
 }
 
 func BenchmarkMimcCircuit(b *testing.B) {
-	nChunks, _ := strconv.Atoi(os.Getenv("NCHUNKS_GKR"))
-	bN, _ := strconv.Atoi(os.Getenv("BN_GKR"))
+	nChunks := common.GetNChunks()
+	bN := common.GetBN()
 	nCore := runtime.GOMAXPROCS(0)
+	profiled := common.GetProfiled()
+	traced := common.GetTraced()
 	b.Run(fmt.Sprintf("bN=%d-nCore", bN), func(b *testing.B) {
-		benchmarkMIMCCircuit(b, bN, nCore, nChunks, false, false)
+		benchmarkMIMCCircuit(b, bN, nCore, nChunks, profiled, traced)
 	})
 }
