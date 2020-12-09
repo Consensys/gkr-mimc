@@ -1,7 +1,6 @@
 package polynomial
 
 import (
-	"fmt"
 	"gkr-mimc/common"
 	"testing"
 
@@ -71,11 +70,8 @@ func TestFuncEval(t *testing.T) {
 	var two fr.Element
 	two.SetUint64(uint64(2))
 
-	fmt.Printf("evals = %v", common.FrSliceToString(evals))
-
 	assert.Equal(t, two, evals[0])
 	assert.Equal(t, two, evals[1])
-
 }
 
 func BenchmarkFolding(b *testing.B) {

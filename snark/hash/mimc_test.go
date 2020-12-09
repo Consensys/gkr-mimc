@@ -74,6 +74,7 @@ func TestMimc(t *testing.T) {
 func BenchmarkMimc(b *testing.B) {
 
 	bN, _ := strconv.Atoi(os.Getenv("BN_GKR"))
+	fmt.Printf("Baseline Mimc7 benchmark bN = %v\n", bN)
 
 	c := Allocate(1<<bN, 1)
 	r1cs, _ := frontend.Compile(gurvy.BN256, &c)

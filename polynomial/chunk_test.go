@@ -65,8 +65,8 @@ func TestChunked(t *testing.T) {
 		// Test for eval mixed
 		for i := 0; i < nEvals; i++ {
 			hCommon := common.RandomFrArray(test.logSize - test.mixedSize)
-			hL := common.RandomFrArray(test.logSize)
-			hR := common.RandomFrArray(test.logSize)
+			hL := common.RandomFrArray(test.mixedSize)
+			hR := common.RandomFrArray(test.mixedSize)
 			resChunkedA, resChunkedB := EvaluateMixedChunked(eqChunked, hCommon, hL, hR)
 			resA, resB := eq.EvaluateLeftAndRight(hCommon, hL, hR)
 			assert.Equal(t, resA, resChunkedA, "Error in eval mixed")

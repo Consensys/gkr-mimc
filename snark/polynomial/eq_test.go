@@ -2,7 +2,7 @@ package polynomial
 
 import (
 	"gkr-mimc/common"
-	"gkr-mimc/gkr"
+	"gkr-mimc/polynomial"
 	"testing"
 
 	"github.com/consensys/gnark/backend/groth16"
@@ -39,7 +39,7 @@ func (eq *TestEqCircuit) Assign(H, Q [][]fr.Element) {
 			eq.H[k][n].Assign(H[k][n])
 			eq.Q[k][n].Assign(Q[k][n])
 		}
-		eq.ExpectedValue[k].Assign(gkr.EvalEq(Q[k], H[k]))
+		eq.ExpectedValue[k].Assign(polynomial.EvalEq(Q[k], H[k]))
 	}
 }
 

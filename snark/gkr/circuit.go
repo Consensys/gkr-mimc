@@ -2,6 +2,7 @@ package gkr
 
 import (
 	"gkr-mimc/snark/polynomial"
+	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 )
@@ -49,9 +50,9 @@ func (l *Layer) CombineWithLinearComb(
 	for i := range l.Gates {
 		tabL := l.StaticTable[i](cs, qL)
 		tabR := l.StaticTable[i](cs, qR)
-		tabEval := cs.Add(
-			cs.Mul(lambdaL, tabL.Eval(cs, hLhR)),
-			cs.Mul(lambdaR, tabR.Eval(cs, hLhR)),
+		tabEval := cs.LinearExpression(
+			cs.Term(cs.Mul(lambdaL, tabL.Eval(cs, hLhR)), big.NewInt(1)),
+			cs.Term(cs.Mul(lambdaR, tabR.Eval(cs, hLhR)), big.NewInt(1)),
 		)
 		res = cs.Add(res, cs.Mul(tabEval, l.Gates[i](cs, vL, vR)))
 	}

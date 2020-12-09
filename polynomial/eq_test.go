@@ -72,7 +72,7 @@ import (
 //
 // (array of length 16)
 
-func correctFoldedEqTable(r, s, t, u fr.Element) []fr.Element {
+func correctFoldedEqTable(r, s, t, u fr.Element) BookKeepingTable {
 	result := make([]fr.Element, 16)
 
 	var one fr.Element
@@ -123,7 +123,7 @@ func correctFoldedEqTable(r, s, t, u fr.Element) []fr.Element {
 	result[14].Mul(&rs, &tU) //   r     s     t   (1-u),
 	result[15].Mul(&rs, &tu) //   r     s     t     u  ,
 
-	return result
+	return NewBookKeepingTable(result)
 }
 
 func TestGetFoldedEqTable(t *testing.T) {

@@ -1,8 +1,8 @@
 package gkr
 
 import (
-	"gkr-mimc/circuit/polynomial"
 	"gkr-mimc/hash"
+	"gkr-mimc/snark/polynomial"
 
 	"github.com/consensys/gnark/frontend"
 )
