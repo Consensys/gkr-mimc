@@ -2,11 +2,13 @@ package examples
 
 import (
 	"fmt"
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
 	"gkr-mimc/gkr"
 	"gkr-mimc/hash"
-	"gkr-mimc/sumcheck"
+	"os"
 	"runtime"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,82 +16,106 @@ import (
 	"github.com/consensys/gurvy/bn256/fr"
 )
 
+func randomInputs(nChunks, bN int) [][]fr.Element {
+	size := 2 * (1 << bN)
+	chunkSize := size / nChunks
+	res := make([][]fr.Element, nChunks)
+	for i := range res {
+		res[i] = common.RandomFrArray(chunkSize)
+	}
+	return res
+}
+
 func TestMimc(t *testing.T) {
 
 	// Initialize the circuit
-	circuit := CreateMimcCircuit()
+	mimcCircuit := CreateMimcCircuit()
 	// We test on the hashing of 0
 	// This checks the transition functions to be consistent
 	// With the actual hash function
 
 	// Test the consistency between the the combinator and the transition function
 	bN := 3
+	nChunks := 2
+	inputChunkSize := 2 * (1 << bN) / nChunks
 	var zero, one fr.Element
 	one.SetOne()
-	expectedOutputs := make([]fr.Element, 1)
 
-	hash.MimcPermutationInPlace(&expectedOutputs[0], zero)
-	// Computes the actual outputs using the GenerateAssignment function
-	inputs := make([]fr.Element, 2*(1<<bN))
-	assignment := circuit.GenerateAssignment(inputs)
-	actualOutputs := assignment.LayerAsBKTNoCopy(91).Table
+	// Performs the assignment
+	inputs := randomInputs(nChunks, bN)
+	assignment := mimcCircuit.Assign(inputs, 1)
+	outputs := assignment.Values[91]
+
+	// Sees if the output is consistent with the result of calling Mimc permutation
+	expectedHash := inputs[0][0]
+	// Our circuit expects the first addition to be made by the client
+	expectedHash.Sub(&expectedHash, &inputs[0][inputChunkSize/2])
+	hash.MimcPermutationInPlace(&expectedHash, inputs[0][inputChunkSize/2])
+	// And it does an extra addition by the key that is not done by the Mimc
+	// but is done by the Miyaguchi-Preenel constructs.
+	// Therefore we readd the key, to match the circuit result in the test
+	expectedHash.Add(&expectedHash, &inputs[0][inputChunkSize/2])
 	// An error here indicate an error in the transition functions definition
-	assert.Equal(t, expectedOutputs[0], actualOutputs[0], "Error on the state calculation")
+	assert.Equal(t, expectedHash.String(), outputs[0][0].String(), "Error on the state calculation")
 
-	layer1 := assignment.LayerAsBKTNoCopy(1).Table
-	gates := circuit.Gates(0)
+	layer1 := assignment.Values[1]
+	gates := mimcCircuit.Layers[0].Gates
 	layer1FromCombinator := []fr.Element{
-		sumcheck.EvaluateCombinator(zero, zero, one, gates, []fr.Element{one, zero}),
-		sumcheck.EvaluateCombinator(zero, zero, one, gates, []fr.Element{zero, one}),
+		// Expected to output the value of copy
+		circuit.EvaluateCombinator(
+			inputs[0][inputChunkSize/2], inputs[0][0], one, gates, []fr.Element{one, zero},
+		),
+		// Expected to output the value of cipher
+		circuit.EvaluateCombinator(
+			inputs[0][inputChunkSize/2], inputs[0][0], one, gates, []fr.Element{zero, one},
+		),
 	}
 	// An error here indicate an error in the combinator definition
-	assert.Equal(t, layer1[0], layer1FromCombinator[0], "Error on cipher")
-	assert.Equal(t, layer1[1<<bN], layer1FromCombinator[1], "Error on copy")
+	assert.Equal(t, layer1[0][0], layer1FromCombinator[0], "Error on cipher")
+	assert.Equal(t, layer1[0][inputChunkSize/2], layer1FromCombinator[1], "Error on copy")
 
-	ptest := gkr.NewProver(circuit, assignment)
+	ptest := gkr.NewProver(mimcCircuit, assignment)
 	qPrime := make([]fr.Element, bN)
-	if bN > 0 {
-		qPrime[0].SetOne()
-	}
 
 	// Get the sumcheck provers for the first layer on q = 0 and q = 1
 	// And test that the claims are consistent with the assignment in layer 1
 	sumcheckPQ0 := ptest.IntermediateRoundsSumcheckProver(0, qPrime, []fr.Element{zero}, []fr.Element{zero}, one, zero)
 	sumcheckPQ1 := ptest.IntermediateRoundsSumcheckProver(0, qPrime, []fr.Element{one}, []fr.Element{zero}, one, zero)
-	claimQ0 := sumcheckPQ0.GetClaim()
-	claimQ1 := sumcheckPQ1.GetClaim()
+	claimQ0 := sumcheckPQ0.GetClaim(1)
+	claimQ1 := sumcheckPQ1.GetClaim(1)
 	// If the test fails there, there is likely a problem with the tables
-	assert.Equal(t, layer1[0], claimQ0, "Error with the claims")
-	assert.Equal(t, layer1[1<<bN], claimQ1, "Error with the claims")
+	assert.Equal(t, layer1[0][0], claimQ0, "Error with the claims")
+	assert.Equal(t, layer1[0][inputChunkSize/2], claimQ1, "Error with the claims")
 
-	// Get the sumcheck provers for the last layer on q = 0 and q = 1
+	// Get the sumcheck provers for the last layer on q = 0
 	// And test that the claims are consistent with the assignment in layer n-1
 	sumcheckPQInit := ptest.InitialRoundSumcheckProver(qPrime, []fr.Element{})
-	claimQInit := sumcheckPQInit.GetClaim()
+	claimQInit := sumcheckPQInit.GetClaim(1)
 	// If the test fails there, there is likely a problem with the tables
-	assert.Equal(t, actualOutputs[0], claimQInit, "Error with the claims")
+	assert.Equal(t, outputs[0][0], claimQInit, "Error with the claims")
 
 	// Finally checks the entire GKR protocol
-	prover := gkr.NewProver(circuit, assignment)
+	prover := gkr.NewProver(mimcCircuit, assignment)
 	proof := prover.Prove(1)
-	verifier := gkr.NewVerifier(bN, circuit)
-	valid := verifier.Verify(proof, actualOutputs, inputs)
+	verifier := gkr.NewVerifier(bN, mimcCircuit)
+	valid := verifier.Verify(proof, inputs, outputs)
 	// An error here mostly indicate a problem with the degree calculator
 	assert.True(t, valid, "GKR verifier refused")
 }
 
 var _mimcProof gkr.Proof
 
-func benchmarkMIMCCircuit(b *testing.B, bN, nCore, minChunkSize int, profiled, traced bool) {
+func benchmarkMIMCCircuit(b *testing.B, bN, nCore, nChunks int, profiled, traced bool) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		// Initialize the circuit
-		circuit := CreateMimcCircuit()
-		inputs := make([]fr.Element, 1<<(bN+1))
-		assignment := circuit.GenerateAssignment(inputs)
+		mimcCircuit := CreateMimcCircuit()
+		// Performs the assignment
+		inputs := randomInputs(nChunks, bN)
+		assignment := mimcCircuit.Assign(inputs, 1)
 		// Finally checks the entire GKR protocol
-		prover := gkr.NewProver(circuit, assignment)
+		prover := gkr.NewProver(mimcCircuit, assignment)
 
 		common.ProfileTrace(b, profiled, traced, func() {
 			_mimcProof = prover.Prove(nCore)
@@ -98,11 +124,10 @@ func benchmarkMIMCCircuit(b *testing.B, bN, nCore, minChunkSize int, profiled, t
 }
 
 func BenchmarkMimcCircuit(b *testing.B) {
-	bNs := [...]int{15, 16, 17, 18}
-	for _, bN := range bNs {
-		b.Run(fmt.Sprintf("bN=%d", bN), func(b *testing.B) {
-			nCore := runtime.GOMAXPROCS(0)
-			benchmarkMIMCCircuit(b, bN, nCore, 1<<9, true, false)
-		})
-	}
+	nChunks, _ := strconv.Atoi(os.Getenv("NCHUNKS_GKR"))
+	bN, _ := strconv.Atoi(os.Getenv("BN_GKR"))
+	nCore := runtime.GOMAXPROCS(0)
+	b.Run(fmt.Sprintf("bN=%d-nCore", bN), func(b *testing.B) {
+		benchmarkMIMCCircuit(b, bN, nCore, nChunks, false, false)
+	})
 }
