@@ -54,7 +54,7 @@ func TestSumcheckCircuit(t *testing.T) {
 	scProver := sumcheck.InitializeProverForTests(bN)
 	firstClaim := scProver.GetClaim()
 	scVer := sumcheck.Verifier{}
-	proof, expectedQPrime, expectedQR, expectedQL, _ := scProver.ProveSingleThread()
+	proof, expectedQPrime, expectedQR, expectedQL, _ := scProver.Prove()
 	_, _, _, _, _ = scVer.Verify(firstClaim, proof, bN, bG)
 
 	witness := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)

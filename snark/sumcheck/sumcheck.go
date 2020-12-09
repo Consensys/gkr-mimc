@@ -2,8 +2,8 @@ package sumcheck
 
 import (
 	"fmt"
-	"gkr-mimc/circuit/hash"
-	"gkr-mimc/circuit/polynomial"
+	"gkr-mimc/snark/hash"
+	"gkr-mimc/snark/polynomial"
 	"gkr-mimc/sumcheck"
 
 	"github.com/consensys/gnark/frontend"

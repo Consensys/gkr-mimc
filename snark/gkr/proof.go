@@ -1,11 +1,11 @@
 package gkr
 
 import (
-	hashGadget "gkr-mimc/circuit/hash"
-	"gkr-mimc/circuit/polynomial"
-	"gkr-mimc/circuit/sumcheck"
 	"gkr-mimc/gkr"
 	"gkr-mimc/hash"
+	hashGadget "gkr-mimc/snark/hash"
+	"gkr-mimc/snark/polynomial"
+	"gkr-mimc/snark/sumcheck"
 
 	"github.com/consensys/gnark/frontend"
 )
