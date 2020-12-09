@@ -15,7 +15,7 @@ type Circuit struct {
 // Assignment gathers all the values representing the steps of
 // computations being proved by GKR
 type Assignment struct {
-	values [][][]fr.Element
+	Values [][][]fr.Element
 }
 
 // NewCircuit construct a new circuit object
@@ -23,7 +23,12 @@ func NewCircuit(
 	wiring [][]Wire,
 ) Circuit {
 	layers := make([]Layer, len(wiring))
-	return Circuit{Layers: layers}
+	for i := range layers {
+		layers[i] = NewLayer(wiring[i])
+	}
+	return Circuit{
+		Layers: layers,
+	}
 }
 
 // Assign returns a complete assignment from a vector of inputs
@@ -36,14 +41,15 @@ func (c *Circuit) Assign(inputs [][]fr.Element, nCore int) Assignment {
 	for i, layer := range c.Layers {
 		assignment[i+1] = layer.Evaluate(assignment[i], nCore)
 	}
-	return Assignment{values: assignment}
+	return Assignment{Values: assignment}
 }
 
 // LayerAsBKTWithCopy creates a deep-copy of a given layer of the assignment
 func (a *Assignment) LayerAsBKTWithCopy(layer int) []polynomial.BookKeepingTable {
-	res := make([]polynomial.BookKeepingTable, len(a.values[layer]))
+	res := make([]polynomial.BookKeepingTable, len(a.Values[layer]))
 	// Deep-copies the values of the assignment
-	for i, tab := range a.values[layer] {
+	for i, tab := range a.Values[layer] {
+		res[i].Table = make([]fr.Element, len(tab))
 		copy(res[i].Table, tab)
 	}
 	return res
@@ -51,9 +57,9 @@ func (a *Assignment) LayerAsBKTWithCopy(layer int) []polynomial.BookKeepingTable
 
 // LayerAsBKTNoCopy creates a deep-copy of a given layer of the assignment
 func (a *Assignment) LayerAsBKTNoCopy(layer int) []polynomial.BookKeepingTable {
-	res := make([]polynomial.BookKeepingTable, len(a.values[layer]))
+	res := make([]polynomial.BookKeepingTable, len(a.Values[layer]))
 	// Copies the headers of the slices
-	for i, tab := range a.values[layer] {
+	for i, tab := range a.Values[layer] {
 		res[i] = polynomial.NewBookKeepingTable(tab)
 	}
 	return res

@@ -2,6 +2,7 @@ package sumcheck
 
 import (
 	"fmt"
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
 	"gkr-mimc/polynomial"
 	"testing"
@@ -30,7 +31,7 @@ func TestGetEvals(t *testing.T) {
 	eQTable := polynomial.NewBookKeepingTable(eQ)
 	addTable := polynomial.NewBookKeepingTable(add)
 
-	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []polynomial.BookKeepingTable{addTable})
+	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{circuit.AddGate{}}, []polynomial.BookKeepingTable{addTable})
 
 	claim := prover.GetClaim()
 	assert.Equal(t, claim, four, "Error on get claims")
@@ -79,7 +80,7 @@ func TestSumcheck(t *testing.T) {
 	addForEval := addTable.DeepCopy()
 
 	// Check that the prover and the verifier are on-par
-	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []polynomial.BookKeepingTable{addTable})
+	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{circuit.AddGate{}}, []polynomial.BookKeepingTable{addTable})
 	claim := prover.GetClaim()
 	proof, expectedQPrime, expectedQL, expectedQR, subClaims := prover.Prove()
 	verifier := Verifier{}
@@ -99,7 +100,7 @@ func TestSumcheck(t *testing.T) {
 	assert.Equal(t, finalAdd, subClaims[3], "Mismatch on claims")
 
 	var actualFinalClaim fr.Element
-	AddGate{}.Eval(&actualFinalClaim, finalVL, finalVR)
+	circuit.AddGate{}.Eval(&actualFinalClaim, finalVL, finalVR)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalAdd)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalEq)
 	assert.Equal(t, finalClaim, actualFinalClaim, "Mismatch on the final claim")

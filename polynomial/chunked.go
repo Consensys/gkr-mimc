@@ -6,6 +6,15 @@ import (
 	"github.com/consensys/gurvy/bn256/fr"
 )
 
+// AsChunkedBookKeepingTable interpret a double slice as a slice of bookkeeping tables
+func AsChunkedBookKeepingTable(x [][]fr.Element) []BookKeepingTable {
+	res := make([]BookKeepingTable, len(x))
+	for i := range res {
+		res[i] = NewBookKeepingTable(x[i])
+	}
+	return res
+}
+
 // Always starts by the last elements
 func chunkedEvalRecombine(bkts []BookKeepingTable, qs []fr.Element) BookKeepingTable {
 	logNChunks := common.Log2Ceil(len(bkts))

@@ -1,7 +1,9 @@
 package gkr
 
 import (
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 	"gkr-mimc/sumcheck"
 
 	"github.com/consensys/gurvy/bn256/fr"
@@ -10,11 +12,11 @@ import (
 // Verifier contains all the data relevant for the verifier algorithm of GKR
 type Verifier struct {
 	bN      int
-	circuit Circuit
+	circuit circuit.Circuit
 }
 
 // NewVerifier constructs a new verifier object
-func NewVerifier(bN int, circuit Circuit) Verifier {
+func NewVerifier(bN int, circuit circuit.Circuit) Verifier {
 	return Verifier{
 		bN:      bN,
 		circuit: circuit,
@@ -24,17 +26,16 @@ func NewVerifier(bN int, circuit Circuit) Verifier {
 // Verify returns true if the GKR proof is valid
 func (v *Verifier) Verify(
 	proof Proof,
-	outputs, inputs []fr.Element,
+	inputs, outputs [][]fr.Element,
 ) bool {
 
-	nLayers := len(v.circuit.gates)
-	inputsBKT := sumcheck.NewBookKeepingTable(inputs)
-	outputsBKT := sumcheck.NewBookKeepingTable(outputs)
+	nLayers := len(v.circuit.Layers)
 
-	qPrime, q := GetInitialQPrimeAndQ(v.bN, v.circuit.bGs[nLayers])
+	qPrime, q := GetInitialQPrimeAndQ(v.bN, v.circuit.Layers[nLayers-1].BGOutputs)
 	var qL, qR []fr.Element
 
-	claim := outputsBKT.Evaluate(
+	claim := polynomial.EvaluateChunked(
+		polynomial.AsChunkedBookKeepingTable(outputs),
 		append(append([]fr.Element{}, q...), qPrime...),
 	)
 
@@ -42,7 +43,7 @@ func (v *Verifier) Verify(
 	valid, nextQPrime, nextQL, nextQR, totalClaim := sumcheckVerifier.Verify(
 		claim,
 		proof.SumcheckProofs[nLayers-1],
-		v.bN, v.circuit.bGs[nLayers-1],
+		v.bN, v.circuit.Layers[nLayers-1].BGInputs,
 	)
 
 	if !valid {
@@ -50,11 +51,11 @@ func (v *Verifier) Verify(
 		return false
 	}
 
-	evaluated := sumcheck.EvaluateCombinator(
+	evaluated := circuit.EvaluateCombinator(
 		proof.ClaimsLeft[nLayers-1],
 		proof.ClaimsRight[nLayers-1],
-		EvalEq(qPrime, nextQPrime),
-		v.circuit.gates[nLayers-1],
+		polynomial.EvalEq(qPrime, nextQPrime),
+		v.circuit.Layers[nLayers-1].Gates,
 		v.evaluateStaticTables(nLayers-1, q, nextQL, nextQR),
 	)
 
@@ -79,18 +80,18 @@ func (v *Verifier) Verify(
 
 		valid, nextQPrime, nextQL, nextQR, totalClaim = sumcheckVerifier.Verify(
 			claim, proof.SumcheckProofs[layer],
-			v.bN, v.circuit.bGs[layer],
+			v.bN, v.circuit.Layers[layer].BGInputs,
 		)
 		if !valid {
 			// The sumcheck proof is broken
 			return false
 		}
 
-		if totalClaim != sumcheck.EvaluateCombinator(
+		if totalClaim != circuit.EvaluateCombinator(
 			proof.ClaimsLeft[layer],
 			proof.ClaimsRight[layer],
-			EvalEq(qPrime, nextQPrime),
-			v.circuit.gates[layer],
+			polynomial.EvalEq(qPrime, nextQPrime),
+			v.circuit.Layers[layer].Gates,
 			v.evaluateStaticTablesLinCombs(layer, qL, qR, nextQL, nextQR, lambdaL, lambdaR),
 		) {
 			// The sumcheck claim was inconsistent with the values claimed in the proof
@@ -101,7 +102,9 @@ func (v *Verifier) Verify(
 	// Final check => Check consistency with the last claims
 	// on vL and vR with the values given as inputs
 	//vL, vR from inputs
-	actualVL, actualVR := inputsBKT.EvaluateLeftAndRight(nextQPrime, nextQL, nextQR)
+	actualVL, actualVR := polynomial.EvaluateMixedChunked(
+		polynomial.AsChunkedBookKeepingTable(inputs),
+		nextQPrime, nextQL, nextQR)
 	if actualVL != proof.ClaimsLeft[0] || actualVR != proof.ClaimsRight[0] {
 		return false
 	}
@@ -110,23 +113,21 @@ func (v *Verifier) Verify(
 }
 
 func (v *Verifier) evaluateStaticTables(layer int, q, nextQL, nextQR []fr.Element) []fr.Element {
-	gens := v.circuit.staticTableGens[layer]
-	evals := make([]fr.Element, len(gens))
-	for i, f := range gens {
-		tables := f(q)
-		evals[i] = tables.Evaluate(append(nextQL, nextQR...))
+	tables := v.circuit.Layers[layer].GetStaticTable(q)
+	evals := make([]fr.Element, len(tables))
+	for i := range tables {
+		evals[i] = tables[i].Evaluate(append(nextQL, nextQR...))
 	}
 	return evals
 }
 
 func (v *Verifier) evaluateStaticTablesLinCombs(layer int, qL, qR, nextQL, nextQR []fr.Element, lambdaL, lambdaR fr.Element) []fr.Element {
-	gens := v.circuit.staticTableGens[layer]
-	evals := make([]fr.Element, len(gens))
-	for i, f := range gens {
-		tableLefts := f(qL)
-		tableRights := f(qR)
-		left := tableLefts.Evaluate(append(nextQL, nextQR...))
-		right := tableRights.Evaluate(append(nextQL, nextQR...))
+	tablesL := v.circuit.Layers[layer].GetStaticTable(qL)
+	tablesR := v.circuit.Layers[layer].GetStaticTable(qR)
+	evals := make([]fr.Element, len(tablesL))
+	for i := range tablesL {
+		left := tablesL[i].Evaluate(append(nextQL, nextQR...))
+		right := tablesR[i].Evaluate(append(nextQL, nextQR...))
 		right.Mul(&right, &lambdaR)
 		left.Mul(&left, &lambdaL)
 		left.Add(&left, &right)

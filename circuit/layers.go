@@ -3,6 +3,7 @@ package circuit
 import (
 	"gkr-mimc/common"
 	"gkr-mimc/polynomial"
+	"sync"
 
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -66,12 +67,19 @@ func (l *Layer) GetStaticTable(q []fr.Element) []polynomial.BookKeepingTable {
 // It can be multi-threaded
 func (l *Layer) Evaluate(inputs [][]fr.Element, nCore int) [][]fr.Element {
 	res := make([][]fr.Element, len(inputs))
+	semaphore := common.NewSemaphore(nCore)
+	defer semaphore.Close()
+	var wg sync.WaitGroup
+	wg.Add(len(inputs))
 	// Multi-thread the evaluation
 	for i := range inputs {
 		go func(i int) {
+			semaphore.Acquire()
 			inps := inputs[i]
-			N := len(inps) / l.BGInputs
-			subRes := make([]fr.Element, N*l.BGOutputs)
+			GInputs := 1 << l.BGInputs
+			GOutputs := 1 << l.BGOutputs
+			N := len(inps) / GInputs
+			subRes := make([]fr.Element, N*GOutputs)
 			var tmp fr.Element
 			for _, w := range l.Wires {
 				// Precompute the indices
@@ -85,8 +93,11 @@ func (l *Layer) Evaluate(inputs [][]fr.Element, nCore int) [][]fr.Element {
 				}
 			}
 			res[i] = subRes
+			semaphore.Release()
+			wg.Done()
 		}(i)
 	}
+	wg.Wait()
 	return res
 }
 

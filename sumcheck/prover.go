@@ -1,6 +1,7 @@
 package sumcheck
 
 import (
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
 	"gkr-mimc/polynomial"
 
@@ -19,7 +20,7 @@ type SingleThreadedProver struct {
 	vR polynomial.BookKeepingTable
 	// Contains the static tables defining the circuit structure
 	eq           polynomial.BookKeepingTable
-	gates        []Gate
+	gates        []circuit.Gate
 	staticTables []polynomial.BookKeepingTable
 	// Degrees for the differents variables
 	degreeHL     int
@@ -32,7 +33,7 @@ func NewSingleThreadedProver(
 	vL polynomial.BookKeepingTable,
 	vR polynomial.BookKeepingTable,
 	eq polynomial.BookKeepingTable,
-	gates []Gate,
+	gates []circuit.Gate,
 	staticTables []polynomial.BookKeepingTable,
 ) SingleThreadedProver {
 	// Auto-computes the degree on each variables

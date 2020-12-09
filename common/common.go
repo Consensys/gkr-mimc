@@ -67,3 +67,10 @@ func RandomFrArray(size int) []fr.Element {
 	}
 	return res
 }
+
+// Uint64ToFr allows to quickly create fr.Element
+func Uint64ToFr(x uint64) fr.Element {
+	var res fr.Element
+	res.SetUint64(x)
+	return res
+}

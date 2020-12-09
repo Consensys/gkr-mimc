@@ -1,6 +1,7 @@
 package sumcheck
 
 import (
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
 	"gkr-mimc/polynomial"
 
@@ -14,7 +15,7 @@ type MultiThreadedProver struct {
 	vR []polynomial.BookKeepingTable
 	// Contains the static tables defining the circuit structure
 	eq           []polynomial.BookKeepingTable
-	gates        []Gate
+	gates        []circuit.Gate
 	staticTables []polynomial.BookKeepingTable
 	// Degrees for the differents variables
 	degreeHL     int
@@ -32,7 +33,7 @@ func NewMultiThreadedProver(
 	vL []polynomial.BookKeepingTable,
 	vR []polynomial.BookKeepingTable,
 	eq []polynomial.BookKeepingTable,
-	gates []Gate,
+	gates []circuit.Gate,
 	staticTables []polynomial.BookKeepingTable,
 ) MultiThreadedProver {
 	// Auto-computes the degree on each variables

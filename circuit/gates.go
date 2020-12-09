@@ -12,7 +12,7 @@ type Gate interface {
 	// ID returns an ID that is unique for the gate
 	ID() string
 	// GnarkEval performs the same computation as Eval but on Gnark variables
-	GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable)
+	GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable
 	// Eval returns an evaluation for a unique pair of Eval
 	Eval(res *fr.Element, vL, vR fr.Element)
 	// EvalManyVL returns multiple evaluations with the same vR

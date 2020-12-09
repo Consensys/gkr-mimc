@@ -1,6 +1,8 @@
 package sumcheck
 
 import (
+	"gkr-mimc/circuit"
+
 	"github.com/consensys/gurvy/bn256/fr"
 )
 
@@ -163,7 +165,7 @@ func (p SingleThreadedProver) accumulateEvalsOnHL(
 	// Pre-allocate all the loops variable
 	var i, h, hL, hR, t, bVL int
 	vS := make([]fr.Element, nEvals)
-	var gate Gate
+	var gate circuit.Gate
 	var v fr.Element
 
 	// splitValues[nGate][len(hR) * len(hL)][nEvals]
@@ -235,7 +237,7 @@ func (p SingleThreadedProver) accumulateEvalsOnHR(
 
 	// Initialize the loop element to reduce the malloc bottleneck
 	var i, h, hR, t, bVR int
-	var gate Gate
+	var gate circuit.Gate
 	vS := make([]fr.Element, nEvals)
 	var v fr.Element
 
@@ -312,7 +314,7 @@ func (p SingleThreadedProver) accumulateEvalsOnHPrime(
 
 	var i, t int
 	var v, deltaVL, deltaVR, deltaEq fr.Element
-	var gate Gate
+	var gate circuit.Gate
 
 	for hPrime := 0; hPrime < mid; hPrime++ {
 		// Computes the preEvaluations
