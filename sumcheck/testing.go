@@ -22,7 +22,7 @@ func InitializeMultiThreadedProver(bN, nChunks int) MultiThreadedProver {
 		qPrime[i] = two
 	}
 
-	eq := polynomial.GetChunkedEqTable(qPrime, nChunks)
+	eq := polynomial.GetChunkedEqTable(qPrime, nChunks, 1)
 	cipher := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, one, zero, zero, zero, zero, zero})
 	copy := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, zero, zero, zero, zero, one, zero})
 	cipher.Fold(two)

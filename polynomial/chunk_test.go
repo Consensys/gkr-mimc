@@ -40,7 +40,7 @@ func TestChunked(t *testing.T) {
 		nChunks := 1 << test.logNChunks
 		chunkSize := 1 << (test.logSize - test.logNChunks)
 		// Initialize the tables
-		eqChunked := GetChunkedEqTable(qPrime, nChunks)
+		eqChunked := GetChunkedEqTable(qPrime, nChunks, 1)
 		eq := GetFoldedEqTable(qPrime)
 
 		// The first and the last elements should match

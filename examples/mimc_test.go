@@ -78,8 +78,8 @@ func TestMimc(t *testing.T) {
 
 	// Get the sumcheck provers for the first layer on q = 0 and q = 1
 	// And test that the claims are consistent with the assignment in layer 1
-	sumcheckPQ0 := ptest.IntermediateRoundsSumcheckProver(0, qPrime, []fr.Element{zero}, []fr.Element{zero}, one, zero)
-	sumcheckPQ1 := ptest.IntermediateRoundsSumcheckProver(0, qPrime, []fr.Element{one}, []fr.Element{zero}, one, zero)
+	sumcheckPQ0 := ptest.IntermediateRoundsSumcheckProver(0, qPrime, []fr.Element{zero}, []fr.Element{zero}, one, zero, 1)
+	sumcheckPQ1 := ptest.IntermediateRoundsSumcheckProver(0, qPrime, []fr.Element{one}, []fr.Element{zero}, one, zero, 1)
 	claimQ0 := sumcheckPQ0.GetClaim(1)
 	claimQ1 := sumcheckPQ1.GetClaim(1)
 	// If the test fails there, there is likely a problem with the tables
@@ -88,7 +88,7 @@ func TestMimc(t *testing.T) {
 
 	// Get the sumcheck provers for the last layer on q = 0
 	// And test that the claims are consistent with the assignment in layer n-1
-	sumcheckPQInit := ptest.InitialRoundSumcheckProver(qPrime, []fr.Element{})
+	sumcheckPQInit := ptest.InitialRoundSumcheckProver(qPrime, []fr.Element{}, 1)
 	claimQInit := sumcheckPQInit.GetClaim(1)
 	// If the test fails there, there is likely a problem with the tables
 	assert.Equal(t, outputs[0][0], claimQInit, "Error with the claims")

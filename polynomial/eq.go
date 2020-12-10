@@ -57,7 +57,7 @@ func GetFoldedEqTable(qPrime []fr.Element) (eq BookKeepingTable) {
 }
 
 // GetChunkedEqTable returns a prefolded eq table, in chunked form
-func GetChunkedEqTable(qPrime []fr.Element, nChunks int) []BookKeepingTable {
+func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTable {
 	logNChunks := common.Log2Ceil(nChunks)
 	res := make([]BookKeepingTable, nChunks)
 	res[0] = GetFoldedEqTable(qPrime[:len(qPrime)-logNChunks])
@@ -66,8 +66,8 @@ func GetChunkedEqTable(qPrime []fr.Element, nChunks int) []BookKeepingTable {
 		for j := 0; j < (1 << i); j++ {
 			J := j << (logNChunks - i)
 			JNext := J + 1<<(logNChunks-1-i)
-			res[JNext].Mul(r, res[J])
-			res[J].Sub(res[J], res[JNext])
+			res[JNext].Mul(r, res[J], nCore)
+			res[J].Sub(res[J], res[JNext], nCore)
 		}
 	}
 

@@ -3,6 +3,7 @@ package polynomial
 import (
 	"fmt"
 	"gkr-mimc/common"
+	"sync"
 
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -151,8 +152,13 @@ func (bkt *BookKeepingTable) Add(left, right BookKeepingTable) {
 }
 
 // Sub two bookKeepingTable
-func (bkt *BookKeepingTable) Sub(left, right BookKeepingTable) {
+func (bkt *BookKeepingTable) Sub(left, right BookKeepingTable, nCore int) {
 	size := len(left.Table)
+	chunks := common.IntoChunkRanges(nCore, size)
+	semaphore := common.NewSemaphore(nCore)
+	var wg sync.WaitGroup
+	wg.Add(len(chunks))
+
 	// Check that left and right have the same size
 	if len(right.Table) != size {
 		panic("Left and right do not have the right size")
@@ -164,22 +170,45 @@ func (bkt *BookKeepingTable) Sub(left, right BookKeepingTable) {
 	// Resize the destination table
 	bkt.Table = bkt.Table[:size]
 	// Then performs the addition
-	for i := 0; i < size; i++ {
-		bkt.Table[i].Sub(&left.Table[i], &right.Table[i])
+	for _, chunk := range chunks {
+		semaphore.Acquire()
+		go func(chunk common.ChunkRange) {
+			for i := chunk.Begin; i < chunk.End; i++ {
+				bkt.Table[i].Sub(&left.Table[i], &right.Table[i])
+			}
+			semaphore.Release()
+			wg.Done()
+		}(chunk)
 	}
+
+	wg.Wait()
 }
 
 // Mul a bookkeeping table by a constant
-func (bkt *BookKeepingTable) Mul(lambda fr.Element, x BookKeepingTable) {
+func (bkt *BookKeepingTable) Mul(lambda fr.Element, x BookKeepingTable, nCore int) {
 	size := len(x.Table)
+	chunks := common.IntoChunkRanges(nCore, size)
+	semaphore := common.NewSemaphore(nCore)
+	var wg sync.WaitGroup
+	wg.Add(len(chunks))
+
 	// Reallocate the table if necessary
 	if cap(bkt.Table) < size {
 		bkt.Table = make([]fr.Element, size)
 	}
+
 	// Resize the destination table
 	bkt.Table = bkt.Table[:size]
 	// Then performs the addition
-	for i := 0; i < size; i++ {
-		bkt.Table[i].Mul(&x.Table[i], &lambda)
+	for _, chunk := range chunks {
+		semaphore.Acquire()
+		go func(chunk common.ChunkRange) {
+			for i := chunk.Begin; i < chunk.End; i++ {
+				bkt.Table[i].Mul(&x.Table[i], &lambda)
+			}
+			semaphore.Release()
+			wg.Done()
+		}(chunk)
 	}
+	wg.Wait()
 }

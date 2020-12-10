@@ -53,7 +53,7 @@ func GetInitialQPrimeAndQ(bN, bG int) ([]fr.Element, []fr.Element) {
 
 // GetBookKeepingTablesForInitialRound generates and prefold the book-keeping tables for a the initial GKR round
 func (p *Prover) GetBookKeepingTablesForInitialRound(
-	qPrime, q []fr.Element,
+	qPrime, q []fr.Element, nCore int,
 ) (
 	vL, vR, eq []polynomial.BookKeepingTable,
 	statics []polynomial.BookKeepingTable,
@@ -63,9 +63,9 @@ func (p *Prover) GetBookKeepingTablesForInitialRound(
 	// Compute the static tables
 	statics = p.circuit.Layers[layer].GetStaticTable(q)
 	// And gate the remaining table
-	vL = p.assignment.LayerAsBKTWithCopy(layer)
-	vR = p.assignment.LayerAsBKTWithCopy(layer)
-	eq = polynomial.GetChunkedEqTable(qPrime, len(vL))
+	vL = p.assignment.LayerAsBKTWithCopy(layer, nCore)
+	vR = p.assignment.LayerAsBKTWithCopy(layer, nCore)
+	eq = polynomial.GetChunkedEqTable(qPrime, len(vL), nCore)
 	return vL, vR, eq, statics
 }
 
@@ -74,14 +74,15 @@ func (p *Prover) GetBookKeepingTablesForIntermediateRound(
 	layer int,
 	qPrime, qL, qR []fr.Element,
 	lambdaL, lambdaR fr.Element,
+	nCore int,
 ) (
 	vL, vR, eq []polynomial.BookKeepingTable,
 	statics []polynomial.BookKeepingTable,
 ) {
 	// First vL
-	vL = p.assignment.LayerAsBKTWithCopy(layer)
-	vR = p.assignment.LayerAsBKTWithCopy(layer)
-	eq = polynomial.GetChunkedEqTable(qPrime, len(vL))
+	vL = p.assignment.LayerAsBKTWithCopy(layer, nCore)
+	vR = p.assignment.LayerAsBKTWithCopy(layer, nCore)
+	eq = polynomial.GetChunkedEqTable(qPrime, len(vL), nCore)
 
 	// Get the static tables
 	staticsL := p.circuit.Layers[layer].GetStaticTable(qL)
@@ -102,9 +103,9 @@ func (p *Prover) GetBookKeepingTablesForIntermediateRound(
 }
 
 // InitialRoundSumcheckProver returns a prover object for the initial round
-func (p *Prover) InitialRoundSumcheckProver(qPrime []fr.Element, q []fr.Element) sumcheck.MultiThreadedProver {
+func (p *Prover) InitialRoundSumcheckProver(qPrime []fr.Element, q []fr.Element, nCore int) sumcheck.MultiThreadedProver {
 	layer := len(p.circuit.Layers)
-	vL, vR, eq, statics := p.GetBookKeepingTablesForInitialRound(qPrime, q)
+	vL, vR, eq, statics := p.GetBookKeepingTablesForInitialRound(qPrime, q, nCore)
 	return sumcheck.NewMultiThreadedProver(vL, vR, eq, p.circuit.Layers[layer-1].Gates, statics)
 }
 
@@ -113,8 +114,9 @@ func (p *Prover) IntermediateRoundsSumcheckProver(
 	layer int,
 	qPrime, qL, qR []fr.Element,
 	lambdaL, lambdaR fr.Element,
+	nCore int,
 ) sumcheck.MultiThreadedProver {
-	vL, vR, eq, statics := p.GetBookKeepingTablesForIntermediateRound(layer, qPrime, qL, qR, lambdaL, lambdaR)
+	vL, vR, eq, statics := p.GetBookKeepingTablesForIntermediateRound(layer, qPrime, qL, qR, lambdaL, lambdaR, nCore)
 	return sumcheck.NewMultiThreadedProver(vL, vR, eq, p.circuit.Layers[layer].Gates, statics)
 }
 
@@ -128,7 +130,7 @@ func (p *Prover) Prove(nCore int) Proof {
 
 	// Initial round
 	qPrime, q := GetInitialQPrimeAndQ(p.bN, p.circuit.Layers[nLayers-1].BGOutputs)
-	prover := p.InitialRoundSumcheckProver(qPrime, q)
+	prover := p.InitialRoundSumcheckProver(qPrime, q, nCore)
 	proof, qPrime, qL, qR, finalClaims := prover.Prove(nCore)
 	SumcheckProofs[nLayers-1] = proof
 	ClaimsLeft[nLayers-1], ClaimsRight[nLayers-1] = finalClaims[0], finalClaims[1]
@@ -144,7 +146,7 @@ func (p *Prover) Prove(nCore int) Proof {
 		claim.Add(&claim, &ClaimsLeft[layer+1])
 
 		// Intermediate round sumcheck and update the GKR proof
-		prover := p.IntermediateRoundsSumcheckProver(layer, qPrime, qL, qR, lambdaL, lambdaR)
+		prover := p.IntermediateRoundsSumcheckProver(layer, qPrime, qL, qR, lambdaL, lambdaR, nCore)
 		SumcheckProofs[layer], qPrime, qL, qR, finalClaims = prover.Prove(nCore)
 		ClaimsLeft[layer], ClaimsRight[layer] = finalClaims[0], finalClaims[1]
 	}

@@ -29,8 +29,8 @@ func chunkedEvalRecombine(bkts []BookKeepingTable, qs []fr.Element) BookKeepingT
 		res = make([]BookKeepingTable, mid)
 		for k := range res {
 			// res[i] = inp[i+mid].DeepCopy()
-			res[k].Sub(inp[k+mid], inp[k])
-			res[k].Mul(q, res[k])
+			res[k].Sub(inp[k+mid], inp[k], 1)
+			res[k].Mul(q, res[k], 1)
 			res[k].Add(res[k], inp[k])
 		}
 		inp = res
