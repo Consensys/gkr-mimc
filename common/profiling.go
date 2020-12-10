@@ -16,7 +16,7 @@ func ProfileTrace(b *testing.B, profiled, traced bool, fn func()) {
 	var err error
 
 	if traced {
-		f, err = os.Create(fmt.Sprintf("../../profiling/%v-trace.out", b.Name()))
+		f, err = os.Create(fmt.Sprintf("../profiling/%v-trace.out", b.Name()))
 		if err != nil {
 			panic(err)
 		}
@@ -31,7 +31,7 @@ func ProfileTrace(b *testing.B, profiled, traced bool, fn func()) {
 
 	if profiled {
 		pprof = profile.Start(
-			profile.ProfilePath(fmt.Sprintf("../../profiling/%v-pprof", b.Name())),
+			profile.ProfilePath(fmt.Sprintf("../profiling/%v-pprof", b.Name())),
 			profile.Quiet,
 		)
 		defer pprof.Stop()
