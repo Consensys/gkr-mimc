@@ -2,7 +2,6 @@ package polynomial
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy/bn256/fr"
@@ -37,19 +36,13 @@ func (u *Univariate) Assign(coeffs []fr.Element) {
 func (u *Univariate) Eval(cs *frontend.ConstraintSystem, x frontend.Variable) (res frontend.Variable) {
 
 	res = cs.Constant(0)
-
-	aux := cs.LinearExpression(
-		cs.Term(cs.Constant(0), big.NewInt(0)),
-	)
+	aux := cs.Constant(0)
 
 	for i := len(u.Coefficients) - 1; i >= 0; i-- {
 		if i != len(u.Coefficients)-1 {
 			res = cs.Mul(aux, x)
 		}
-		aux = cs.LinearExpression(
-			cs.Term(res, big.NewInt(1)),
-			cs.Term(u.Coefficients[i], big.NewInt(1)),
-		)
+		aux = cs.Add(res, u.Coefficients[i])
 	}
 
 	return cs.Mul(aux, cs.Constant(1))
