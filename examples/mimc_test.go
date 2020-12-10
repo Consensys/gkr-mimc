@@ -153,8 +153,10 @@ func benchmarkMIMCGKRProverMultiProcess(b *testing.B, bN, nProcesses, nCore, nCh
 		wgReady.Wait()
 
 		b.StartTimer()
-		wgGo.Done() // Gives the signal
-		wgDone.Wait()
+		common.ProfileTrace(b, profiled, traced, func() {
+			wgGo.Done() // Gives the signal
+			wgDone.Wait()
+		})
 		b.StopTimer()
 	}
 
