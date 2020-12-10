@@ -2,13 +2,12 @@ package gkr
 
 import (
 	"fmt"
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
 	"gkr-mimc/examples"
 	"gkr-mimc/gkr"
 	"gkr-mimc/snark/polynomial"
-	"os"
 	"runtime"
-	"strconv"
 	"testing"
 
 	"github.com/consensys/gnark/backend/groth16"
@@ -39,16 +38,16 @@ func AllocateGKRMimcTestCircuit(bN int) GKRMimcTestCircuit {
 
 func (c *GKRMimcTestCircuit) Assign(
 	proof gkr.Proof,
-	inputs []fr.Element,
-	outputs []fr.Element,
+	inputs [][]fr.Element,
+	outputs [][]fr.Element,
 	qInitialprime []fr.Element,
 ) {
 	c.Proof.Assign(proof)
 	for i := range qInitialprime {
 		c.QInitialprime[i].Assign(qInitialprime[i])
 	}
-	c.VInput.Assign(common.FrToGenericArray(inputs))
-	c.VOutput.Assign(common.FrToGenericArray(outputs))
+	c.VInput.AssignFromChunkedBKT(inputs)
+	c.VOutput.AssignFromChunkedBKT(outputs)
 }
 
 func (c *GKRMimcTestCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
@@ -78,9 +77,9 @@ func TestMimcCircuit(t *testing.T) {
 	{
 		// Creates the assignments values
 		nativeCircuit := examples.CreateMimcCircuit()
-		inputs := common.RandomFrArray(2 * (1 << bN))
-		assignment := nativeCircuit.GenerateAssignment(inputs)
-		outputs := assignment.LayerAsBKTNoCopy(91).Table
+		inputs := common.RandomFrDoubleSlice(1, 2*(1<<bN))
+		assignment := nativeCircuit.Assign(inputs, 1)
+		outputs := assignment.Values[91]
 		prover := gkr.NewProver(nativeCircuit, assignment)
 		proof := prover.Prove(1)
 		qInitialprime, _ := gkr.GetInitialQPrimeAndQ(bN, 0)
@@ -96,10 +95,12 @@ func TestMimcCircuit(t *testing.T) {
 }
 
 func BenchmarkMimcCircuit(b *testing.B) {
-	bN, _ := strconv.Atoi(os.Getenv("BN_GKR"))
-	nChunk := 1 << common.Log2(runtime.GOMAXPROCS(0))
+	bN := common.GetBN()
+	nChunk := common.GetNChunks()
+	inputsChunkSize := 2 * (1 << bN) / nChunk
+	nCore := runtime.GOMAXPROCS(0)
 
-	fmt.Printf("bN = %v, nChunk = %v \n", bN, nChunk)
+	fmt.Printf("bN = %v, nChunk = %v, nCore = %v \n", bN, nChunk, nCore)
 
 	var (
 		r1cs r1cs.R1CS
@@ -120,18 +121,18 @@ func BenchmarkMimcCircuit(b *testing.B) {
 		// Creates the assignments values
 		var (
 			proof      gkr.Proof
-			assignment gkr.Assignment
-			outputs    []fr.Element
+			assignment circuit.Assignment
+			outputs    [][]fr.Element
 		)
 
 		nativeCircuit := examples.CreateMimcCircuit()
 		qInitialprime, _ := gkr.GetInitialQPrimeAndQ(bN, 0)
-		inputs := common.RandomFrArray(2 * (1 << bN))
+		inputs := common.RandomFrDoubleSlice(nChunk, inputsChunkSize)
 
 		b.Run("Assignment generation for GKR Prover", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				assignment = nativeCircuit.GenerateAssignment(inputs)
-				outputs = assignment.LayerAsBKTNoCopy(91).Table
+				assignment = nativeCircuit.Assign(inputs, nCore)
+				outputs = assignment.Values[91]
 			}
 		})
 
@@ -141,7 +142,7 @@ func BenchmarkMimcCircuit(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				prover := gkr.NewProver(nativeCircuit, assignment)
 				b.StartTimer()
-				proof = prover.Prove(nChunk)
+				proof = prover.Prove(nCore)
 				b.StopTimer()
 			}
 		})
@@ -159,7 +160,7 @@ func BenchmarkMimcCircuit(b *testing.B) {
 
 	}
 
-	pk, _ := groth16.DummySetup(r1cs)
+	pk := groth16.DummySetup(r1cs)
 	b.Run("Gnark prover", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, _ = groth16.Prove(r1cs, pk, &witness)

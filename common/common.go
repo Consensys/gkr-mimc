@@ -68,6 +68,18 @@ func RandomFrArray(size int) []fr.Element {
 	return res
 }
 
+// RandomFrDoubleSlice returns a random double slice of fr.Element
+func RandomFrDoubleSlice(nChunks, chunkSize int) [][]fr.Element {
+	res := make([][]fr.Element, nChunks)
+	for i := range res {
+		res[i] = make([]fr.Element, chunkSize)
+		for j := range res[i] {
+			res[i][j].SetRandom()
+		}
+	}
+	return res
+}
+
 // Uint64ToFr allows to quickly create fr.Element
 func Uint64ToFr(x uint64) fr.Element {
 	var res fr.Element

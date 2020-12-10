@@ -5,6 +5,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gurvy/bn256/fr"
 )
 
 // MultilinearByValues represents a multilinear polynomial by its values
@@ -25,6 +26,16 @@ func (m *MultilinearByValues) Assign(values []interface{}) {
 	}
 	for i, c := range values {
 		m.Table[i].Assign(c)
+	}
+}
+
+// AssignFromChunkedBKT a preallocated Multilinear with the given values
+func (m *MultilinearByValues) AssignFromChunkedBKT(values [][]fr.Element) {
+	nChunks := len(values)
+	for b := range values {
+		for i := range values[b] {
+			m.Table[b+i*nChunks].Assign(values[b][i])
+		}
 	}
 }
 
