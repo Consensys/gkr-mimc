@@ -7,6 +7,7 @@ import (
 	"gkr-mimc/gkr"
 	"gkr-mimc/hash"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -121,7 +122,45 @@ func benchmarkMIMCCircuit(b *testing.B, bN, nCore, nChunks int, profiled, traced
 	}
 }
 
-func BenchmarkMimcCircuit(b *testing.B) {
+func benchmarkMIMCGKRProverMultiProcess(b *testing.B, bN, nProcesses, nCore, nChunks int, profiled, traced bool) {
+
+	b.ResetTimer()
+	b.StopTimer()
+	for _b := 0; _b < b.N; _b++ {
+		var wgReady, wgGo, wgDone sync.WaitGroup
+		wgReady.Add(nProcesses)
+		wgGo.Add(1)
+		wgDone.Add(nProcesses)
+		for k := 0; k < nProcesses; k++ {
+			go func() {
+				nCore := nCore / nProcesses
+				nChunks := nChunks / nProcesses
+				bN := bN - common.Log2Ceil(nProcesses)
+				// Redimensionate bN to take into account the
+				// Initialize the circuit
+				mimcCircuit := CreateMimcCircuit()
+				// Performs the assignment
+				inputs := randomInputs(nChunks, bN)
+				assignment := mimcCircuit.Assign(inputs, nCore)
+				// Finally checks the entire GKR protocol
+				prover := gkr.NewProver(mimcCircuit, assignment)
+				wgReady.Done()
+				wgGo.Wait() // Wait for the main thread's signal
+				_mimcProof = prover.Prove(nCore)
+				wgDone.Done()
+			}()
+		}
+		wgReady.Wait()
+
+		b.StartTimer()
+		wgGo.Done() // Gives the signal
+		wgDone.Wait()
+		b.StopTimer()
+	}
+
+}
+
+func BenchmarkMimcGKRProver(b *testing.B) {
 	nChunks := common.GetNChunks()
 	bN := common.GetBN()
 	nCore := runtime.GOMAXPROCS(0)
@@ -129,5 +168,17 @@ func BenchmarkMimcCircuit(b *testing.B) {
 	traced := common.GetTraced()
 	b.Run(fmt.Sprintf("bN=%d-nCore", bN), func(b *testing.B) {
 		benchmarkMIMCCircuit(b, bN, nCore, nChunks, profiled, traced)
+	})
+}
+
+func BenchmarkMimcGKRProverMultiProcess(b *testing.B) {
+	nChunks := common.GetNChunks()
+	bN := common.GetBN()
+	nCore := runtime.GOMAXPROCS(0)
+	nProcesses := common.GetNProcesses()
+	profiled := common.GetProfiled()
+	traced := common.GetTraced()
+	b.Run(fmt.Sprintf("bN=%d-nCore", bN), func(b *testing.B) {
+		benchmarkMIMCGKRProverMultiProcess(b, bN, nProcesses, nCore, nChunks, profiled, traced)
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"gkr-mimc/circuit"
 	"gkr-mimc/common"
 	"gkr-mimc/polynomial"
+	"sync"
 
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -195,9 +196,15 @@ func ConsumeAccumulate(ch chan []fr.Element, nToConsume int) []fr.Element {
 
 // Broadcast broadcasts r, to all channels
 func Broadcast(chs []chan fr.Element, r fr.Element) {
+	var wg sync.WaitGroup
+	wg.Add(len(chs))
 	for _, ch := range chs {
-		ch <- r
+		go func(ch chan fr.Element) {
+			ch <- r
+			wg.Done()
+		}(ch)
 	}
+	wg.Wait()
 }
 
 // GetClaimForChunk runs GetClaim on a chunk, and is aimed at being run in the Background
