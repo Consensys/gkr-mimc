@@ -6,10 +6,6 @@ import (
 	"github.com/consensys/gurvy/bn256/fr"
 )
 
-func init() {
-	initLagrangePolynomials()
-}
-
 // PrettyStringFr returns Fr in a nice way (like showing negative numbers in an elegant way)
 func PrettyStringFr(x fr.Element) string {
 	negX := x
@@ -69,5 +65,24 @@ func RandomFrArray(size int) []fr.Element {
 	for i := range res {
 		res[i].SetRandom()
 	}
+	return res
+}
+
+// RandomFrDoubleSlice returns a random double slice of fr.Element
+func RandomFrDoubleSlice(nChunks, chunkSize int) [][]fr.Element {
+	res := make([][]fr.Element, nChunks)
+	for i := range res {
+		res[i] = make([]fr.Element, chunkSize)
+		for j := range res[i] {
+			res[i][j].SetRandom()
+		}
+	}
+	return res
+}
+
+// Uint64ToFr allows to quickly create fr.Element
+func Uint64ToFr(x uint64) fr.Element {
+	var res fr.Element
+	res.SetUint64(x)
 	return res
 }

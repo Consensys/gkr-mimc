@@ -2,6 +2,7 @@ package sumcheck
 
 import (
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -19,8 +20,8 @@ func (v Verifier) Verify(claim fr.Element, proof Proof, bN, bG int) (result bool
 
 	for i := 0; i < len(proof.PolyCoeffs); i++ {
 		// Check P_i(0) + P_i(1) == expected
-		actualValue = common.EvaluatePolynomial(proof.PolyCoeffs[i], zero)
-		evalAtOne = common.EvaluatePolynomial(proof.PolyCoeffs[i], one)
+		actualValue = polynomial.EvaluatePolynomial(proof.PolyCoeffs[i], zero)
+		evalAtOne = polynomial.EvaluatePolynomial(proof.PolyCoeffs[i], one)
 		actualValue.Add(&actualValue, &evalAtOne)
 
 		if expectedValue != actualValue {
@@ -30,7 +31,7 @@ func (v Verifier) Verify(claim fr.Element, proof Proof, bN, bG int) (result bool
 		r = common.GetChallenge(proof.PolyCoeffs[i])
 
 		challenges[i] = r
-		expectedValue = common.EvaluatePolynomial(proof.PolyCoeffs[i], r)
+		expectedValue = polynomial.EvaluatePolynomial(proof.PolyCoeffs[i], r)
 	}
 
 	// A deep-copy to avoid reusing the same underlying slice for all writes

@@ -1,7 +1,9 @@
 package gkr
 
 import (
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 	"gkr-mimc/sumcheck"
 
 	"github.com/consensys/gurvy/bn256/fr"
@@ -10,8 +12,8 @@ import (
 // Prover contains all relevant data for a GKR prover
 type Prover struct {
 	bN         int
-	circuit    Circuit
-	assignment Assignment
+	circuit    circuit.Circuit
+	assignment circuit.Assignment
 }
 
 // Proof contains all the data for a GKR to be verified
@@ -22,8 +24,8 @@ type Proof struct {
 }
 
 // NewProver returns a new prover
-func NewProver(circuit Circuit, assignment Assignment) Prover {
-	bN := common.Log2(len(assignment.values[0])) - circuit.bGs[0]
+func NewProver(circuit circuit.Circuit, assignment circuit.Assignment) Prover {
+	bN := common.Log2Ceil(len(assignment.Values[0])*len(assignment.Values[0][0])) - circuit.Layers[0].BGInputs
 	return Prover{
 		bN:         bN,
 		circuit:    circuit,
@@ -53,24 +55,17 @@ func GetInitialQPrimeAndQ(bN, bG int) ([]fr.Element, []fr.Element) {
 func (p *Prover) GetBookKeepingTablesForInitialRound(
 	qPrime, q []fr.Element,
 ) (
-	vL, vR, eq sumcheck.BookKeepingTable,
-	statics []sumcheck.BookKeepingTable,
+	vL, vR, eq []polynomial.BookKeepingTable,
+	statics []polynomial.BookKeepingTable,
 ) {
 	// For the initial round, we always take the last layer
-	layer := len(p.circuit.gates) - 1
-	// In the Mimc use-case, the static table contains [cipher, copy].
-	// Those are the static table, because they do not depends on the assignment
-	staticTableGens := p.circuit.staticTableGens[layer]
-	// The +2 is because of vL and vR. They are stored in the first two slots.
-	statics = make([]sumcheck.BookKeepingTable, len(staticTableGens))
-	// First vL
+	layer := len(p.circuit.Layers) - 1
+	// Compute the static tables
+	statics = p.circuit.Layers[layer].GetStaticTable(q)
+	// And gate the remaining table
 	vL = p.assignment.LayerAsBKTWithCopy(layer)
 	vR = p.assignment.LayerAsBKTWithCopy(layer)
-	eq = sumcheck.PrefoldedEqTable(qPrime)
-	// Then the staticTables in the order given by
-	for i, gen := range staticTableGens {
-		statics[i] = gen(q)
-	}
+	eq = polynomial.GetChunkedEqTable(qPrime, len(vL))
 	return vL, vR, eq, statics
 }
 
@@ -80,33 +75,37 @@ func (p *Prover) GetBookKeepingTablesForIntermediateRound(
 	qPrime, qL, qR []fr.Element,
 	lambdaL, lambdaR fr.Element,
 ) (
-	vL, vR, eq sumcheck.BookKeepingTable,
-	statics []sumcheck.BookKeepingTable,
+	vL, vR, eq []polynomial.BookKeepingTable,
+	statics []polynomial.BookKeepingTable,
 ) {
-	// In the Mimc use-case, the static table contains [cipher, copy].
-	// Those are the static table, because they do not depends on the assignment
-	staticTableGens := p.circuit.staticTableGens[layer]
-	// The +2 is because of vL and vR. They are stored in the first two slots.
-	statics = make([]sumcheck.BookKeepingTable, len(staticTableGens))
 	// First vL
 	vL = p.assignment.LayerAsBKTWithCopy(layer)
 	vR = p.assignment.LayerAsBKTWithCopy(layer)
-	eq = sumcheck.PrefoldedEqTable(qPrime)
-	// Then the staticTables in the order given by
-	for i, gen := range staticTableGens {
-		bkL := gen(qL)
-		bkR := gen(qR)
-		statics[i] = sumcheck.LinearCombinationOfBookKeepingTables(bkL, bkR, lambdaL, lambdaR)
-	}
+	eq = polynomial.GetChunkedEqTable(qPrime, len(vL))
 
+	// Get the static tables
+	staticsL := p.circuit.Layers[layer].GetStaticTable(qL)
+	staticsR := p.circuit.Layers[layer].GetStaticTable(qR)
+	// Statics is placeholder for the last
+	statics = make([]polynomial.BookKeepingTable, len(staticsL))
+
+	// Then the staticTables in the order given by
+	for i := range statics {
+		statics[i] = polynomial.LinearCombinationOfBookKeepingTables(
+			staticsL[i],
+			staticsR[i],
+			lambdaL,
+			lambdaR,
+		)
+	}
 	return vL, vR, eq, statics
 }
 
 // InitialRoundSumcheckProver returns a prover object for the initial round
-func (p *Prover) InitialRoundSumcheckProver(qPrime []fr.Element, q []fr.Element) sumcheck.Prover {
-	layer := len(p.circuit.gates) - 1
+func (p *Prover) InitialRoundSumcheckProver(qPrime []fr.Element, q []fr.Element) sumcheck.MultiThreadedProver {
+	layer := len(p.circuit.Layers)
 	vL, vR, eq, statics := p.GetBookKeepingTablesForInitialRound(qPrime, q)
-	return sumcheck.NewProver(vL, vR, eq, p.circuit.gates[layer], statics)
+	return sumcheck.NewMultiThreadedProver(vL, vR, eq, p.circuit.Layers[layer-1].Gates, statics)
 }
 
 // IntermediateRoundsSumcheckProver returns a prover object for the intermediate round
@@ -114,23 +113,23 @@ func (p *Prover) IntermediateRoundsSumcheckProver(
 	layer int,
 	qPrime, qL, qR []fr.Element,
 	lambdaL, lambdaR fr.Element,
-) sumcheck.Prover {
+) sumcheck.MultiThreadedProver {
 	vL, vR, eq, statics := p.GetBookKeepingTablesForIntermediateRound(layer, qPrime, qL, qR, lambdaL, lambdaR)
-	return sumcheck.NewProver(vL, vR, eq, p.circuit.gates[layer], statics)
+	return sumcheck.NewMultiThreadedProver(vL, vR, eq, p.circuit.Layers[layer].Gates, statics)
 }
 
 // Prove produces a GKR proof
 func (p *Prover) Prove(nCore int) Proof {
 	// bG := p.circuit.bG
-	nLayers := len(p.circuit.gates)
+	nLayers := len(p.circuit.Layers)
 	ClaimsLeft := make([]fr.Element, nLayers)
 	ClaimsRight := make([]fr.Element, nLayers)
 	SumcheckProofs := make([]sumcheck.Proof, nLayers)
 
 	// Initial round
-	qPrime, q := GetInitialQPrimeAndQ(p.bN, p.circuit.bGs[nLayers])
+	qPrime, q := GetInitialQPrimeAndQ(p.bN, p.circuit.Layers[nLayers-1].BGOutputs)
 	prover := p.InitialRoundSumcheckProver(qPrime, q)
-	proof, qPrime, qL, qR, finalClaims := prover.ProveMultiThreaded(nCore)
+	proof, qPrime, qL, qR, finalClaims := prover.Prove(nCore)
 	SumcheckProofs[nLayers-1] = proof
 	ClaimsLeft[nLayers-1], ClaimsRight[nLayers-1] = finalClaims[0], finalClaims[1]
 
@@ -146,7 +145,7 @@ func (p *Prover) Prove(nCore int) Proof {
 
 		// Intermediate round sumcheck and update the GKR proof
 		prover := p.IntermediateRoundsSumcheckProver(layer, qPrime, qL, qR, lambdaL, lambdaR)
-		SumcheckProofs[layer], qPrime, qL, qR, finalClaims = prover.ProveMultiThreaded(nCore)
+		SumcheckProofs[layer], qPrime, qL, qR, finalClaims = prover.Prove(nCore)
 		ClaimsLeft[layer], ClaimsRight[layer] = finalClaims[0], finalClaims[1]
 	}
 

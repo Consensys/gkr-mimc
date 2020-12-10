@@ -1,7 +1,9 @@
 package sumcheck
 
 import (
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 
 	"github.com/consensys/gurvy/bn256/fr"
 )
@@ -11,29 +13,29 @@ type Proof struct {
 	PolyCoeffs [][]fr.Element
 }
 
-// Prover computes the
-type Prover struct {
+// SingleThreadedProver computes the
+type SingleThreadedProver struct {
 	// Contains the values of the previous layer
-	vL BookKeepingTable
-	vR BookKeepingTable
+	vL polynomial.BookKeepingTable
+	vR polynomial.BookKeepingTable
 	// Contains the static tables defining the circuit structure
-	eq           BookKeepingTable
-	gates        []Gate
-	staticTables []BookKeepingTable
+	eq           polynomial.BookKeepingTable
+	gates        []circuit.Gate
+	staticTables []polynomial.BookKeepingTable
 	// Degrees for the differents variables
 	degreeHL     int
 	degreeHR     int
 	degreeHPrime int
 }
 
-// NewProver constructs a new prover
-func NewProver(
-	vL BookKeepingTable,
-	vR BookKeepingTable,
-	eq BookKeepingTable,
-	gates []Gate,
-	staticTables []BookKeepingTable,
-) Prover {
+// NewSingleThreadedProver constructs a new prover
+func NewSingleThreadedProver(
+	vL polynomial.BookKeepingTable,
+	vR polynomial.BookKeepingTable,
+	eq polynomial.BookKeepingTable,
+	gates []circuit.Gate,
+	staticTables []polynomial.BookKeepingTable,
+) SingleThreadedProver {
 	// Auto-computes the degree on each variables
 	degreeHL, degreeHR, degreeHPrime := 0, 0, 0
 	for _, gate := range gates {
@@ -42,7 +44,7 @@ func NewProver(
 		degreeHR = common.Max(degreeHR, dR)
 		degreeHPrime = common.Max(degreeHPrime, dPrime)
 	}
-	return Prover{
+	return SingleThreadedProver{
 		vL:           vL,
 		vR:           vR,
 		eq:           eq,
@@ -54,14 +56,14 @@ func NewProver(
 	}
 }
 
-// ProveSingleThread runs the prover of a sumcheck
-func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims []fr.Element) {
+// Prove runs the prover of a sumcheck
+func (p *SingleThreadedProver) Prove() (proof Proof, qPrime, qL, qR, finalClaims []fr.Element) {
 
 	// Define usefull constants
 	n := len(p.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
 	g := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
-	bN := common.Log2(n)
-	bG := common.Log2(g)
+	bN := common.Log2Ceil(n)
+	bG := common.Log2Ceil(g)
 
 	// Initialized the results
 	proof.PolyCoeffs = make([][]fr.Element, bN+2*bG)
@@ -73,7 +75,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 	// Run on hL
 	for i := 0; i < bG; i++ {
 		evals := p.GetEvalsOnHL()
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHL(r)
 		qL[i] = r
@@ -82,7 +84,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 	// Run on hR
 	for i := bG; i < 2*bG; i++ {
 		evals := p.GetEvalsOnHR()
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHR(r)
 		qR[i-bG] = r
@@ -91,7 +93,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 	// Run on hPrime
 	for i := 2 * bG; i < bN+2*bG; i++ {
 		evals := p.GetEvalsOnHPrime()
-		proof.PolyCoeffs[i] = common.InterpolateOnRange(evals)
+		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHPrime(r)
 		qPrime[i-2*bG] = r
@@ -108,7 +110,7 @@ func (p *Prover) ProveSingleThread() (proof Proof, qPrime, qL, qR, finalClaims [
 }
 
 // FoldHL folds on the first variable of hR
-func (p *Prover) FoldHL(r fr.Element) {
+func (p *SingleThreadedProver) FoldHL(r fr.Element) {
 	for i := range p.staticTables {
 		p.staticTables[i].Fold(r)
 	}
@@ -116,7 +118,7 @@ func (p *Prover) FoldHL(r fr.Element) {
 }
 
 // FoldHR folds on the first variable of hR
-func (p *Prover) FoldHR(r fr.Element) {
+func (p *SingleThreadedProver) FoldHR(r fr.Element) {
 	for i := range p.staticTables {
 		p.staticTables[i].Fold(r)
 	}
@@ -124,7 +126,7 @@ func (p *Prover) FoldHR(r fr.Element) {
 }
 
 // FoldHPrime folds on the first variable of Eq
-func (p *Prover) FoldHPrime(r fr.Element) {
+func (p *SingleThreadedProver) FoldHPrime(r fr.Element) {
 	p.vR.Fold(r)
 	p.vL.Fold(r)
 	p.eq.Fold(r)

@@ -2,7 +2,9 @@ package sumcheck
 
 import (
 	"fmt"
+	"gkr-mimc/circuit"
 	"gkr-mimc/common"
+	"gkr-mimc/polynomial"
 	"testing"
 
 	"github.com/consensys/gurvy/bn256/fr"
@@ -24,12 +26,12 @@ func TestGetEvals(t *testing.T) {
 	add := []fr.Element{zero, zero, one, zero}
 	eQ := []fr.Element{zero, one}
 
-	vLTable := NewBookKeepingTable(v)
+	vLTable := polynomial.NewBookKeepingTable(v)
 	vRTable := vLTable.DeepCopy()
-	eQTable := NewBookKeepingTable(eQ)
-	addTable := NewBookKeepingTable(add)
+	eQTable := polynomial.NewBookKeepingTable(eQ)
+	addTable := polynomial.NewBookKeepingTable(add)
 
-	prover := NewProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []BookKeepingTable{addTable})
+	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{circuit.AddGate{}}, []polynomial.BookKeepingTable{addTable})
 
 	claim := prover.GetClaim()
 	assert.Equal(t, claim, four, "Error on get claims")
@@ -69,18 +71,18 @@ func TestSumcheck(t *testing.T) {
 	eQ := []fr.Element{zero, one}
 
 	// Creates the tables
-	vLTable := NewBookKeepingTable(v)
+	vLTable := polynomial.NewBookKeepingTable(v)
 	vRTable := vLTable.DeepCopy()
 	vForEval := vLTable.DeepCopy()
-	eQTable := NewBookKeepingTable(eQ)
+	eQTable := polynomial.NewBookKeepingTable(eQ)
 	eQForEvals := eQTable.DeepCopy()
-	addTable := NewBookKeepingTable(add)
+	addTable := polynomial.NewBookKeepingTable(add)
 	addForEval := addTable.DeepCopy()
 
 	// Check that the prover and the verifier are on-par
-	prover := NewProver(vLTable, vRTable, eQTable, []Gate{AddGate{}}, []BookKeepingTable{addTable})
+	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{circuit.AddGate{}}, []polynomial.BookKeepingTable{addTable})
 	claim := prover.GetClaim()
-	proof, expectedQPrime, expectedQL, expectedQR, subClaims := prover.ProveSingleThread()
+	proof, expectedQPrime, expectedQL, expectedQR, subClaims := prover.Prove()
 	verifier := Verifier{}
 	valid, qPrime, qL, qR, finalClaim := verifier.Verify(claim, proof, 1, 1)
 	assert.True(t, valid, "Sumcheck verification failed")
@@ -98,7 +100,7 @@ func TestSumcheck(t *testing.T) {
 	assert.Equal(t, finalAdd, subClaims[3], "Mismatch on claims")
 
 	var actualFinalClaim fr.Element
-	AddGate{}.Eval(&actualFinalClaim, finalVL, finalVR)
+	circuit.AddGate{}.Eval(&actualFinalClaim, finalVL, finalVR)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalAdd)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalEq)
 	assert.Equal(t, finalClaim, actualFinalClaim, "Mismatch on the final claim")
@@ -108,7 +110,7 @@ func TestSumcheck(t *testing.T) {
 func TestBenchmarkSetup(t *testing.T) {
 	prover := InitializeProverForTests(1)
 	claim := prover.GetClaim()
-	proof, _, _, _, _ := prover.ProveSingleThread()
+	proof, _, _, _, _ := prover.Prove()
 	verifier := Verifier{}
 	valid, _, _, _, _ := verifier.Verify(claim, proof, 1, 1)
 	assert.True(t, valid, "Verifier failed")
@@ -120,7 +122,7 @@ func benchmarkFullSumcheckProver(b *testing.B, bN int, profiled, traced bool) {
 		prover := InitializeProverForTests(bN)
 		common.ProfileTrace(b, profiled, traced,
 			func() {
-				prover.ProveSingleThread()
+				prover.Prove()
 			},
 		)
 	}

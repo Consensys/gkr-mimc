@@ -29,9 +29,8 @@ func MimcUpdateInplace(state *fr.Element, block fr.Element) {
 // MimcPermutationInPlace applies the mimc permutation in place
 func MimcPermutationInPlace(state *fr.Element, block fr.Element) {
 	for i := 0; i < MimcRounds; i++ {
-		keys := Arks[i]
-		keys.Add(&keys, &block)
-		state.Add(state, &keys)
+		state.Add(state, &block)
+		state.Add(state, &Arks[i])
 		SBoxInplace(state)
 	}
 }
