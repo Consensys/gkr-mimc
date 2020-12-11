@@ -133,9 +133,7 @@ func (c CopyGate) EvalManyVR(res []fr.Element, vL *fr.Element, vRs []fr.Element)
 
 // EvalManyVL performs an element-wise copy of many vLs values
 func (c CopyGate) EvalManyVL(res, vLs []fr.Element, vR *fr.Element) {
-	for i := range vLs {
-		res[i] = vLs[i]
-	}
+	copy(res, vLs)
 }
 
 // Degrees returns the degrees of the gate on hL, hR and hPrime
@@ -162,8 +160,7 @@ func (c *CipherGate) Eval(res, vL, vR *fr.Element) {
 	var tmp fr.Element
 	tmp.Add(vR, &c.Ark)
 	// res = tmp^7
-	*res = tmp
-	res.Square(res)
+	res.Square(&tmp)
 	res.Mul(res, &tmp)
 	res.Square(res)
 	res.Mul(res, &tmp)
@@ -184,8 +181,17 @@ func (c *CipherGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Va
 // EvalManyVR performs cipher evaluations of many vRs values by one vL value
 // Nothing special to do here
 func (c *CipherGate) EvalManyVR(res []fr.Element, vL *fr.Element, vRs []fr.Element) {
-	for i, vR := range vRs {
-		c.Eval(&res[i], vL, &vR)
+	var tmp fr.Element
+	for i := 0; i < len(vRs); i++ {
+		// tmp = vR + Ark
+		tmp.Add(&vRs[i], &c.Ark)
+		// res = tmp^7
+		res[i].Square(&tmp)
+		res[i].Mul(&res[i], &tmp)
+		res[i].Square(&res[i])
+		res[i].Mul(&res[i], &tmp)
+		// Then add vL
+		res[i].Add(&res[i], vL)
 	}
 }
 
@@ -193,17 +199,16 @@ func (c *CipherGate) EvalManyVR(res []fr.Element, vL *fr.Element, vRs []fr.Eleme
 // This one is optimized to only do the vL exponentiation once
 func (c *CipherGate) EvalManyVL(res, vLs []fr.Element, vR *fr.Element) {
 	// tmp = vR + Ark
-	var tmp fr.Element
+	var tmp, right fr.Element
 	tmp.Add(vR, &c.Ark)
 	// right = tmp^7
-	right := tmp
-	right.Square(&right)
+	right.Square(&tmp)
 	right.Mul(&right, &tmp)
 	right.Square(&right)
 	right.Mul(&right, &tmp)
 
-	for i, vL := range vLs {
-		res[i].Add(&right, &vL)
+	for i := 0; i < len(vLs); i++ {
+		res[i].Add(&right, &vLs[i])
 	}
 }
 
