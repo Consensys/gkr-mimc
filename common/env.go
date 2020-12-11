@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	bNEnv      = "BN_GKR"
-	nChunksEnv = "NCHUNKS_GKR"
-	profileEnv = "PROFILE_GKR"
-	traceEnv   = "TRACE_GKR"
-	panicMsg   = "Please set %q before running the benchmark"
+	bNEnv         = "BN_GKR"
+	nChunksEnv    = "NCHUNKS_GKR"
+	profileEnv    = "PROFILE_GKR"
+	traceEnv      = "TRACE_GKR"
+	nProcessesEnv = "NPROCESSES_ENV"
+	panicMsg      = "Please set %q before running the benchmark"
 )
 
 // GetBN attempt to parse the environment variable BN_GKR
@@ -44,4 +45,13 @@ func GetProfiled() bool {
 // It return false if it's not set or set to a value != 1
 func GetTraced() bool {
 	return os.Getenv(traceEnv) == "1"
+}
+
+// GetNProcesses returns the env variable and panic if it does not find it
+func GetNProcesses() int {
+	nProcesses, err := strconv.Atoi(os.Getenv(nProcessesEnv))
+	if err != nil {
+		panic(fmt.Sprintf(panicMsg, nProcessesEnv))
+	}
+	return nProcesses
 }

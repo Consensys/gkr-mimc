@@ -2,7 +2,6 @@ package polynomial
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gurvy/bn256/fr"
@@ -55,10 +54,11 @@ func (m MultilinearByValues) DeepCopy() MultilinearByValues {
 func (m *MultilinearByValues) Fold(cs *frontend.ConstraintSystem, x frontend.Variable) {
 	k := len(m.Table) / 2
 	for i := 0; i < k; i++ {
-		tmpLinExp := cs.LinearExpression(
-			cs.Term(m.Table[i+k], big.NewInt(1)),
-			cs.Term(m.Table[i], big.NewInt(-1)),
-		)
+		tmpLinExp := cs.Sub(m.Table[i+k], m.Table[i])
+		// cs.LinearExpression(
+		// 	cs.Term(m.Table[i+k], big.NewInt(1)),
+		// 	cs.Term(m.Table[i], big.NewInt(-1)),
+		// )
 		tmp := cs.Mul(tmpLinExp, x)
 		// Ideally we replace this by a r1c.LinearExpression too ...
 		m.Table[i] = cs.Add(m.Table[i], tmp)

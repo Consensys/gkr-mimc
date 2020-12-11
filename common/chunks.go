@@ -4,7 +4,7 @@ package common
 const MinChunkSize int = 4096
 
 // MaxChunkPerCore is the number of chunks per core we want to use
-const MaxChunkPerCore int = 10
+const MaxChunkPerCore int = 1
 
 // ChunkRange is a container for the beginning and the End of a chunk
 type ChunkRange struct {
