@@ -42,7 +42,7 @@ func InitializeMultiThreadedProver(bN, nChunks int) MultiThreadedProver {
 
 	return NewMultiThreadedProver(
 		vL, vR, eq,
-		[]circuit.Gate{circuit.CopyGate{}, circuit.CipherGate{Ark: two}},
+		[]circuit.Gate{circuit.CopyGate{}, &circuit.CipherGate{Ark: two}},
 		[]polynomial.BookKeepingTable{copy, cipher},
 	)
 }
@@ -77,7 +77,7 @@ func InitializeProverForTests(bN int) SingleThreadedProver {
 
 	return NewSingleThreadedProver(
 		vL, vR, eq,
-		[]circuit.Gate{circuit.CopyGate{}, circuit.CipherGate{Ark: two}},
+		[]circuit.Gate{circuit.CopyGate{}, &circuit.CipherGate{Ark: two}},
 		[]polynomial.BookKeepingTable{copy, cipher},
 	)
 }
