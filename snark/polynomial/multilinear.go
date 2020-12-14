@@ -64,9 +64,10 @@ func (m *MultilinearByValues) Fold(cs *frontend.ConstraintSystem, x frontend.Var
 
 // UnfoldZeroes prepends all the coefficients with full zeroes
 func (m *MultilinearByValues) UnfoldZeroes(cs *frontend.ConstraintSystem) {
+	zero := cs.Constant(0)
 	newTable := make([]frontend.Variable, len(m.Table))
 	for i := range newTable {
-		newTable[i] = cs.Constant(0)
+		newTable[i] = zero
 	}
 	newTable = append(newTable, m.Table...)
 	m.Table = newTable
