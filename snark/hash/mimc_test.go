@@ -85,6 +85,8 @@ func BenchmarkMimc(b *testing.B) {
 	}
 
 	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
+	fmt.Printf("Nb coeffs = %v\n", r1cs.GetNbCoefficients())
+	fmt.Printf("Nb wires = %v\n", r1cs.GetNbWires())
 
 	// Generate the witness values by running the prover
 	var witness TestMimcCircuit
