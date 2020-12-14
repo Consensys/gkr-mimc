@@ -80,6 +80,16 @@ func RandomFrDoubleSlice(nChunks, chunkSize int) [][]fr.Element {
 	return res
 }
 
+// ExtendWithZeroes extends a double slice with ExtendWithZeroes
+func ExtendWithZeroes(x [][]fr.Element) [][]fr.Element {
+	y := make([][]fr.Element, len(x))
+	n := len(x[0])
+	for i := range x {
+		y[i] = append(make([]fr.Element, n), x[i]...)
+	}
+	return y
+}
+
 // Uint64ToFr allows to quickly create fr.Element
 func Uint64ToFr(x uint64) fr.Element {
 	var res fr.Element

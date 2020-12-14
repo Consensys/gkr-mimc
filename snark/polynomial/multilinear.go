@@ -55,15 +55,21 @@ func (m *MultilinearByValues) Fold(cs *frontend.ConstraintSystem, x frontend.Var
 	k := len(m.Table) / 2
 	for i := 0; i < k; i++ {
 		tmpLinExp := cs.Sub(m.Table[i+k], m.Table[i])
-		// cs.LinearExpression(
-		// 	cs.Term(m.Table[i+k], big.NewInt(1)),
-		// 	cs.Term(m.Table[i], big.NewInt(-1)),
-		// )
 		tmp := cs.Mul(tmpLinExp, x)
 		// Ideally we replace this by a r1c.LinearExpression too ...
 		m.Table[i] = cs.Add(m.Table[i], tmp)
 	}
 	m.Table = m.Table[:k]
+}
+
+// UnfoldZeroes prepends all the coefficients with full zeroes
+func (m *MultilinearByValues) UnfoldZeroes(cs *frontend.ConstraintSystem) {
+	newTable := make([]frontend.Variable, len(m.Table))
+	for i := range newTable {
+		newTable[i] = cs.Constant(0)
+	}
+	newTable = append(newTable, m.Table...)
+	m.Table = newTable
 }
 
 // Eval the multilinear polynomial

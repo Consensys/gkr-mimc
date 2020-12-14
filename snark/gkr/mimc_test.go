@@ -31,7 +31,7 @@ func AllocateGKRMimcTestCircuit(bN int) GKRMimcTestCircuit {
 		Proof:         AllocateProof(bN, circuit),
 		QInitial:      []frontend.Variable{},
 		QInitialprime: make([]frontend.Variable, bN),
-		VInput:        polynomial.AllocateMultilinear(bN + 1),
+		VInput:        polynomial.AllocateMultilinear(bN),
 		VOutput:       polynomial.AllocateMultilinear(bN),
 	}
 }
@@ -51,8 +51,18 @@ func (c *GKRMimcTestCircuit) Assign(
 }
 
 func (c *GKRMimcTestCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+	c.VInput.UnfoldZeroes(cs)
 	c.Proof.AssertValid(cs, c.Circuit, c.QInitial, c.QInitialprime, c.VInput, c.VOutput)
 	return nil
+}
+
+func LastHalf(x [][]fr.Element) [][]fr.Element {
+	y := make([][]fr.Element, len(x))
+	mid := len(x[0])
+	for i := range x {
+		y[i] = x[i][mid:]
+	}
+	return y
 }
 
 func TestMimcCircuit(t *testing.T) {
@@ -77,8 +87,9 @@ func TestMimcCircuit(t *testing.T) {
 	{
 		// Creates the assignments values
 		nativeCircuit := examples.CreateMimcCircuit()
-		inputs := common.RandomFrDoubleSlice(1, 2*(1<<bN))
-		assignment := nativeCircuit.Assign(inputs, 1)
+		inputs := common.RandomFrDoubleSlice(1, 1<<bN)
+		inputsGKR := common.ExtendWithZeroes(inputs)
+		assignment := nativeCircuit.Assign(inputsGKR, 1)
 		outputs := assignment.Values[91]
 		prover := gkr.NewProver(nativeCircuit, assignment)
 		proof := prover.Prove(1)
@@ -129,11 +140,12 @@ func BenchmarkMimcCircuit(b *testing.B) {
 
 		nativeCircuit := examples.CreateMimcCircuit()
 		qInitialprime, _ := gkr.GetInitialQPrimeAndQ(bN, 0)
-		inputs := common.RandomFrDoubleSlice(nChunk, inputsChunkSize)
+		inputs := common.RandomFrDoubleSlice(nChunk, inputsChunkSize/2)
+		inputsGKR := common.ExtendWithZeroes(inputs)
 
 		b.Run("Assignment generation for GKR Prover", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				assignment = nativeCircuit.Assign(inputs, nCore)
+				assignment = nativeCircuit.Assign(inputsGKR, nCore)
 				outputs = assignment.Values[91]
 			}
 		})
