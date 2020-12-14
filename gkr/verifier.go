@@ -50,11 +50,11 @@ func (v *Verifier) Verify(
 		// The sumcheck proof is broken
 		return false
 	}
-
+	evalEq := polynomial.EvalEq(qPrime, nextQPrime)
 	evaluated := circuit.EvaluateCombinator(
-		proof.ClaimsLeft[nLayers-1],
-		proof.ClaimsRight[nLayers-1],
-		polynomial.EvalEq(qPrime, nextQPrime),
+		&proof.ClaimsLeft[nLayers-1],
+		&proof.ClaimsRight[nLayers-1],
+		&evalEq,
 		v.circuit.Layers[nLayers-1].Gates,
 		v.evaluateStaticTables(nLayers-1, q, nextQL, nextQR),
 	)
@@ -87,10 +87,11 @@ func (v *Verifier) Verify(
 			return false
 		}
 
+		eqEval := polynomial.EvalEq(qPrime, nextQPrime)
 		if totalClaim != circuit.EvaluateCombinator(
-			proof.ClaimsLeft[layer],
-			proof.ClaimsRight[layer],
-			polynomial.EvalEq(qPrime, nextQPrime),
+			&proof.ClaimsLeft[layer],
+			&proof.ClaimsRight[layer],
+			&eqEval,
 			v.circuit.Layers[layer].Gates,
 			v.evaluateStaticTablesLinCombs(layer, qL, qR, nextQL, nextQR, lambdaL, lambdaR),
 		) {

@@ -62,11 +62,11 @@ func TestMimc(t *testing.T) {
 	layer1FromCombinator := []fr.Element{
 		// Expected to output the value of copy
 		circuit.EvaluateCombinator(
-			inputs[0][inputChunkSize/2], inputs[0][0], one, gates, []fr.Element{one, zero},
+			&inputs[0][inputChunkSize/2], &inputs[0][0], &one, gates, []fr.Element{one, zero},
 		),
 		// Expected to output the value of cipher
 		circuit.EvaluateCombinator(
-			inputs[0][inputChunkSize/2], inputs[0][0], one, gates, []fr.Element{zero, one},
+			&inputs[0][inputChunkSize/2], &inputs[0][0], &one, gates, []fr.Element{zero, one},
 		),
 	}
 	// An error here indicate an error in the combinator definition
