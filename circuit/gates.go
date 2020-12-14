@@ -61,9 +61,9 @@ func (a AddGate) EvalManyVR(res []fr.Element, vL *fr.Element, vRs []fr.Element) 
 }
 
 // EvalManyVL performs an element-wise addition of many vLs values by one vR value
-func (a AddGate) EvalManyVL(res []fr.Element, vLs []fr.Element, vR fr.Element) {
+func (a AddGate) EvalManyVL(res []fr.Element, vLs []fr.Element, vR *fr.Element) {
 	for i, vL := range vLs {
-		res[i].Add(&vL, &vR)
+		res[i].Add(&vL, vR)
 	}
 }
 
