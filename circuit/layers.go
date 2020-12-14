@@ -88,7 +88,7 @@ func (l *Layer) Evaluate(inputs [][]fr.Element, nCore int) [][]fr.Element {
 				wRN := w.R * N
 				for h := 0; h < N; h++ {
 					// Runs the gate evaluator
-					w.Gate.Eval(&tmp, inps[wLN+h], inps[wRN*N+h])
+					w.Gate.Eval(&tmp, &inps[wLN+h], &inps[wRN*N+h])
 					subRes[wON+h].Add(&subRes[wON+h], &tmp)
 				}
 			}

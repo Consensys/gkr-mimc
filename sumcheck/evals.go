@@ -39,7 +39,7 @@ func (p SingleThreadedProver) GetClaim() fr.Element {
 				vR = p.vR.Table[hR*n+hPrime]
 				for i = 0; i < nGate; i++ {
 					if staticIsNotZero[i][hL*g+hR] {
-						p.gates[i].Eval(&v, vL, vR)
+						p.gates[i].Eval(&v, &vL, &vR)
 						v.Mul(&v, &eq)
 						splitValues[i][hL*g+hR].Add(&splitValues[i][hL*g+hR], &v)
 					}
@@ -193,7 +193,7 @@ func (p SingleThreadedProver) accumulateEvalsOnHL(
 				evaledVR = p.vR.Table[hR*n+hPrime] // Keep the values of VR
 				for i, gate = range p.gates {
 					if staticIsNotZero[i][h] {
-						gate.EvalManyVL(vS, evaledVLs, evaledVR)
+						gate.EvalManyVL(vS, evaledVLs, &evaledVR)
 						for t, v = range vS {
 							// Multply the result by Eq and add it to the splitValues
 							// Who accumulates the results
@@ -264,7 +264,7 @@ func (p SingleThreadedProver) accumulateEvalsOnHR(
 			}
 			for i, gate = range p.gates {
 				if staticIsNotZero[i][hR] {
-					gate.EvalManyVR(vS, evaledVL, evaledVRs)
+					gate.EvalManyVR(vS, &evaledVL, evaledVRs)
 					for t, v = range vS {
 						// Multiplies the result by Eq and adds it to the splitValues
 						// who accumulates the results
@@ -334,7 +334,7 @@ func (p SingleThreadedProver) accumulateEvalsOnHPrime(
 
 		for i, gate = range p.gates {
 			for t = 0; t < nEvals; t++ {
-				gate.Eval(&v, evaledVL[t], evaledVR[t])
+				gate.Eval(&v, &evaledVL[t], &evaledVR[t])
 				v.Mul(&v, &evaledEq[t])
 				splitValues[i][t].Add(&splitValues[i][t], &v)
 			}

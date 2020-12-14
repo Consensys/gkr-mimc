@@ -100,7 +100,7 @@ func TestSumcheck(t *testing.T) {
 	assert.Equal(t, finalAdd, subClaims[3], "Mismatch on claims")
 
 	var actualFinalClaim fr.Element
-	circuit.AddGate{}.Eval(&actualFinalClaim, finalVL, finalVR)
+	circuit.AddGate{}.Eval(&actualFinalClaim, &finalVL, &finalVR)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalAdd)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalEq)
 	assert.Equal(t, finalClaim, actualFinalClaim, "Mismatch on the final claim")
