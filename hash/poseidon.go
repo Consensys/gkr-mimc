@@ -1,7 +1,7 @@
 package hash
 
 import (
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // PoseidonT2 is a hasher with T = 2

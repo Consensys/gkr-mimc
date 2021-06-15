@@ -10,11 +10,10 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/backend/r1cs"
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark/backend/groth16""
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gurvy"
-	"github.com/consensys/gurvy/bn256/fr"
 )
 
 type GKRMimcTestCircuit struct {
@@ -50,7 +49,7 @@ func (c *GKRMimcTestCircuit) Assign(
 	c.VOutput.AssignFromChunkedBKT(outputs)
 }
 
-func (c *GKRMimcTestCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (c *GKRMimcTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	c.Proof.AssertValid(cs, c.Circuit, c.QInitial, c.QInitialprime, c.VInput, c.VOutput)
 	return nil
 }
@@ -60,14 +59,14 @@ func TestMimcCircuit(t *testing.T) {
 	assert := groth16.NewAssert(t)
 
 	var (
-		r1cs r1cs.R1CS
+		r1cs frontend.CS
 		err  error
 	)
 
 	{
 		mimcCircuit := AllocateGKRMimcTestCircuit(bN)
 		// Attempt to compile the circuit
-		r1cs, err = frontend.Compile(gurvy.BN256, &mimcCircuit)
+		r1cs, err = frontend.Compile(ecc.BN254, &mimcCircuit)
 		assert.NoError(err)
 	}
 
@@ -109,7 +108,7 @@ func BenchmarkMimcCircuit(b *testing.B) {
 	{
 		mimcCircuit := AllocateGKRMimcTestCircuit(bN)
 		// Attempt to compile the circuit
-		r1cs, _ = frontend.Compile(gurvy.BN256, &mimcCircuit)
+		r1cs, _ = frontend.Compile(ecc.BN254, &mimcCircuit)
 	}
 
 	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())

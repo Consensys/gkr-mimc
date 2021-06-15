@@ -4,7 +4,7 @@ import (
 	"gkr-mimc/circuit"
 	"gkr-mimc/polynomial"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // InitializeMultiThreadedProver creates a test prover that is multithreaded

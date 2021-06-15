@@ -8,7 +8,7 @@ import (
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gurvy"
+	"github.com/consensys/gnark-crypto"
 )
 
 type multilinearPolyTestCircuit struct {
@@ -24,7 +24,7 @@ func allocateMultilinearTestCircuit(nVars int) multilinearPolyTestCircuit {
 	}
 }
 
-func (m *multilinearPolyTestCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (m *multilinearPolyTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	actualEval := m.P.Eval(cs, m.XEval)
 	cs.AssertIsEqual(actualEval, m.YEval)
 	return nil
@@ -37,7 +37,7 @@ func TestMultilinear(t *testing.T) {
 	m := allocateMultilinearTestCircuit(nVars)
 
 	// Attempt to compile the circuit
-	r1cs, err := frontend.Compile(gurvy.BN256, &m)
+	r1cs, err := frontend.Compile(ecc.BN254, &m)
 	assert.NoError(err)
 
 	fmt.Printf("Nb constraints = %v", r1cs.GetNbConstraints())

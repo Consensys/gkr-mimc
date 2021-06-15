@@ -5,7 +5,7 @@ import (
 	"gkr-mimc/polynomial"
 	"sync"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // Circuit contains all the statical informations necessary to

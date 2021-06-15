@@ -5,7 +5,7 @@ import (
 	"gkr-mimc/common"
 	"sync"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // BookKeepingTable tracks the values of a (dense i.e. not sparse) multilinear polynomial

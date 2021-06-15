@@ -3,7 +3,7 @@ package polynomial
 import (
 	"testing"
 
-	"github.com/consensys/gurvy"
+	"github.com/consensys/gnark-crypto"
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -15,7 +15,7 @@ type univariateTestCircuit struct {
 	Expected frontend.Variable // for testing purposes only
 }
 
-func (pc *univariateTestCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 
 	zno := pc.Poly.ZeroAndOne(cs)
 	x := cs.Constant(5)
@@ -32,7 +32,7 @@ func TestUnivariate(t *testing.T) {
 	degree := 3
 	var pc univariateTestCircuit
 	pc.Poly = AllocateUnivariate(degree)
-	r1cs, err := frontend.Compile(gurvy.BN256, &pc)
+	r1cs, err := frontend.Compile(ecc.BN254, &pc)
 	assert := groth16.NewAssert(t)
 	assert.NoError(err)
 

@@ -7,8 +7,8 @@ import (
 
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gurvy"
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 type TestEqCircuit struct {
@@ -43,7 +43,7 @@ func (eq *TestEqCircuit) Assign(H, Q [][]fr.Element) {
 	}
 }
 
-func (eq *TestEqCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (eq *TestEqCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 	for i := range eq.H {
 		h := EqEval(cs, eq.H[i], eq.Q[i])
 		cs.AssertIsEqual(h, eq.ExpectedValue[i])
@@ -54,7 +54,7 @@ func (eq *TestEqCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem)
 func TestEq(t *testing.T) {
 
 	eq := AllocateTestEqCircuit(5, 5)
-	r1cs, err := frontend.Compile(gurvy.BN256, &eq)
+	r1cs, err := frontend.Compile(ecc.BN254, &eq)
 
 	assert := groth16.NewAssert(t)
 	assert.NoError(err)
