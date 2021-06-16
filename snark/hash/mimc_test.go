@@ -8,10 +8,11 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/ConsenSys/gnark-crypto/ecc"
-	"github.com/ConsenSys/gnark-crypto/ecc/bn254/fr"
-	"github.com/ConsenSys/gnark/backend/groth16"
-	"github.com/ConsenSys/gnark/frontend"
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/frontend"
 )
 
 type TestMimcCircuit struct {
@@ -54,7 +55,7 @@ func TestMimc(t *testing.T) {
 
 	assert := groth16.NewAssert(t)
 	c := Allocate(5, 5)
-	r1cs, err := frontend.Compile(ecc.BN254, &c)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
 	assert.NoError(err)
 
 	// Creates a random test vector
@@ -77,7 +78,7 @@ func BenchmarkMimc(b *testing.B) {
 	fmt.Printf("Baseline Mimc7 benchmark bN = %v\n", bN)
 
 	c := Allocate(1<<bN, 1)
-	r1cs, _ := frontend.Compile(ecc.BN254, &c)
+	r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
 
 	x := make([][]fr.Element, 1<<bN)
 	for i := range x {

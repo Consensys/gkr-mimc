@@ -1,6 +1,6 @@
 module gkr-mimc
 
-go 1.14
+go 1.16
 
 require (
 	github.com/consensys/gnark v0.4.1-0.20210608212302-1e69e2644e09 // indirect

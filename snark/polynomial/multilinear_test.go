@@ -6,9 +6,10 @@ import (
 	"gkr-mimc/polynomial"
 	"testing"
 
-	"github.com/ConsenSys/gnark/backend/groth16"
-	"github.com/ConsenSys/gnark/frontend"
-	"github.com/ConsenSys/gnark-crypto"
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/frontend"
 )
 
 type multilinearPolyTestCircuit struct {
@@ -37,7 +38,7 @@ func TestMultilinear(t *testing.T) {
 	m := allocateMultilinearTestCircuit(nVars)
 
 	// Attempt to compile the circuit
-	r1cs, err := frontend.Compile(ecc.BN254, &m)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &m)
 	assert.NoError(err)
 
 	fmt.Printf("Nb constraints = %v", r1cs.GetNbConstraints())

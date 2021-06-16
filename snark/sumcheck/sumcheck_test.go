@@ -4,9 +4,10 @@ import (
 	"gkr-mimc/sumcheck"
 	"testing"
 
-	"github.com/ConsenSys/gnark/backend/groth16"
-	"github.com/ConsenSys/gnark/frontend"
-	"github.com/ConsenSys/gnark-crypto"
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/backend/groth16"
+	"github.com/consensys/gnark/frontend"
 )
 
 type SumcheckCircuit struct {
@@ -47,7 +48,7 @@ func TestSumcheckCircuit(t *testing.T) {
 
 	// Attempts to compile the circuit
 	scc := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
-	r1cs, err := frontend.Compile(ecc.BN254, &scc)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &scc)
 	assert.NoError(err)
 
 	// Runs a test sumcheck prover to get witness values

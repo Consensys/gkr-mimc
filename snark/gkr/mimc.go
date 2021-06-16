@@ -4,7 +4,7 @@ import (
 	"gkr-mimc/hash"
 	"gkr-mimc/snark/polynomial"
 
-	"github.com/ConsenSys/gnark/frontend"
+	"github.com/consensys/gnark/frontend"
 )
 
 // CreateMimcCircuit creates a GKR circuit for Mimc

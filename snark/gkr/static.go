@@ -3,7 +3,7 @@ package gkr
 import (
 	"gkr-mimc/snark/polynomial"
 
-	"github.com/ConsenSys/gnark/frontend"
+	"github.com/consensys/gnark/frontend"
 )
 
 // StaticTableGenerator returns a prefolded static table

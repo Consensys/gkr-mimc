@@ -6,7 +6,7 @@ import (
 	"gkr-mimc/polynomial"
 	"sync"
 
-	"github.com/ConsenSys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // MultiThreadedProver can process on several threads
