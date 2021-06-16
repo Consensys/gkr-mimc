@@ -47,7 +47,7 @@ func (p *PoseidonHasher) Hash(msg []fr.Element) fr.Element {
 		block := make([]fr.Element, p.t)
 		if i+p.t >= len(msg) {
 			// Only zero-pad the input
-			for j, w := range msg[i:len(msg)] {
+			for j, w := range msg[i:] {
 				block[j] = w
 			}
 		} else {
