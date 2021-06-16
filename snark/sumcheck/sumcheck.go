@@ -6,7 +6,7 @@ import (
 	"gkr-mimc/snark/polynomial"
 	"gkr-mimc/sumcheck"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/ConsenSys/gnark/frontend"
 )
 
 // Proof contains the circuit data of a sumcheck run EXCEPT WHAT IS REQUIRED FOR THE FINAL CHECK.

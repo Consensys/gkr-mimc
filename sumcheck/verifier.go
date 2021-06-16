@@ -4,7 +4,7 @@ import (
 	"gkr-mimc/common"
 	"gkr-mimc/polynomial"
 
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/ConsenSys/gnark-crypto/ecc/bn254/fr"
 )
 
 // Verifier holds the methods relative to the verifier algorithm

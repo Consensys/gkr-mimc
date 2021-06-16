@@ -4,9 +4,9 @@ import (
 	"gkr-mimc/sumcheck"
 	"testing"
 
-	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark-crypto"
+	"github.com/ConsenSys/gnark/backend/groth16"
+	"github.com/ConsenSys/gnark/frontend"
+	"github.com/ConsenSys/gnark-crypto"
 )
 
 type SumcheckCircuit struct {

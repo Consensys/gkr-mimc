@@ -1,8 +1,8 @@
 package gkr
 
 import (
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/ConsenSys/gnark/frontend"
+	"github.com/ConsenSys/gnark-crypto/ecc/bn254/fr"
 )
 
 // Gate evaluate either a cipherGate or a copy gate

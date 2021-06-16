@@ -58,7 +58,7 @@ github.com/consensys/gnark v0.3.6-0.20201210201156-81e1c73d407c h1:RM77JquLdC6OR
 github.com/consensys/gnark v0.3.6-0.20201210201156-81e1c73d407c/go.mod h1:PLJzTZk9PqxAz351+jVFfqx7DQu1ZuntQAxY9z4XpNo=
 github.com/consensys/gnark v0.4.1-0.20210608212302-1e69e2644e09 h1:BQT4McZwdaoldu8mlClvNcLbmXdMS42eITSPeZvuieo=
 github.com/consensys/gnark v0.4.1-0.20210608212302-1e69e2644e09/go.mod h1:iodmiePpgExsu5Y0p5pnjnfDCu4a+GmgmnICPduLPnI=
-github.com/consensys/gnark-crypto v0.4.0 h1:KHf7Ta876Ys6L8+i0DLRRKOAa3PfJ8oobAX1CEeIa4A=
+github.com/consensys/gnark-crypto v0.4.0 h1:UGTWNtAkjc+QcbVXxqZg6cAMvBKnSKK5lVG+xruNG5M=
 github.com/consensys/gnark-crypto v0.4.0/go.mod h1:wK/gpXP9B06qTzTVML71GhKD1ygP9xOzukbI68NJqsQ=
 github.com/consensys/gnark-crypto v0.4.1-0.20210608195447-78cc8bdb3077 h1:9dbjfPxb29oN4CPmTl8vIRYpjyatqQ1t0J0uYNhbJ2Q=
 github.com/consensys/gnark-crypto v0.4.1-0.20210608195447-78cc8bdb3077/go.mod h1:815PAHg3wvysy0SyIqanF8gZ0Y1wjk/hrDHD/iT88+Q=
@@ -418,6 +418,7 @@ golang.org/x/sys v0.0.0-20210315160823-c6e025ad8005/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210320140829-1e4c9ba3b0c4/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210326220804-49726bf1d181/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20210420205809-ac73e9fd8988 h1:EjgCl+fVlIaPJSori0ikSz3uV0DOHKWOJFpv1sAAhBM=
 golang.org/x/sys v0.0.0-20210420205809-ac73e9fd8988/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=

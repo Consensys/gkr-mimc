@@ -7,7 +7,7 @@ import (
 	"gkr-mimc/snark/polynomial"
 	"gkr-mimc/snark/sumcheck"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/ConsenSys/gnark/frontend"
 )
 
 const nLayers = hash.MimcRounds

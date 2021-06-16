@@ -3,10 +3,10 @@ package polynomial
 import (
 	"testing"
 
-	"github.com/consensys/gnark-crypto"
+	"github.com/ConsenSys/gnark-crypto"
 
-	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/frontend"
+	"github.com/ConsenSys/gnark/backend/groth16"
+	"github.com/ConsenSys/gnark/frontend"
 )
 
 type univariateTestCircuit struct {

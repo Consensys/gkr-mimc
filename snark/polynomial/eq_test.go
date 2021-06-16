@@ -5,10 +5,10 @@ import (
 	"gkr-mimc/polynomial"
 	"testing"
 
-	"github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark-crypto"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/ConsenSys/gnark/backend/groth16"
+	"github.com/ConsenSys/gnark/frontend"
+	"github.com/ConsenSys/gnark-crypto"
+	"github.com/ConsenSys/gnark-crypto/ecc/bn254/fr"
 )
 
 type TestEqCircuit struct {

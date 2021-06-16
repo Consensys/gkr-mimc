@@ -3,7 +3,7 @@ package gkr
 import (
 	"gkr-mimc/snark/polynomial"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/ConsenSys/gnark/frontend"
 )
 
 // Circuit contains the description of a GKR layer

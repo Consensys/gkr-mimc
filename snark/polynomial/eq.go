@@ -1,7 +1,7 @@
 package polynomial
 
 import (
-	"github.com/consensys/gnark/frontend"
+	"github.com/ConsenSys/gnark/frontend"
 )
 
 // UnivariateEqEval computes f(q, h) = 1 - q - h + 2 * q * h
