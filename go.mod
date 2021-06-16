@@ -1,4 +1,4 @@
-module gkr-mimc
+module github.com/consensys/gkr-mimc
 
 go 1.16
 
