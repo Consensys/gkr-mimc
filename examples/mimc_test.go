@@ -2,10 +2,10 @@ package examples
 
 import (
 	"fmt"
-	"gkr-mimc/circuit"
-	"gkr-mimc/common"
-	"gkr-mimc/gkr"
-	"gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/gkr"
+	"github.com/consensys/gkr-mimc/hash"
 	"runtime"
 	"sync"
 	"testing"

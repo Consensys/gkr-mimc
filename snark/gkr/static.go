@@ -1,7 +1,7 @@
 package gkr
 
 import (
-	"gkr-mimc/snark/polynomial"
+	"github.com/consensys/gkr-mimc/snark/polynomial"
 
 	"github.com/consensys/gnark/frontend"
 )

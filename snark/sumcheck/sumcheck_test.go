@@ -1,7 +1,7 @@
 package sumcheck
 
 import (
-	"gkr-mimc/sumcheck"
+	"github.com/consensys/gkr-mimc/sumcheck"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"

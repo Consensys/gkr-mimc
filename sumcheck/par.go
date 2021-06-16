@@ -1,9 +1,9 @@
 package sumcheck
 
 import (
-	"gkr-mimc/circuit"
-	"gkr-mimc/common"
-	"gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/polynomial"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"

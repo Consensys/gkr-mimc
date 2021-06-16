@@ -2,8 +2,8 @@ package hash
 
 import (
 	"fmt"
-	"gkr-mimc/common"
-	"gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/hash"
 	"os"
 	"strconv"
 	"testing"

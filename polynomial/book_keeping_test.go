@@ -1,7 +1,7 @@
 package polynomial
 
 import (
-	"gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/common"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"

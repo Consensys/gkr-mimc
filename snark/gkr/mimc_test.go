@@ -2,11 +2,11 @@ package gkr
 
 import (
 	"fmt"
-	"gkr-mimc/circuit"
-	"gkr-mimc/common"
-	"gkr-mimc/examples"
-	"gkr-mimc/gkr"
-	"gkr-mimc/snark/polynomial"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/examples"
+	"github.com/consensys/gkr-mimc/gkr"
+	"github.com/consensys/gkr-mimc/snark/polynomial"
 	"runtime"
 	"testing"
 

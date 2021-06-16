@@ -2,9 +2,9 @@ package sumcheck
 
 import (
 	"fmt"
-	"gkr-mimc/snark/hash"
-	"gkr-mimc/snark/polynomial"
-	"gkr-mimc/sumcheck"
+	"github.com/consensys/gkr-mimc/snark/hash"
+	"github.com/consensys/gkr-mimc/snark/polynomial"
+	"github.com/consensys/gkr-mimc/sumcheck"
 
 	"github.com/consensys/gnark/frontend"
 )

@@ -2,8 +2,8 @@ package polynomial
 
 import (
 	"fmt"
-	"gkr-mimc/common"
-	"gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/polynomial"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"

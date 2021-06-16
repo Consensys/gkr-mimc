@@ -1,7 +1,7 @@
 package common
 
 import (
-	"gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )

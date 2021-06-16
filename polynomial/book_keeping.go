@@ -2,7 +2,7 @@ package polynomial
 
 import (
 	"fmt"
-	"gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/common"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"

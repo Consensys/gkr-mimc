@@ -1,8 +1,8 @@
 package sumcheck
 
 import (
-	"gkr-mimc/common"
-	"gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/polynomial"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )

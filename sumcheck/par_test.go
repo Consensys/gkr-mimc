@@ -2,7 +2,7 @@ package sumcheck
 
 import (
 	"fmt"
-	"gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/common"
 	"runtime"
 	"testing"
 

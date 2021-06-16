@@ -1,7 +1,7 @@
 package polynomial
 
 import (
-	"gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/common"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
