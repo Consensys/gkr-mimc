@@ -2,12 +2,12 @@ package sumcheck
 
 import (
 	"fmt"
-	"gkr-mimc/circuit"
-	"gkr-mimc/common"
-	"gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/polynomial"
 	"testing"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,7 +1,7 @@
 package hash
 
 import (
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // GMimcT2 is a hasher for t = 2
@@ -33,7 +33,7 @@ func (g *GMimcHasher) Hash(msg []fr.Element) fr.Element {
 		block := make([]fr.Element, g.t)
 		if i+g.t >= len(msg) {
 			// Only zero-pad the input
-			for j, w := range msg[i:len(msg)] {
+			for j, w := range msg[i:] {
 				block[j] = w
 			}
 		} else {

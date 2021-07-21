@@ -1,11 +1,11 @@
 package circuit
 
 import (
-	"gkr-mimc/common"
-	"gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/polynomial"
 	"sync"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // Wire represent a single connexion between a gate,

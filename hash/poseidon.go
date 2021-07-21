@@ -1,7 +1,7 @@
 package hash
 
 import (
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // PoseidonT2 is a hasher with T = 2
@@ -47,7 +47,7 @@ func (p *PoseidonHasher) Hash(msg []fr.Element) fr.Element {
 		block := make([]fr.Element, p.t)
 		if i+p.t >= len(msg) {
 			// Only zero-pad the input
-			for j, w := range msg[i:len(msg)] {
+			for j, w := range msg[i:] {
 				block[j] = w
 			}
 		} else {

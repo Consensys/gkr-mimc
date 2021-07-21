@@ -2,17 +2,17 @@ package examples
 
 import (
 	"fmt"
-	"gkr-mimc/circuit"
-	"gkr-mimc/common"
-	"gkr-mimc/gkr"
-	"gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/gkr"
+	"github.com/consensys/gkr-mimc/hash"
 	"runtime"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 func randomInputs(nChunks, bN int) [][]fr.Element {

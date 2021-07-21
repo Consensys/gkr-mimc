@@ -1,10 +1,10 @@
-module gkr-mimc
+module github.com/consensys/gkr-mimc
 
-go 1.14
+go 1.16
 
 require (
-	github.com/consensys/gnark v0.3.6-0.20201210201156-81e1c73d407c
-	github.com/consensys/gurvy v0.3.6-0.20201201225406-c45cdb55aaef
+	github.com/consensys/gnark v0.4.1-0.20210608212302-1e69e2644e09 // indirect
+	github.com/consensys/gnark-crypto v0.4.1-0.20210608195447-78cc8bdb3077 // indirect
 	github.com/pkg/profile v1.5.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 )

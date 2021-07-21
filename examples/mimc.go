@@ -1,8 +1,8 @@
 package examples
 
 import (
-	"gkr-mimc/circuit"
-	"gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/hash"
 )
 
 // CreateMimcCircuit returns the GKR MIMC proving circuit

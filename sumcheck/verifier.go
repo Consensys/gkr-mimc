@@ -1,10 +1,10 @@
 package sumcheck
 
 import (
-	"gkr-mimc/common"
-	"gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/polynomial"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // Verifier holds the methods relative to the verifier algorithm

@@ -1,11 +1,11 @@
 package hash
 
-import "github.com/consensys/gurvy/bn256/fr"
+import "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 
 // 100 random strings of x's and y's smaller than q
 // generated in Python using
 // str(random.randrange(21888242871839275222246405745257275088548364400416034343698204186575808495617))
-// Naturally, they only works if we use bn256
+// Naturally, they only works if we use ecc/bn254
 var xArr []fr.Element
 var yArr []fr.Element
 

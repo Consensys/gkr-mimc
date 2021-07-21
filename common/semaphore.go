@@ -21,7 +21,7 @@ func (s *Semaphore) Close() {
 
 // Acquire wait for the semaphore to be freed
 func (s *Semaphore) Acquire() {
-	_ = <-s.channel
+	<-s.channel
 }
 
 // Release frees the semaphore

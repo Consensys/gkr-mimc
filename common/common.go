@@ -3,7 +3,7 @@ package common
 import (
 	"fmt"
 
-	"github.com/consensys/gurvy/bn256/fr"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 // PrettyStringFr returns Fr in a nice way (like showing negative numbers in an elegant way)

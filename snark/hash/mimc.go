@@ -1,7 +1,7 @@
 package hash
 
 import (
-	"gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/hash"
 
 	"github.com/consensys/gnark/frontend"
 )

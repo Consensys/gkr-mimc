@@ -3,8 +3,8 @@ package polynomial
 import (
 	"testing"
 
-	"github.com/consensys/gurvy"
-
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
 )
@@ -15,7 +15,7 @@ type univariateTestCircuit struct {
 	Expected frontend.Variable // for testing purposes only
 }
 
-func (pc *univariateTestCircuit) Define(curveID gurvy.ID, cs *frontend.ConstraintSystem) error {
+func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
 
 	zno := pc.Poly.ZeroAndOne(cs)
 	x := cs.Constant(5)
@@ -32,21 +32,20 @@ func TestUnivariate(t *testing.T) {
 	degree := 3
 	var pc univariateTestCircuit
 	pc.Poly = AllocateUnivariate(degree)
-	r1cs, err := frontend.Compile(gurvy.BN256, &pc)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pc)
 	assert := groth16.NewAssert(t)
 	assert.NoError(err)
 
-	{
-		var witness univariateTestCircuit
-		witness.Poly.Coefficients = make([]frontend.Variable, 4)
-		// witness <---> X^3 + 2X^2 + 3X + 4
-		witness.Poly.Coefficients[0].Assign(4)
-		witness.Poly.Coefficients[1].Assign(3)
-		witness.Poly.Coefficients[2].Assign(2)
-		witness.Poly.Coefficients[3].Assign(1)
-		witness.ZnO.Assign(14)
-		witness.Expected.Assign(194)
+	var witness univariateTestCircuit
+	witness.Poly.Coefficients = make([]frontend.Variable, 4)
+	// witness <---> X^3 + 2X^2 + 3X + 4
+	witness.Poly.Coefficients[0].Assign(4)
+	witness.Poly.Coefficients[1].Assign(3)
+	witness.Poly.Coefficients[2].Assign(2)
+	witness.Poly.Coefficients[3].Assign(1)
+	witness.ZnO.Assign(14)
+	witness.Expected.Assign(194)
 
-		assert.ProverSucceeded(r1cs, &witness)
-	}
+	assert.ProverSucceeded(r1cs, &witness)
+
 }
