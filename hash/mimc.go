@@ -1,8 +1,6 @@
 package hash
 
 import (
-	"io"
-
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -35,35 +33,4 @@ func MimcPermutationInPlace(state *fr.Element, block fr.Element) {
 		state.Add(state, &Arks[i])
 		SBoxInplace(state)
 	}
-}
-
-// placeholder implementation of the hash.Hash interface from gnark-crypto
-// type Hash interface {
-// 	io.Writer
-// 	Sum(b []byte) []byte
-// 	Reset()
-// 	Size() int
-// 	BlockSize() int
-// }
-
-type MimcHashFunction struct {
-	io.Writer
-}
-
-func NewMimcHashFunction() MimcHashFunction {
-	return MimcHashFunction{}
-}
-
-func (h *MimcHashFunction) Sum(b []byte) []byte {
-	return []byte{}
-}
-
-func (h *MimcHashFunction) Reset() {}
-
-func (h *MimcHashFunction) Size() int {
-	return 0
-}
-
-func (h *MimcHashFunction) BlockSize() int {
-	return 0
 }
