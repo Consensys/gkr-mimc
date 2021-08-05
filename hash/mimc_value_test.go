@@ -14,4 +14,8 @@ func TestMimcValue(t *testing.T) {
 	MimcUpdateInplace(&state, block)
 
 	println(state.String())
+
+	MimcUpdateInplace(&state, block)
+
+	println(state.String())
 }

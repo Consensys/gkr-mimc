@@ -29,26 +29,21 @@ func MimcUpdateInplace(state *fr.Element, block fr.Element) {
 // MimcPermutationInPlace applies the mimc permutation in place
 func MimcPermutationInPlace(state *fr.Element, block fr.Element) {
 
-	// in case changing the block itself is undesirable
-	tmp := block
-
 	// compute permutation
 	for i := 0; i < MimcRounds; i++ {
-		tmp.Add(&tmp, state)
-		tmp.Add(&tmp, &Arks[i])
-		SBoxInplace(&tmp)
+		block.Add(&block, state)
+		block.Add(&block, &Arks[i])
+		SBoxInplace(&block)
 	}
 
 	// state <- result of permutation
-	state.Set(&tmp)
+	state.Add(&block, state)
 
-	// The block cipher described in "Efficient Encryption and Cryptographic Hashing with
-	// Minimal Multiplicative Complexity" is different in two respects:
-	//	- they add the key to tmp at the end,
-	//	- their first round constant is 0.
-	// if we wanted to do the final key addition we would have to insert `tmp.Add(&tmp, state)`
-	// after the for loop and before `state.Set(&tmp)`.
-	// It seems redundant to add the key since we will use this block cipher to produce a Hash
-	// function using Miyaguchi-Preneel where the cipher text produced from the state and the
-	// block is used to update the state like so: state <- cipher + block + state.
+	/*
+		It seems redundant to add the key at this point since we will use this
+		block cipher to produce a Hash function via Miyaguchi-Preneel where
+		the cipher text produced from the state and the block is used to update
+		the state like so: state <- cipher + block + state. But we do it anyway.
+		As does HarryR for instance.
+	*/
 }
