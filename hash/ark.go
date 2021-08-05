@@ -16,7 +16,7 @@ func initArk() {
 
 	xArr = make([]fr.Element, 100)
 	yArr = make([]fr.Element, 100)
-	Arks = make([]fr.Element, 100)
+	Arks = make([]fr.Element, 101) // extra 0 at the beginning
 
 	// Set the values of xArr
 	for i, x := range [...]string{
@@ -230,6 +230,7 @@ func initArk() {
 	}
 
 	for i, a := range [...]string{
+		"0", // artificially inserted for testing purposes (and in compliance with MiMC specification)
 		"12136087830675299266258954793902014139747133950228959214677232437877732505267",
 		"1949262915742616509924639087995052057439533688639443528419902050101511253219",
 		"19696026105199390416727112585766461108620822978182620644600554326664686143928",
