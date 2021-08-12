@@ -28,9 +28,22 @@ func MimcUpdateInplace(state *fr.Element, block fr.Element) {
 
 // MimcPermutationInPlace applies the mimc permutation in place
 func MimcPermutationInPlace(state *fr.Element, block fr.Element) {
+
+	// compute permutation
 	for i := 0; i < MimcRounds; i++ {
-		state.Add(state, &block)
-		state.Add(state, &Arks[i])
-		SBoxInplace(state)
+		block.Add(&block, state)
+		block.Add(&block, &Arks[i])
+		SBoxInplace(&block)
 	}
+
+	// state <- result of permutation
+	state.Add(&block, state)
+
+	/*
+		It seems redundant to add the key at this point since we will use this
+		block cipher to produce a Hash function via Miyaguchi-Preneel where
+		the cipher text produced from the state and the block is used to update
+		the state like so: state <- cipher + block + state. But we do it anyway.
+		As does HarryR for instance.
+	*/
 }
