@@ -2,11 +2,12 @@ package hash
 
 import (
 	"fmt"
-	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/hash"
 	"os"
 	"strconv"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/hash"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"

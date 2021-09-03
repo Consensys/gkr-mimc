@@ -2,14 +2,14 @@ package examples
 
 import (
 	"fmt"
-	"github.com/consensys/gkr-mimc/circuit"
-	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/gkr"
-	"github.com/consensys/gkr-mimc/hash"
 	"runtime"
 	"sync"
 	"testing"
 
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/gkr"
+	"github.com/consensys/gkr-mimc/hash"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -29,7 +29,7 @@ func TestMimc(t *testing.T) {
 
 	// Initialize the circuit
 	mimcCircuit := CreateMimcCircuit()
-	// We test on the hashing of 0
+
 	// This checks the transition functions to be consistent
 	// With the actual hash function
 
@@ -46,16 +46,14 @@ func TestMimc(t *testing.T) {
 	outputs := assignment.Values[91]
 
 	// Sees if the output is consistent with the result of calling Mimc permutation
-	expectedHash := inputs[0][0]
+	newState := inputs[0][inputChunkSize/2]
+	block := inputs[0][0]
+	oldState := inputs[0][inputChunkSize/2]
 	// Our circuit expects the first addition to be made by the client
-	expectedHash.Sub(&expectedHash, &inputs[0][inputChunkSize/2])
-	hash.MimcPermutationInPlace(&expectedHash, inputs[0][inputChunkSize/2])
-	// And it does an extra addition by the key that is not done by the Mimc
-	// but is done by the Miyaguchi-Preenel constructs.
-	// Therefore we readd the key, to match the circuit result in the test
-	expectedHash.Add(&expectedHash, &inputs[0][inputChunkSize/2])
+	block.Sub(&block, &oldState)
+	hash.MimcPermutationInPlace(&newState, block)
 	// An error here indicate an error in the transition functions definition
-	assert.Equal(t, expectedHash.String(), outputs[0][0].String(), "Error on the state calculation")
+	assert.Equal(t, newState.String(), outputs[0][0].String(), "Error on the state calculation")
 
 	layer1 := assignment.Values[1]
 	gates := mimcCircuit.Layers[0].Gates
