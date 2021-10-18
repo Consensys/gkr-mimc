@@ -2,10 +2,12 @@ package sumcheck
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/circuit/gates"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +33,7 @@ func TestGetEvals(t *testing.T) {
 	eQTable := polynomial.NewBookKeepingTable(eQ)
 	addTable := polynomial.NewBookKeepingTable(add)
 
-	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{circuit.AddGate{}}, []polynomial.BookKeepingTable{addTable})
+	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{gates.AddGate{}}, []polynomial.BookKeepingTable{addTable})
 
 	claim := prover.GetClaim()
 	assert.Equal(t, claim, four, "Error on get claims")
@@ -80,7 +82,7 @@ func TestSumcheck(t *testing.T) {
 	addForEval := addTable.DeepCopy()
 
 	// Check that the prover and the verifier are on-par
-	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{circuit.AddGate{}}, []polynomial.BookKeepingTable{addTable})
+	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{gates.AddGate{}}, []polynomial.BookKeepingTable{addTable})
 	claim := prover.GetClaim()
 	proof, expectedQPrime, expectedQL, expectedQR, subClaims := prover.Prove()
 	verifier := Verifier{}
@@ -100,7 +102,7 @@ func TestSumcheck(t *testing.T) {
 	assert.Equal(t, finalAdd, subClaims[3], "Mismatch on claims")
 
 	var actualFinalClaim fr.Element
-	circuit.AddGate{}.Eval(&actualFinalClaim, &finalVL, &finalVR)
+	gates.AddGate{}.Eval(&actualFinalClaim, &finalVL, &finalVR)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalAdd)
 	actualFinalClaim.Mul(&actualFinalClaim, &finalEq)
 	assert.Equal(t, finalClaim, actualFinalClaim, "Mismatch on the final claim")

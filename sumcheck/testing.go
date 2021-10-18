@@ -2,6 +2,7 @@ package sumcheck
 
 import (
 	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/circuit/gates"
 	"github.com/consensys/gkr-mimc/polynomial"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -42,7 +43,7 @@ func InitializeMultiThreadedProver(bN, nChunks int) MultiThreadedProver {
 
 	return NewMultiThreadedProver(
 		vL, vR, eq,
-		[]circuit.Gate{circuit.CopyGate{}, &circuit.CipherGate{Ark: two}},
+		[]circuit.Gate{gates.CopyGate{}, &gates.CipherGate{Ark: two}},
 		[]polynomial.BookKeepingTable{copy, cipher},
 	)
 }
@@ -77,7 +78,7 @@ func InitializeProverForTests(bN int) SingleThreadedProver {
 
 	return NewSingleThreadedProver(
 		vL, vR, eq,
-		[]circuit.Gate{circuit.CopyGate{}, &circuit.CipherGate{Ark: two}},
+		[]circuit.Gate{gates.CopyGate{}, &gates.CipherGate{Ark: two}},
 		[]polynomial.BookKeepingTable{copy, cipher},
 	)
 }
