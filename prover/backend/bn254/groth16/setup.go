@@ -21,11 +21,11 @@ import (
 
 	curve "github.com/consensys/gnark-crypto/ecc/bn254"
 
-	"github.com/consensys/gnark/internal/backend/bn254/cs"
+	"github.com/consensys/gkr-mimc/prover/backend/bn254/cs"
 
+	"github.com/consensys/gkr-mimc/prover/backend/compiled"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
-	"github.com/consensys/gnark/internal/backend/compiled"
 	"math/big"
 	"math/bits"
 )

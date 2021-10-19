@@ -18,14 +18,14 @@ package cs_test
 
 import (
 	"bytes"
+	"github.com/consensys/gkr-mimc/prover/backend/circuits"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/internal/backend/circuits"
 	"reflect"
 	"testing"
 
-	"github.com/consensys/gnark/internal/backend/bn254/cs"
+	"github.com/consensys/gkr-mimc/prover/backend/bn254/cs"
 )
 
 func TestSerialization(t *testing.T) {

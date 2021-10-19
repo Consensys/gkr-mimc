@@ -23,7 +23,7 @@ import (
 
 	"errors"
 	"fmt"
-	bn254witness "github.com/consensys/gnark/internal/backend/bn254/witness"
+	bn254witness "github.com/consensys/gkr-mimc/prover/backend/bn254/witness"
 	"io"
 
 	"text/template"

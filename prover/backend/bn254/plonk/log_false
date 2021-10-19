@@ -16,4 +16,4 @@
 1
 1
 PASS
-ok  	github.com/consensys/gnark/internal/backend/bn254/plonk	1.337s
+ok  	github.com/consensys/gkr-mimc/prover/backend/bn254/plonk	1.337s

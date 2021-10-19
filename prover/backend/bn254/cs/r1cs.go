@@ -25,9 +25,9 @@ import (
 
 	"github.com/fxamacker/cbor/v2"
 
+	"github.com/consensys/gkr-mimc/prover/backend/compiled"
+	"github.com/consensys/gkr-mimc/prover/backend/ioutils"
 	"github.com/consensys/gnark/backend"
-	"github.com/consensys/gnark/internal/backend/compiled"
-	"github.com/consensys/gnark/internal/backend/ioutils"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"text/template"

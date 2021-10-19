@@ -18,11 +18,11 @@ package plonk
 
 import (
 	"errors"
+	"github.com/consensys/gkr-mimc/prover/backend/bn254/cs"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/kzg"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/polynomial"
-	"github.com/consensys/gnark/internal/backend/bn254/cs"
 
 	kzgg "github.com/consensys/gnark-crypto/kzg"
 )

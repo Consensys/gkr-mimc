@@ -26,9 +26,9 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/consensys/gkr-mimc/prover/backend/compiled"
+	"github.com/consensys/gkr-mimc/prover/backend/ioutils"
 	"github.com/consensys/gnark/backend"
-	"github.com/consensys/gnark/internal/backend/compiled"
-	"github.com/consensys/gnark/internal/backend/ioutils"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )

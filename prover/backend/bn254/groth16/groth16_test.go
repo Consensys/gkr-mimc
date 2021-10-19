@@ -21,20 +21,20 @@ import (
 
 	curve "github.com/consensys/gnark-crypto/ecc/bn254"
 
-	"github.com/consensys/gnark/internal/backend/bn254/cs"
+	"github.com/consensys/gkr-mimc/prover/backend/bn254/cs"
 
-	bn254witness "github.com/consensys/gnark/internal/backend/bn254/witness"
+	bn254witness "github.com/consensys/gkr-mimc/prover/backend/bn254/witness"
 
 	"bytes"
-	bn254groth16 "github.com/consensys/gnark/internal/backend/bn254/groth16"
+	bn254groth16 "github.com/consensys/gkr-mimc/prover/backend/bn254/groth16"
 	"github.com/fxamacker/cbor/v2"
 	"testing"
 
+	"github.com/consensys/gkr-mimc/prover/backend/circuits"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/internal/backend/circuits"
 )
 
 func TestCircuits(t *testing.T) {

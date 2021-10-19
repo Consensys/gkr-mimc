@@ -23,9 +23,9 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/consensys/gkr-mimc/prover/backend/compiled"
+	"github.com/consensys/gkr-mimc/prover/parser"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/internal/backend/compiled"
-	"github.com/consensys/gnark/internal/parser"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 

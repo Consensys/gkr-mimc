@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/consensys/gnark/internal/backend/compiled"
+	"github.com/consensys/gkr-mimc/prover/backend/compiled"
 )
 
 // Tag is a (optional) struct tag one can add to Variable
