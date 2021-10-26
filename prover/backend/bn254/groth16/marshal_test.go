@@ -108,13 +108,13 @@ func TestVerifyingKeySerialization(t *testing.T) {
 			vk.G2.Delta = p2
 
 			var err error
-			vk.e, err = curve.Pair([]curve.G1Affine{vk.G1.Alpha}, []curve.G2Affine{vk.G2.Beta})
+			vk.E, err = curve.Pair([]curve.G1Affine{vk.G1.Alpha}, []curve.G2Affine{vk.G2.Beta})
 			if err != nil {
 				t.Fatal(err)
 				return false
 			}
-			vk.G2.deltaNeg.Neg(&vk.G2.Delta)
-			vk.G2.gammaNeg.Neg(&vk.G2.Gamma)
+			vk.G2.DeltaNeg.Neg(&vk.G2.Delta)
+			vk.G2.GammaNeg.Neg(&vk.G2.Gamma)
 
 			vk.G1.K = make([]curve.G1Affine, nbWires)
 			for i := 0; i < nbWires; i++ {

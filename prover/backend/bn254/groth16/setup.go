@@ -69,11 +69,11 @@ type VerifyingKey struct {
 	// -[δ]2, -[γ]2: see proof.Verify() for more details
 	G2 struct {
 		Beta, Delta, Gamma curve.G2Affine
-		deltaNeg, gammaNeg curve.G2Affine // not serialized
+		DeltaNeg, GammaNeg curve.G2Affine // not serialized
 	}
 
-	// e(α, β)
-	e curve.GT // not serialized
+	// E(α, β)
+	E curve.GT // not serialized
 }
 
 // Setup constructs the SRS
@@ -254,8 +254,8 @@ func Setup(r1cs *cs.R1CS, pk *ProvingKey, vk *VerifyingKey) error {
 	// sets vk: [δ]2, [γ]2, -[δ]2, -[γ]2
 	vk.G2.Delta = g2PointsAff[len(B)+1]
 	vk.G2.Gamma = g2PointsAff[len(B)+2]
-	vk.G2.deltaNeg.Neg(&vk.G2.Delta)
-	vk.G2.gammaNeg.Neg(&vk.G2.Gamma)
+	vk.G2.DeltaNeg.Neg(&vk.G2.Delta)
+	vk.G2.GammaNeg.Neg(&vk.G2.Gamma)
 
 	// ---------------------------------------------------------------------------------------------
 	// Pairing: vk.e
@@ -266,7 +266,7 @@ func Setup(r1cs *cs.R1CS, pk *ProvingKey, vk *VerifyingKey) error {
 	vk.G1.Beta = pk.G1.Beta
 	vk.G1.Delta = pk.G1.Delta
 
-	vk.e, err = curve.Pair([]curve.G1Affine{pk.G1.Alpha}, []curve.G2Affine{pk.G2.Beta})
+	vk.E, err = curve.Pair([]curve.G1Affine{pk.G1.Alpha}, []curve.G2Affine{pk.G2.Beta})
 	if err != nil {
 		return err
 	}
