@@ -1,6 +1,7 @@
 package gkr
 
 import (
+	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
 	hashGadget "github.com/consensys/gkr-mimc/snark/hash"
@@ -21,14 +22,15 @@ type Proof struct {
 }
 
 // AllocateProof allocates a new proof gadget
-func AllocateProof(bN int, circuit Circuit) Proof {
+func AllocateProof(bN int, circuit circuit.Circuit) Proof {
 	nLayers := len(circuit.Layers)
 	SumcheckProofs := make([]sumcheck.Proof, nLayers)
 	ClaimsLeft := make([]frontend.Variable, nLayers)
 	ClaimsRight := make([]frontend.Variable, nLayers)
 
-	for i := range SumcheckProofs {
-		SumcheckProofs[i] = sumcheck.AllocateProof(bN, circuit.Layers[i].BG, circuit.Layers[i].DegHL, circuit.Layers[i].DegHR, circuit.Layers[i].DegHPrime)
+	for i, layer := range circuit.Layers {
+		degHL, degHR, degHPrime := layer.Degrees()
+		SumcheckProofs[i] = sumcheck.AllocateProof(bN, circuit.Layers[i].BGInputs, degHL, degHR, degHPrime)
 	}
 
 	return Proof{
@@ -50,7 +52,7 @@ func (p *Proof) Assign(proof gkr.Proof) {
 // AssertValid runs the GKR verifier
 func (p *Proof) AssertValid(
 	cs *frontend.ConstraintSystem,
-	circuit Circuit,
+	circuit circuit.Circuit,
 	qInitial []frontend.Variable,
 	qPrimeInitial []frontend.Variable,
 	vInput, vOutput polynomial.MultilinearByValues,
@@ -58,8 +60,8 @@ func (p *Proof) AssertValid(
 
 	qqPrime := append(append([]frontend.Variable{}, qInitial...), qPrimeInitial...)
 	claim := vOutput.Eval(cs, qqPrime)
-	hL, hR, hPrime, expectedTotalClaim := p.SumcheckProofs[nLayers-1].AssertValid(cs, claim, circuit.Layers[nLayers-1].BG)
-	actualTotalClaim := circuit.Layers[nLayers-1].Combine(
+	hL, hR, hPrime, expectedTotalClaim := p.SumcheckProofs[nLayers-1].AssertValid(cs, claim, circuit.Layers[nLayers-1].BGInputs)
+	actualTotalClaim := circuit.Layers[nLayers-1].GnarkCombine(
 		cs,
 		qInitial, qPrimeInitial,
 		hL, hR, hPrime,
@@ -80,7 +82,7 @@ func (p *Proof) AssertValid(
 		qPrime = hPrime
 
 		// Verify the sumcheck
-		hL, hR, hPrime, expectedTotalClaim = p.SumcheckProofs[layer].AssertValid(cs, claim, circuit.Layers[layer].BG)
+		hL, hR, hPrime, expectedTotalClaim = p.SumcheckProofs[layer].AssertValid(cs, claim, circuit.Layers[layer].BGInputs)
 		actualTotalClaim = circuit.Layers[layer].CombineWithLinearComb(
 			cs,
 			qL, qR, qPrime,

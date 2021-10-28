@@ -1,9 +1,10 @@
 package circuit
 
 import (
+	"sync"
+
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -42,6 +43,8 @@ func (l *Layer) GetStaticTable(q []fr.Element) []polynomial.BookKeepingTable {
 	gO, gL := (1 << (2 * l.BGInputs)), 1<<l.BGInputs
 	var one fr.Element
 	one.SetOne()
+
+	one = fr.One()
 
 	for i, gate := range l.Gates {
 		// The tab is filled with zeroes

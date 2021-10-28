@@ -2,13 +2,14 @@ package gkr
 
 import (
 	"fmt"
+	"runtime"
+	"testing"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
 	"github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
-	"runtime"
-	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -18,14 +19,14 @@ import (
 )
 
 type GKRMimcTestCircuit struct {
-	Circuit                 Circuit
+	Circuit                 circuit.Circuit
 	Proof                   Proof
 	QInitial, QInitialprime []frontend.Variable
 	VInput, VOutput         polynomial.MultilinearByValues
 }
 
 func AllocateGKRMimcTestCircuit(bN int) GKRMimcTestCircuit {
-	circuit := CreateMimcCircuit()
+	circuit := examples.CreateMimcCircuit()
 	return GKRMimcTestCircuit{
 		Circuit:       circuit,
 		Proof:         AllocateProof(bN, circuit),
