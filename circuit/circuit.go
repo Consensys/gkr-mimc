@@ -77,3 +77,13 @@ func (a *Assignment) LayerAsBKTNoCopy(layer int) []polynomial.BookKeepingTable {
 	}
 	return res
 }
+
+// Returns the output size of the circuit
+func (c *Circuit) OutputArity() int {
+	return 1 << c.Layers[len(c.Layers)-1].BGOutputs
+}
+
+// Returns the input arity of the circuit
+func (c *Circuit) InputArity() int {
+	return 1 << c.Layers[len(c.Layers)-1].BGInputs
+}

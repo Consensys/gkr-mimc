@@ -1,5 +1,7 @@
 package common
 
+import "github.com/consensys/gnark-crypto/ecc/bn254/fr"
+
 // MinChunkSize is the global chunksize used for all multi-threading technics
 const MinChunkSize int = 4096
 
@@ -30,4 +32,21 @@ func IntoChunkRanges(nCore, N int) []ChunkRange {
 	}
 
 	return chunkRanges
+}
+
+// Chunks the slice into multiple slices
+// Does not copy nor reallocate the field elements. No reordering occur
+func SliceToChunkedSlice(slice []fr.Element, chunkSize int) [][]fr.Element {
+	// Sanity check
+	if len(slice)%chunkSize > 0 {
+		panic("chunkSize should divide the size")
+	}
+
+	// Then fills a double slice of fr.Element with the passed slice
+	res := make([][]fr.Element, len(slice)/chunkSize)
+	for i := 0; i < len(slice); i += chunkSize {
+		res = append(res, slice[i:i+chunkSize])
+	}
+
+	return res
 }
