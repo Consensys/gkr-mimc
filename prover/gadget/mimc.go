@@ -20,13 +20,19 @@ const GKR_MIMC_GET_HASH_HINT_ID hint.ID = hint.ID(780000001)
 const GKR_MIMC_GET_INITIAL_RANDOMNESS_HINT_ID hint.ID = hint.ID(780000002)
 const GKR_MIMC_GKR_PROVER_HINT_ID hint.ID = hint.ID(780000003)
 
-var HashOfZeroes fr.Element
+// Caches the result of the `UpdateMimcHash(0, 0)`
+// For padding
+var hashOfZeroes fr.Element
+
+// Variable that can be set to true to enter in debug mode
+// and compare the results of the GKR hashing
+var GkrMimcDebugMode bool = false
 
 func init() {
 	var zero fr.Element
 	// Since it's the hash of zero, we don't need to the "newState = gkrOutput + block + state" thing
 	// We have the equality
-	hash.MimcUpdateInplace(&HashOfZeroes, zero)
+	hash.MimcUpdateInplace(&hashOfZeroes, zero)
 }
 
 // Helper for performing hashes using GKR
@@ -35,8 +41,10 @@ type GkrGadget struct {
 	ioStore           ioStore
 	initialRandomness frontend.Variable
 
-	Circuit          circuit.Circuit
-	Proof            gkr.Proof
+	Circuit   circuit.Circuit
+	Proof     gkr.Proof
+	chunkSize int
+
 	assignedGkrProof gkrNative.Proof
 	provingKey       *groth16.ProvingKey
 	proof            groth16.Proof
@@ -65,14 +73,14 @@ func (g *GkrGadget) UpdateHasher(
 func (g *GkrGadget) updateHasherWithZeroes(cs *frontend.ConstraintSystem) {
 	g.ioStore.Push(
 		[]frontend.Variable{cs.Constant(0), cs.Constant(0)},
-		[]frontend.Variable{cs.Constant(HashOfZeroes)},
+		[]frontend.Variable{cs.Constant(hashOfZeroes)},
 	)
 }
 
 // Gadget method to generate the proof
 func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness frontend.Variable, bN int) {
 	// Expands the initial randomness into q and qPrime
-	q := make([]frontend.Variable, 2)
+	q := make([]frontend.Variable, 0)
 	qPrime := make([]frontend.Variable, bN)
 
 	tmp := initialRandomness
@@ -86,7 +94,7 @@ func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness fr
 		tmp = cs.Mul(tmp, tmp)
 	}
 
-	proofInputs := append(g.ioStore.DumpForGkrProver(), append(q, qPrime...)...)
+	proofInputs := append(g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q), append(q, qPrime...)...)
 
 	// Preallocates the proof. It's simpler than recomputing
 	// all the dimensions of every slice it contains
@@ -112,8 +120,8 @@ func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness fr
 
 	proof.AssertValid(
 		cs, g.Circuit, q, qPrime,
-		polynomial.NewMultilinearByValues(g.ioStore.InputsForVerifier()),
-		polynomial.NewMultilinearByValues(g.ioStore.OutputsForVerifier()),
+		polynomial.NewMultilinearByValues(g.ioStore.InputsForVerifier(g.chunkSize)),
+		polynomial.NewMultilinearByValues(g.ioStore.OutputsForVerifier(g.chunkSize)),
 	)
 
 }
@@ -195,7 +203,18 @@ func (g *GkrGadget) GenerateGkrProverHint(nCore, chunkSize int) hint.Function {
 				computeProof = false
 
 				nInputs := g.ioStore.Index() * g.Circuit.InputArity()
-				inputs := inps[:nInputs]
+				nOutputs := g.ioStore.Index() * g.Circuit.OutputArity()
+				bGinitial := common.Log2Ceil(g.Circuit.OutputArity())
+				bN := common.Log2Ceil(g.ioStore.Index())
+
+				common.Assert(bGinitial == 0, "bGInitial must be zero for Mimc: %v", bGinitial)
+
+				inputs, inps := inps[:nInputs], inps[nInputs:]
+				// The output: here is passed to force the solver to wait for all the output
+				_, inps = inps[:nOutputs], inps[nOutputs:]
+				qPrime, inps := inps[:bN], inps[bN:]
+				q, inps := inps[:bGinitial], inps[bGinitial:]
+
 				assignment := g.Circuit.Assign(
 					common.SliceToChunkedSlice(inputs, chunkSize),
 					nCore,
@@ -206,7 +225,7 @@ func (g *GkrGadget) GenerateGkrProverHint(nCore, chunkSize int) hint.Function {
 					assignment,
 				)
 
-				gkrProof := prover.Prove(nCore)
+				gkrProof := prover.Prove(nCore, qPrime, q)
 
 				for _, sumPi := range gkrProof.SumcheckProofs {
 					iterator.Chain(sumPi.PolyCoeffs...)

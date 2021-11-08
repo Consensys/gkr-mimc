@@ -75,8 +75,8 @@ func TestMimcCircuit(t *testing.T) {
 	assignment := nativeCircuit.Assign(inputs, 1)
 	outputs := assignment.Values[91]
 	prover := gkr.NewProver(nativeCircuit, assignment)
-	proof := prover.Prove(1)
 	qInitialprime, _ := gkr.GetInitialQPrimeAndQ(bN, 0)
+	proof := prover.Prove(1, qInitialprime, []fr.Element{})
 
 	// Assigns the values
 	witness = AllocateGKRMimcTestCircuit(bN)
@@ -128,7 +128,7 @@ func BenchmarkMimcCircuit(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			prover := gkr.NewProver(nativeCircuit, assignment)
 			b.StartTimer()
-			proof = prover.Prove(nCore)
+			proof = prover.Prove(nCore, qInitialprime, []fr.Element{})
 			b.StopTimer()
 		}
 	})

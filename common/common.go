@@ -86,3 +86,15 @@ func Uint64ToFr(x uint64) fr.Element {
 	res.SetUint64(x)
 	return res
 }
+
+// Assert is equivalent of if
+// ```
+// if !assertion {
+//		panic(fmt.Sprintf(msg, args...))
+//}
+// ```
+func Assert(assertion bool, msg string, args ...interface{}) {
+	if !assertion {
+		panic(fmt.Sprintf(msg, args...))
+	}
+}

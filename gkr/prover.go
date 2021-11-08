@@ -121,15 +121,23 @@ func (p *Prover) IntermediateRoundsSumcheckProver(
 }
 
 // Prove produces a GKR proof
-func (p *Prover) Prove(nCore int) Proof {
-	// bG := p.circuit.bG
+func (p *Prover) Prove(nCore int, qPrime, q []fr.Element) Proof {
+
 	nLayers := len(p.circuit.Layers)
 	ClaimsLeft := make([]fr.Element, nLayers)
 	ClaimsRight := make([]fr.Element, nLayers)
 	SumcheckProofs := make([]sumcheck.Proof, nLayers)
+	bGinitial := p.circuit.Layers[nLayers-1].BGOutputs
 
 	// Initial round
-	qPrime, q := GetInitialQPrimeAndQ(p.bN, p.circuit.Layers[nLayers-1].BGOutputs)
+	if len(qPrime) == 0 && len(q) == 0 {
+		qPrime, q = GetInitialQPrimeAndQ(p.bN, bGinitial)
+	} else {
+		// Otherwise: Sanity check
+		common.Assert(len(qPrime) == p.bN, "Expected qPrime of length %v but was %v", p.bN, len(qPrime))
+		common.Assert(len(q) == bGinitial, "Expected q of length %v but was %v", bGinitial, len(q))
+	}
+
 	prover := p.InitialRoundSumcheckProver(qPrime, q, nCore)
 	proof, qPrime, qL, qR, finalClaims := prover.Prove(nCore)
 	SumcheckProofs[nLayers-1] = proof

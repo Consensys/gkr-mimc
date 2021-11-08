@@ -93,7 +93,7 @@ func TestMimc(t *testing.T) {
 
 	// Finally checks the entire GKR protocol
 	prover := gkr.NewProver(mimcCircuit, assignment)
-	proof := prover.Prove(1)
+	proof := prover.Prove(1, []fr.Element{}, []fr.Element{})
 	verifier := gkr.NewVerifier(bN, mimcCircuit)
 	valid := verifier.Verify(proof, inputs, outputs)
 	// An error here mostly indicate a problem with the degree calculator
@@ -115,7 +115,7 @@ func benchmarkMIMCCircuit(b *testing.B, bN, nCore, nChunks int, profiled, traced
 		prover := gkr.NewProver(mimcCircuit, assignment)
 
 		common.ProfileTrace(b, profiled, traced, func() {
-			_mimcProof = prover.Prove(nCore)
+			_mimcProof = prover.Prove(nCore, []fr.Element{}, []fr.Element{})
 		})
 	}
 }
@@ -144,7 +144,7 @@ func benchmarkMIMCGKRProverMultiProcess(b *testing.B, bN, nProcesses, nCore, nCh
 				prover := gkr.NewProver(mimcCircuit, assignment)
 				wgReady.Done()
 				wgGo.Wait() // Wait for the main thread's signal
-				_mimcProof = prover.Prove(nCore)
+				_mimcProof = prover.Prove(nCore, []fr.Element{}, []fr.Element{})
 				wgDone.Done()
 			}()
 		}
