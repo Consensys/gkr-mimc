@@ -2,14 +2,15 @@ package polynomial
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
-	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
 )
 
 type multilinearPolyTestCircuit struct {
@@ -25,14 +26,14 @@ func allocateMultilinearTestCircuit(nVars int) multilinearPolyTestCircuit {
 	}
 }
 
-func (m *multilinearPolyTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (m *multilinearPolyTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 	actualEval := m.P.Eval(cs, m.XEval)
 	cs.AssertIsEqual(actualEval, m.YEval)
 	return nil
 }
 
 func TestMultilinear(t *testing.T) {
-	assert := groth16.NewAssert(t)
+	assert := test.NewAssert(t)
 	nVars := 4
 
 	m := allocateMultilinearTestCircuit(nVars)
@@ -63,5 +64,5 @@ func TestMultilinear(t *testing.T) {
 	}
 	witness.YEval.Assign(y)
 
-	assert.SolvingSucceeded(r1cs, &witness)
+	assert.SolvingSucceeded(&m, &witness)
 }

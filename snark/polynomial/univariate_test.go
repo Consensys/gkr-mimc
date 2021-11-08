@@ -4,9 +4,8 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
-	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
 )
 
 type univariateTestCircuit struct {
@@ -15,7 +14,7 @@ type univariateTestCircuit struct {
 	Expected frontend.Variable // for testing purposes only
 }
 
-func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 
 	zno := pc.Poly.ZeroAndOne(cs)
 	x := cs.Constant(5)
@@ -32,9 +31,9 @@ func TestUnivariate(t *testing.T) {
 	degree := 3
 	var pc univariateTestCircuit
 	pc.Poly = AllocateUnivariate(degree)
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pc)
-	assert := groth16.NewAssert(t)
-	assert.NoError(err)
+	//r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pc)
+	assert := test.NewAssert(t)
+	//assert.NoError(err)
 
 	var witness univariateTestCircuit
 	witness.Poly.Coefficients = make([]frontend.Variable, 4)
@@ -46,6 +45,6 @@ func TestUnivariate(t *testing.T) {
 	witness.ZnO.Assign(14)
 	witness.Expected.Assign(194)
 
-	assert.ProverSucceeded(r1cs, &witness)
+	assert.ProverSucceeded(&pc, &witness)
 
 }

@@ -46,7 +46,7 @@ func CreateMimcCircuit() Circuit {
 }
 
 // GetCopyTable returns a prefolded copy table for the intermediate rounds
-func GetCopyTable(cs *frontend.ConstraintSystem, Q []frontend.Variable) polynomial.MultilinearByValues {
+func GetCopyTable(cs frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
 	return polynomial.NewMultilinearByValues([]frontend.Variable{
 		cs.Constant(0),
 		cs.Constant(0),
@@ -56,7 +56,7 @@ func GetCopyTable(cs *frontend.ConstraintSystem, Q []frontend.Variable) polynomi
 }
 
 // GetCipherTable returns a prefolded cipher table for the intermediate rounds
-func GetCipherTable(cs *frontend.ConstraintSystem, Q []frontend.Variable) polynomial.MultilinearByValues {
+func GetCipherTable(cs frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
 	return polynomial.NewMultilinearByValues([]frontend.Variable{
 		cs.Constant(0),
 		cs.Constant(0),
@@ -66,7 +66,7 @@ func GetCipherTable(cs *frontend.ConstraintSystem, Q []frontend.Variable) polyno
 }
 
 // GetFinalCipherTable returns a prefolded cipher table for the intermediate rounds
-func GetFinalCipherTable(cs *frontend.ConstraintSystem, Q []frontend.Variable) polynomial.MultilinearByValues {
+func GetFinalCipherTable(cs frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
 	return polynomial.NewMultilinearByValues([]frontend.Variable{
 		cs.Constant(0),
 		cs.Constant(0),
