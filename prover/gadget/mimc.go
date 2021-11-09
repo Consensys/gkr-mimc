@@ -1,8 +1,9 @@
-package gkr_gadget
+package gadget
 
 import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/examples"
 	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gkr-mimc/prover/variants/groth16"
@@ -24,9 +25,8 @@ const GKR_MIMC_GKR_PROVER_HINT_ID hint.ID = hint.ID(780000003)
 // For padding
 var hashOfZeroes fr.Element
 
-// Variable that can be set to true to enter in debug mode
-// and compare the results of the GKR hashing
-var GkrMimcDebugMode bool = false
+// Default chunkSize used by GKR
+const DEFAULT_CHUNK_SIZE int = 1024
 
 func init() {
 	var zero fr.Element
@@ -38,16 +38,31 @@ func init() {
 // Helper for performing hashes using GKR
 type GkrGadget struct {
 	// Pointers to variables that must have been allocated somewhere else
-	ioStore           ioStore
-	initialRandomness frontend.Variable
+	ioStore           IoStore `gnark:"-"`
+	InitialRandomness frontend.Variable
 
-	Circuit   circuit.Circuit
-	Proof     gkr.Proof
+	Circuit   circuit.Circuit `gnark:"-"`
 	chunkSize int
 
-	assignedGkrProof gkrNative.Proof
-	provingKey       *groth16.ProvingKey
-	proof            groth16.Proof
+	provingKey *groth16.ProvingKey `gnark:"-"`
+	proof      groth16.Proof       `gnark:"-"`
+}
+
+func NewGkrGadget() *GkrGadget {
+	// Despite the struct having a `Circuit` field, we only allow
+	// it to work with the mimc Circuit
+	mimc := examples.CreateMimcCircuit()
+
+	return &GkrGadget{
+		ioStore:   NewIoStore(&mimc, 16),
+		Circuit:   mimc,
+		chunkSize: DEFAULT_CHUNK_SIZE,
+	}
+}
+
+func (g *GkrGadget) WithChunkSize(chunkSize int) *GkrGadget {
+	g.chunkSize = chunkSize
+	return g
 }
 
 // Pass the update of a hasher to GKR
@@ -94,7 +109,8 @@ func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness fr
 		tmp = cs.Mul(tmp, tmp)
 	}
 
-	proofInputs := append(g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q), append(q, qPrime...)...)
+	proofInputsVar := append(g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q), append(q, qPrime...)...)
+	proofInputs := VariableToInterfaceSlice(proofInputsVar)
 
 	// Preallocates the proof. It's simpler than recomputing
 	// all the dimensions of every slice it contains
@@ -106,7 +122,7 @@ func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness fr
 				// The first time it is called, it is going to return all the fields
 				proof.SumcheckProofs[i].HPolys[j].Coefficients[k] = cs.NewHint(
 					GKR_MIMC_GKR_PROVER_HINT_ID,
-					proofInputs,
+					proofInputs...,
 				)
 			}
 		}
@@ -114,8 +130,8 @@ func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness fr
 
 	// Then finally pull the remaining of the proof from the hint
 	for i := range proof.ClaimsLeft {
-		proof.ClaimsLeft[i] = cs.NewHint(GKR_MIMC_GKR_PROVER_HINT_ID, proofInputs)
-		proof.ClaimsRight[i] = cs.NewHint(GKR_MIMC_GKR_PROVER_HINT_ID, proofInputs)
+		proof.ClaimsLeft[i] = cs.NewHint(GKR_MIMC_GKR_PROVER_HINT_ID, proofInputs...)
+		proof.ClaimsRight[i] = cs.NewHint(GKR_MIMC_GKR_PROVER_HINT_ID, proofInputs...)
 	}
 
 	proof.AssertValid(
@@ -138,8 +154,8 @@ func (g *GkrGadget) Close(cs *frontend.ConstraintSystem) {
 
 	// Get the initial randomness
 	ios := g.ioStore.DumpForProverMultiExp()
-	initialRandomness := cs.NewHint(GKR_MIMC_GET_INITIAL_RANDOMNESS_HINT_ID, ios)
-	cs.AssertIsEqual(g.initialRandomness, initialRandomness)
+	initialRandomness := cs.NewHint(GKR_MIMC_GET_INITIAL_RANDOMNESS_HINT_ID, VariableToInterfaceSlice(ios)...)
+	cs.AssertIsEqual(g.InitialRandomness, initialRandomness)
 
 	// Run GKR verifier in the define
 	g.GkrProof(cs, initialRandomness, bN)
@@ -230,6 +246,9 @@ func (g *GkrGadget) GenerateGkrProverHint(nCore, chunkSize int) hint.Function {
 				for _, sumPi := range gkrProof.SumcheckProofs {
 					iterator.Chain(sumPi.PolyCoeffs...)
 				}
+
+				iterator.Chain(gkrProof.ClaimsLeft)
+				iterator.Chain(gkrProof.ClaimsRight)
 			}
 
 			val, finished := iterator.Next()

@@ -1,4 +1,4 @@
-package gkr_gadget
+package gadget
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 const DEFAULT_IO_STORE_ALLOCATION_EPOCH int = 32
 
 // Stores the inputs and is responsible for the reordering tasks
-type ioStore struct {
+type IoStore struct {
 	inputs      []frontend.Variable
 	outputs     []frontend.Variable
 	allocEpoch  int
@@ -21,13 +21,13 @@ type ioStore struct {
 }
 
 // Creates a new ioStore for the given circuit
-func (io *ioStore) newIoStore(circuit *circuit.Circuit, allocEpoch int) ioStore {
+func NewIoStore(circuit *circuit.Circuit, allocEpoch int) IoStore {
 
 	if allocEpoch == 0 {
 		panic(fmt.Sprintf("Cannot accept allocEpoch = 0"))
 	}
 
-	return ioStore{
+	return IoStore{
 		inputs:      []frontend.Variable{},
 		outputs:     []frontend.Variable{},
 		allocEpoch:  allocEpoch,
@@ -37,7 +37,7 @@ func (io *ioStore) newIoStore(circuit *circuit.Circuit, allocEpoch int) ioStore 
 }
 
 // Allocates for one more hash entry
-func (io *ioStore) allocateForOneMore() {
+func (io *IoStore) allocateForOneMore() {
 	if io.index%io.allocEpoch == 0 {
 		// Extends the inputs slice capacity
 		inputs := make([]frontend.Variable, 0, io.inputArity*(io.allocEpoch+io.index))
@@ -51,12 +51,12 @@ func (io *ioStore) allocateForOneMore() {
 }
 
 // Return the number of element allocated
-func (io *ioStore) Index() int {
+func (io *IoStore) Index() int {
 	return io.index
 }
 
 // Add an element in the ioStack
-func (io *ioStore) Push(inputs, outputs []frontend.Variable) {
+func (io *IoStore) Push(inputs, outputs []frontend.Variable) {
 
 	// Check that the dimension of the provided arrays is consistent with what was expected
 	if len(inputs) != io.inputArity || len(outputs) != io.outputArity {
@@ -77,7 +77,7 @@ func (io *ioStore) Push(inputs, outputs []frontend.Variable) {
 
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
-func (io *ioStore) DumpForProverMultiExp() []frontend.Variable {
+func (io *IoStore) DumpForProverMultiExp() []frontend.Variable {
 	res := make([]frontend.Variable, 0)
 	res = append(res, io.inputs...)
 	res = append(res, io.outputs...)
@@ -86,7 +86,8 @@ func (io *ioStore) DumpForProverMultiExp() []frontend.Variable {
 
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
-func (io *ioStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []frontend.Variable {
+func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []frontend.Variable {
+
 	nChunks := io.Index() / chunkSize
 	nInputs, nOutputs, bN, bG := len(io.inputs), len(io.outputs), len(qPrimeArg), len(qArg)
 	resSize := nInputs + nOutputs + bN + bG
@@ -133,7 +134,7 @@ func (io *ioStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Va
 }
 
 // Returns the gkr inputs in the correct order to be processed by the verifier
-func (io *ioStore) InputsForVerifier(chunkSize int) []frontend.Variable {
+func (io *IoStore) InputsForVerifier(chunkSize int) []frontend.Variable {
 	nChunks := io.Index() / chunkSize
 	nInputs := len(io.inputs)
 	resSize := nInputs
@@ -158,7 +159,7 @@ func (io *ioStore) InputsForVerifier(chunkSize int) []frontend.Variable {
 }
 
 // Returns the gkr outputs in the correct order to be processed by the verifier
-func (io *ioStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
+func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 	nChunks := io.Index() / chunkSize
 	nOutputs := len(io.outputs)
 	resSize := nOutputs
@@ -179,4 +180,12 @@ func (io *ioStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 	}
 
 	return dumpedOutputs
+}
+
+func VariableToInterfaceSlice(v []frontend.Variable) []interface{} {
+	res := make([]interface{}, len(v))
+	for i := range v {
+		res[i] = v[i]
+	}
+	return res
 }
