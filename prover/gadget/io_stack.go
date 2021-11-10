@@ -120,12 +120,16 @@ func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Va
 
 			// Reorder the inputs
 			for subI := 0; subI < io.inputArity; subI++ {
-				dumpedInputs[lsb+subI*chunkSize+msb*chunkSizeXinputArity] = io.inputs[subI+lsb*io.inputArity+msb*chunkSizeXinputArity]
+				dumpIdx := lsb + subI*chunkSize + msb*chunkSizeXinputArity
+				storeIdx := subI + lsb*io.inputArity + msb*chunkSizeXinputArity
+				dumpedInputs[dumpIdx] = io.inputs[storeIdx]
 			}
 
 			// Reorder the outputs
 			for subO := 0; subO < io.outputArity; subO++ {
-				dumpedOutputs[lsb+subO*chunkSize+msb*chunkSizeXoutputArity] = io.outputs[subO+lsb*io.outputArity+msb*chunkSizeXoutputArity]
+				dumpIdx := lsb + subO*chunkSize + msb*chunkSizeXoutputArity
+				storeIdx := subO + lsb*io.outputArity + msb*chunkSizeXoutputArity
+				dumpedOutputs[dumpIdx] = io.outputs[storeIdx]
 			}
 		}
 	}
@@ -149,7 +153,10 @@ func (io *IoStore) InputsForVerifier(chunkSize int) []frontend.Variable {
 			chunkSizeXinputArity := chunkSize * io.inputArity
 			nChunksXinputArity := nChunks * io.inputArity
 			for subI := 0; subI < io.inputArity; subI++ {
-				dumpedInputs[msb+lsb*nChunks+nChunksXinputArity*subI] = io.inputs[subI+lsb*io.inputArity+msb*chunkSizeXinputArity]
+
+				dumpIdx := msb + subI*nChunks + lsb*nChunksXinputArity
+				ioIdx := subI + lsb*io.inputArity + msb*chunkSizeXinputArity
+				dumpedInputs[dumpIdx] = io.inputs[ioIdx]
 			}
 		}
 	}
@@ -174,7 +181,9 @@ func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 			chunkSizeXoutputArity := chunkSize * io.outputArity
 			nChunksXoutputArity := nChunks * io.outputArity
 			for subO := 0; subO < io.outputArity; subO++ {
-				dumpedOutputs[msb+lsb*nChunks+nChunksXoutputArity*subO] = io.outputs[subO+lsb*io.outputArity+msb*chunkSizeXoutputArity]
+				dumpIdx := msb + subO*nChunks + lsb*nChunksXoutputArity
+				ioIdx := subO + lsb*io.outputArity + msb*chunkSizeXoutputArity
+				dumpedOutputs[dumpIdx] = io.outputs[ioIdx]
 			}
 		}
 	}

@@ -40,18 +40,19 @@ func (l *Layer) GnarkEvalStaticTables(cs *frontend.ConstraintSystem, i int, q []
 			if wire.O > 1<<len(q) {
 				panic(fmt.Sprintf("q was of length %v but wire.O was %v", len(q), wire.O))
 			}
+
 			// In order to save constraints, we prefold the table implicitly
 			for i := range q {
 				// ie: If the i-th bit of oTmp is "1"
 				if (wire.O>>i)&1 == 1 {
-					qTmp = cs.Mul(&qTmp, &q[i])
+					qTmp = cs.Mul(qTmp, q[i])
 				} else {
-					qTmp = cs.Mul(&qTmp, cs.Sub(one, &q[i]))
+					qTmp = cs.Mul(qTmp, cs.Sub(one, q[i]))
 				}
 			}
 
 			k := gL*wire.L + wire.R
-			tab[k] = cs.Add(&tab[k], &qTmp)
+			tab[k] = cs.Add(tab[k], qTmp)
 		}
 	}
 
@@ -71,6 +72,7 @@ func (l *Layer) GnarkCombine(
 		tab := l.GnarkEvalStaticTables(cs, i, q)
 		res = cs.Add(res, cs.Mul(tab.Eval(cs, hLhR), l.Gates[i].GnarkEval(cs, vL, vR)))
 	}
+
 	return cs.Mul(res, snarkPoly.EqEval(cs, qPrime, hPrime))
 }
 

@@ -52,7 +52,7 @@ func TestGadget(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit)
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16))
 
 	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circuit)
 	assert.NoError(t, err)

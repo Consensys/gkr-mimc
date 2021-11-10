@@ -77,7 +77,6 @@ func (g *GkrGadget) UpdateHasher(
 	output := cs.NewHint(GKR_MIMC_GET_HASH_HINT_ID, left, right)
 
 	g.ioStore.Push([]frontend.Variable{left, right}, []frontend.Variable{output})
-
 	// Since the circuit does not exactly computes the hash,
 	// we are left to "finish the computation" by readding the state
 	return cs.Add(output, state)
@@ -150,6 +149,12 @@ func (g *GkrGadget) Close(cs *frontend.ConstraintSystem) {
 	// Pad the inputs in order to get a power of two length vector
 	for g.ioStore.Index() < paddedLen {
 		g.updateHasherWithZeroes(cs)
+	}
+
+	// Shrinks the chunkSize so that it does not overflow
+	// the number of hashes (after padding)
+	if g.chunkSize > paddedLen {
+		g.chunkSize = paddedLen
 	}
 
 	// Get the initial randomness
