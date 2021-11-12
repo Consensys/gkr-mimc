@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/gkr-mimc/examples"
 	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
-	"github.com/consensys/gkr-mimc/prover/variants/groth16"
+	groth16 "github.com/consensys/gkr-mimc/prover/variants"
 	"github.com/consensys/gkr-mimc/snark/gkr"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
 	"github.com/consensys/gnark-crypto/ecc"
@@ -67,7 +67,7 @@ func (g *GkrGadget) WithChunkSize(chunkSize int) *GkrGadget {
 
 // Pass the update of a hasher to GKR
 func (g *GkrGadget) UpdateHasher(
-	cs *frontend.ConstraintSystem,
+	cs *frontend.API,
 	state frontend.Variable,
 	msg frontend.Variable,
 ) frontend.Variable {
@@ -84,7 +84,7 @@ func (g *GkrGadget) UpdateHasher(
 
 // Used for padding dummy values. It adds constants everywhere so the result is not return
 // (as it is basically useless)
-func (g *GkrGadget) updateHasherWithZeroes(cs *frontend.ConstraintSystem) {
+func (g *GkrGadget) updateHasherWithZeroes(cs *frontend.API) {
 	g.ioStore.Push(
 		[]frontend.Variable{cs.Constant(0), cs.Constant(0)},
 		[]frontend.Variable{cs.Constant(hashOfZeroes)},
@@ -92,7 +92,7 @@ func (g *GkrGadget) updateHasherWithZeroes(cs *frontend.ConstraintSystem) {
 }
 
 // Gadget method to generate the proof
-func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness frontend.Variable, bN int) {
+func (g *GkrGadget) GkrProof(cs *frontend.API, initialRandomness frontend.Variable, bN int) {
 	// Expands the initial randomness into q and qPrime
 	q := make([]frontend.Variable, 0)
 	qPrime := make([]frontend.Variable, bN)
@@ -142,7 +142,7 @@ func (g *GkrGadget) GkrProof(cs *frontend.ConstraintSystem, initialRandomness fr
 }
 
 // Pad and close GKR, run the proof
-func (g *GkrGadget) Close(cs *frontend.ConstraintSystem) {
+func (g *GkrGadget) Close(cs *frontend.API) {
 	bN := common.Log2Ceil(g.ioStore.Index())
 	paddedLen := 1 << bN
 

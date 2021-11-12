@@ -7,7 +7,7 @@ import (
 
 // Interface to be implemented by any circuit willing to use Gkr
 type CircuitUsingGkr interface {
-	Define(curveID ecc.ID, cs *frontend.ConstraintSystem, gadget *GkrGadget) error
+	Define(curveID ecc.ID, cs *frontend.API, gadget *GkrGadget) error
 }
 
 // Generic wrapper circuit in which, we can plug any circuit using
@@ -31,7 +31,7 @@ func WrapCircuitUsingGkr(c CircuitUsingGkr, opts ...GkrOption) Circuit {
 }
 
 // Implements `gnark`s circuit interface
-func (c *Circuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (c *Circuit) Define(curveID ecc.ID, cs *frontend.API) error {
 	if err := c.InnerCircuit.Define(curveID, cs, &c.Gadget); err != nil {
 		return err
 	}

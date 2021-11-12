@@ -51,7 +51,7 @@ func (c *GKRMimcTestCircuit) Assign(
 	c.VOutput.AssignFromChunkedBKT(outputs)
 }
 
-func (c *GKRMimcTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (c *GKRMimcTestCircuit) Define(curveID ecc.ID, cs *frontend.API) error {
 	c.Proof.AssertValid(cs, c.Circuit, c.QInitial, c.QInitialprime, c.VInput, c.VOutput)
 	return nil
 }

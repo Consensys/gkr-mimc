@@ -18,7 +18,7 @@ func (c CopyGate) Eval(res, vL, vR *fr.Element) {
 }
 
 // GnarkEval performs the copy on gnark variable
-func (c CopyGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+func (c CopyGate) GnarkEval(cs *frontend.API, vL, vR frontend.Variable) frontend.Variable {
 	return vL
 }
 

@@ -51,7 +51,7 @@ func (p *Proof) Assign(proof gkr.Proof) {
 
 // AssertValid runs the GKR verifier
 func (p *Proof) AssertValid(
-	cs *frontend.ConstraintSystem,
+	cs *frontend.API,
 	circuit circuit.Circuit,
 	qInitial []frontend.Variable,
 	qPrimeInitial []frontend.Variable,

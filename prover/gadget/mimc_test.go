@@ -25,7 +25,7 @@ func AllocateTestGadgetCircuit(n int) TestGadgetCircuit {
 	}
 }
 
-func (t *TestGadgetCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem, gadget *GkrGadget) error {
+func (t *TestGadgetCircuit) Define(curveID ecc.ID, cs *frontend.API, gadget *GkrGadget) error {
 	for i := range t.Preimages {
 		y := gadget.UpdateHasher(cs, cs.Constant(0), t.Preimages[i])
 		cs.AssertIsEqual(t.Hashes[i], y)

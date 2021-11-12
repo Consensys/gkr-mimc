@@ -7,7 +7,7 @@ import (
 )
 
 // MimcHash returns the result of the hashing function
-func MimcHash(cs *frontend.ConstraintSystem, stream ...frontend.Variable) frontend.Variable {
+func MimcHash(cs *frontend.API, stream ...frontend.Variable) frontend.Variable {
 	state := cs.Constant(0)
 	for _, m := range stream {
 		newM := m

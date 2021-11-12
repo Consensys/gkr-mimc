@@ -2,9 +2,10 @@ package polynomial
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -25,7 +26,7 @@ func allocateMultilinearTestCircuit(nVars int) multilinearPolyTestCircuit {
 	}
 }
 
-func (m *multilinearPolyTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (m *multilinearPolyTestCircuit) Define(curveID ecc.ID, cs *frontend.API) error {
 	actualEval := m.P.Eval(cs, m.XEval)
 	cs.AssertIsEqual(actualEval, m.YEval)
 	return nil

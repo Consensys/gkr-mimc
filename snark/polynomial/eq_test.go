@@ -1,9 +1,10 @@
 package polynomial
 
 import (
+	"testing"
+
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -44,7 +45,7 @@ func (eq *TestEqCircuit) Assign(H, Q [][]fr.Element) {
 	}
 }
 
-func (eq *TestEqCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (eq *TestEqCircuit) Define(curveID ecc.ID, cs *frontend.API) error {
 	for i := range eq.H {
 		h := EqEval(cs, eq.H[i], eq.Q[i])
 		cs.AssertIsEqual(h, eq.ExpectedValue[i])

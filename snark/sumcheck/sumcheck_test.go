@@ -1,8 +1,9 @@
 package sumcheck
 
 import (
-	"github.com/consensys/gkr-mimc/sumcheck"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/sumcheck"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -27,7 +28,7 @@ func AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime int) SumcheckCircui
 	}
 }
 
-func (scc *SumcheckCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (scc *SumcheckCircuit) Define(curveID ecc.ID, cs *frontend.API) error {
 	hR, hL, hPrime, _ := scc.Proof.AssertValid(cs, scc.InitialClaim, 1)
 	for i := range hR {
 		cs.AssertIsEqual(hL[i], scc.ExpectedQL[i])

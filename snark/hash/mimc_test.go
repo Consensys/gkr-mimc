@@ -21,7 +21,7 @@ type TestMimcCircuit struct {
 	Y []frontend.Variable
 }
 
-func (c *TestMimcCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (c *TestMimcCircuit) Define(curveID ecc.ID, cs *frontend.API) error {
 	for k := range c.X {
 		y := MimcHash(cs, c.X[k]...)
 		cs.AssertIsEqual(c.Y[k], y)
