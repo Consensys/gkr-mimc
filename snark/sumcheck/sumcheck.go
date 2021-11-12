@@ -49,7 +49,7 @@ func (p *Proof) Assign(proof sumcheck.Proof) {
 }
 
 // AssertValid verifies a sumcheck instance EXCEPT FOR THE FINAL VERIFICATION.
-func (p *Proof) AssertValid(cs *frontend.API, initialClaim frontend.Variable, bG int) (
+func (p *Proof) AssertValid(cs frontend.API, initialClaim frontend.Variable, bG int) (
 	hL, hR, hPrime []frontend.Variable,
 	lastClaim frontend.Variable,
 ) {

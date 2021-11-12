@@ -45,7 +45,7 @@ func (eq *TestEqCircuit) Assign(H, Q [][]fr.Element) {
 	}
 }
 
-func (eq *TestEqCircuit) Define(curveID ecc.ID, cs *frontend.API) error {
+func (eq *TestEqCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 	for i := range eq.H {
 		h := EqEval(cs, eq.H[i], eq.Q[i])
 		cs.AssertIsEqual(h, eq.ExpectedValue[i])

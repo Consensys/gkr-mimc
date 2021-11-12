@@ -6,7 +6,7 @@ import (
 )
 
 // GetCopyTable returns a prefolded copy table for the intermediate rounds
-func GetCopyTable(cs *frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
+func GetCopyTable(cs frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
 	return polynomial.NewMultilinearByValues([]frontend.Variable{
 		cs.Constant(0),
 		cs.Constant(0),
@@ -16,7 +16,7 @@ func GetCopyTable(cs *frontend.API, Q []frontend.Variable) polynomial.Multilinea
 }
 
 // GetCipherTable returns a prefolded cipher table for the intermediate rounds
-func GetCipherTable(cs *frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
+func GetCipherTable(cs frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
 	return polynomial.NewMultilinearByValues([]frontend.Variable{
 		cs.Constant(0),
 		cs.Constant(0),
@@ -26,7 +26,7 @@ func GetCipherTable(cs *frontend.API, Q []frontend.Variable) polynomial.Multilin
 }
 
 // GetFinalCipherTable returns a prefolded cipher table for the intermediate rounds
-func GetFinalCipherTable(cs *frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
+func GetFinalCipherTable(cs frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues {
 	return polynomial.NewMultilinearByValues([]frontend.Variable{
 		cs.Constant(0),
 		cs.Constant(0),

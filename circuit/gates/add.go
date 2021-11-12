@@ -17,7 +17,7 @@ func (a AddGate) Eval(res, vL, vR *fr.Element) {
 }
 
 // GnarkEval compute the gate on a gnark circuit
-func (a AddGate) GnarkEval(cs *frontend.API, vL, vR frontend.Variable) frontend.Variable {
+func (a AddGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
 	// Unoptimized, but unlikely to cause any significant performance loss
 	return cs.Add(vL, vR)
 }

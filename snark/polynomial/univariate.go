@@ -33,7 +33,7 @@ func (u *Univariate) Assign(coeffs []fr.Element) {
 }
 
 // Eval returns p(x)
-func (u *Univariate) Eval(cs *frontend.API, x frontend.Variable) (res frontend.Variable) {
+func (u *Univariate) Eval(cs frontend.API, x frontend.Variable) (res frontend.Variable) {
 
 	res = cs.Constant(0)
 	aux := cs.Constant(0)
@@ -49,7 +49,7 @@ func (u *Univariate) Eval(cs *frontend.API, x frontend.Variable) (res frontend.V
 }
 
 // ZeroAndOne returns p(0) + p(1)
-func (u *Univariate) ZeroAndOne(cs *frontend.API) frontend.Variable {
+func (u *Univariate) ZeroAndOne(cs frontend.API) frontend.Variable {
 
 	// coeffsInterface is required for cs.Add(a, b, coeffsInterface[1:]...) to be accepted.
 	coeffsInterface := make([]interface{}, len(u.Coefficients))

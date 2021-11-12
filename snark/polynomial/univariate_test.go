@@ -15,7 +15,7 @@ type univariateTestCircuit struct {
 	Expected frontend.Variable // for testing purposes only
 }
 
-func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs *frontend.API) error {
+func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 
 	zno := pc.Poly.ZeroAndOne(cs)
 	x := cs.Constant(5)

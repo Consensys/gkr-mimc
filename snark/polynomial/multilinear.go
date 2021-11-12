@@ -51,7 +51,7 @@ func (m MultilinearByValues) DeepCopy() MultilinearByValues {
 }
 
 // Fold partially evaluates the polynomial on one of the variable
-func (m *MultilinearByValues) Fold(cs *frontend.API, x frontend.Variable) {
+func (m *MultilinearByValues) Fold(cs frontend.API, x frontend.Variable) {
 	k := len(m.Table) / 2
 	for i := 0; i < k; i++ {
 		tmpLinExp := cs.Sub(m.Table[i+k], m.Table[i])
@@ -67,7 +67,7 @@ func (m *MultilinearByValues) Fold(cs *frontend.API, x frontend.Variable) {
 }
 
 // Eval the multilinear polynomial
-func (m MultilinearByValues) Eval(cs *frontend.API, xs []frontend.Variable) frontend.Variable {
+func (m MultilinearByValues) Eval(cs frontend.API, xs []frontend.Variable) frontend.Variable {
 	f := m.DeepCopy()
 	for _, x := range xs {
 		// Repeatedly fold the table
@@ -80,7 +80,7 @@ func (m MultilinearByValues) Eval(cs *frontend.API, xs []frontend.Variable) fron
 // We must have len(qL) == len(qR)
 // And len(Table) = 2 ** len(qL) + len(qPrime)
 func (m MultilinearByValues) EvalMixed(
-	cs *frontend.API,
+	cs frontend.API,
 	qL, qR, qPrime []frontend.Variable,
 ) (vL, vR frontend.Variable) {
 	// The function proceeds by putting in common the evaluations over qPrime

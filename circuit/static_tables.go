@@ -22,7 +22,7 @@ func (l *Layer) Degrees() (int, int, int) {
 }
 
 // Returns the static tables as constants, for the gate number "i"
-func (l *Layer) GnarkEvalStaticTables(cs *frontend.API, i int, q []frontend.Variable) snarkPoly.MultilinearByValues {
+func (l *Layer) GnarkEvalStaticTables(cs frontend.API, i int, q []frontend.Variable) snarkPoly.MultilinearByValues {
 	gateID := l.Gates[i].ID()
 	// Usefull integer constants
 	gL := 1 << l.BGInputs
@@ -61,7 +61,7 @@ func (l *Layer) GnarkEvalStaticTables(cs *frontend.API, i int, q []frontend.Vari
 
 // Combine returns an evaluation of the GKR layer
 func (l *Layer) GnarkCombine(
-	cs *frontend.API,
+	cs frontend.API,
 	q, qPrime, hL, hR, hPrime []frontend.Variable,
 	vL, vR frontend.Variable,
 ) frontend.Variable {
@@ -79,7 +79,7 @@ func (l *Layer) GnarkCombine(
 // CombineWithLinearComb returns a linear comb of 2 evaluation of the GKR layer
 // for 2 values of q: qL and qR
 func (l *Layer) CombineWithLinearComb(
-	cs *frontend.API,
+	cs frontend.API,
 	qL, qR, qPrime, hL, hR, hPrime []frontend.Variable,
 	lambdaL, lambdaR, vL, vR frontend.Variable,
 ) frontend.Variable {

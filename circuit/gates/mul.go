@@ -17,7 +17,7 @@ func (m MulGate) Eval(res, vL, vR *fr.Element) {
 }
 
 // GnarkEval performs the gate operation on gnark variables
-func (m MulGate) GnarkEval(cs *frontend.API, vL, vR frontend.Variable) frontend.Variable {
+func (m MulGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
 	return cs.Mul(vL, vR)
 }
 
