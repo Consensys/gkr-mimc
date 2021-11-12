@@ -23,7 +23,8 @@ func (g *GkrGadget) HashHint(curve ecc.ID, inps []*big.Int, outputs *big.Int) er
 
 	// Properly computes the hash
 	hash.MimcUpdateInplace(&hashed, block)
-	hashed.ToBigInt(outputs)
+
+	hashed.ToBigIntRegular(outputs)
 	return nil
 }
 
@@ -49,7 +50,7 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 	// Derive the initial randomness from the hash
 	var initialRandomness fr.Element
 	initialRandomness.SetBytes(hashed)
-	initialRandomness.ToBigInt(oups)
+	initialRandomness.ToBigIntRegular(oups)
 	return nil
 }
 
@@ -106,6 +107,6 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 		panic("The hint was called but all the proof elements were returned")
 	}
 
-	val.ToBigInt(oups)
+	val.ToBigIntRegular(oups)
 	return nil
 }

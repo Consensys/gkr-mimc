@@ -41,7 +41,6 @@ type GkrGadget struct {
 	Circuit   circuit.Circuit `gnark:"-"`
 	chunkSize int
 	gkrNCore  int
-	hints     map[hint.ID]hint.Function
 
 	provingKey *groth16.ProvingKey `gnark:"-"`
 	proof      groth16.Proof       `gnark:"-"`
@@ -74,13 +73,16 @@ func (g *GkrGadget) UpdateHasher(
 ) frontend.Variable {
 	// Call the hint to get the hash. Since the circuit does not compute the full evaluation
 	// of Mimc, we preprocess the inputs to let the circuit work
-	left, right := cs.Add(msg, state), state
-	output := cs.NewHint(g.hints[GKR_MIMC_GET_HASH_HINT_ID], left, right)
+	output := cs.NewHint(g.HashHint, state, msg)
 
-	g.ioStore.Push([]frontend.Variable{left, right}, []frontend.Variable{output})
 	// Since the circuit does not exactly computes the hash,
 	// we are left to "finish the computation" by readding the state
-	return cs.Add(output, state)
+	g.ioStore.Push(
+		[]frontend.Variable{cs.Add(msg, state), state},
+		[]frontend.Variable{cs.Sub(output, state)},
+	)
+
+	return output
 }
 
 // Used for padding dummy values. It adds constants everywhere so the result is not return
@@ -121,7 +123,7 @@ func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variabl
 				// The same hint is going to return everytime a different value
 				// The first time it is called, it is going to return all the fields
 				proof.SumcheckProofs[i].HPolys[j].Coefficients[k] = cs.NewHint(
-					g.hints[GKR_MIMC_GKR_PROVER_HINT_ID],
+					g.GkrProverHint,
 					proofInputs...,
 				)
 			}
@@ -130,8 +132,8 @@ func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variabl
 
 	// Then finally pull the remaining of the proof from the hint
 	for i := range proof.ClaimsLeft {
-		proof.ClaimsLeft[i] = cs.NewHint(g.hints[GKR_MIMC_GKR_PROVER_HINT_ID], proofInputs...)
-		proof.ClaimsRight[i] = cs.NewHint(g.hints[GKR_MIMC_GKR_PROVER_HINT_ID], proofInputs...)
+		proof.ClaimsLeft[i] = cs.NewHint(g.GkrProverHint, proofInputs...)
+		proof.ClaimsRight[i] = cs.NewHint(g.GkrProverHint, proofInputs...)
 	}
 
 	proof.AssertValid(
@@ -160,7 +162,7 @@ func (g *GkrGadget) Close(cs frontend.API) {
 
 	// Get the initial randomness
 	ios := g.ioStore.DumpForProverMultiExp()
-	initialRandomness := cs.NewHint(g.hints[GKR_MIMC_GET_INITIAL_RANDOMNESS_HINT_ID], VariableToInterfaceSlice(ios)...)
+	initialRandomness := cs.NewHint(g.InitialRandomnessHint, VariableToInterfaceSlice(ios)...)
 	cs.AssertIsEqual(g.InitialRandomness, initialRandomness)
 
 	// Run GKR verifier in the define
