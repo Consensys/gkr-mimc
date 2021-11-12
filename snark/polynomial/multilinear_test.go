@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -33,14 +34,13 @@ func (m *multilinearPolyTestCircuit) Define(curveID ecc.ID, cs frontend.API) err
 }
 
 func TestMultilinear(t *testing.T) {
-	assert := groth16.NewAssert(t)
 	nVars := 4
 
 	m := allocateMultilinearTestCircuit(nVars)
 
 	// Attempt to compile the circuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &m)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	fmt.Printf("Nb constraints = %v", r1cs.GetNbConstraints())
 
@@ -64,5 +64,5 @@ func TestMultilinear(t *testing.T) {
 	}
 	witness.YEval.Assign(y)
 
-	assert.SolvingSucceeded(r1cs, &witness)
+	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 }

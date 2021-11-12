@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gkr-mimc/sumcheck"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
@@ -45,12 +46,11 @@ func (scc *SumcheckCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 func TestSumcheckCircuit(t *testing.T) {
 
 	var bN, bG, degHL, degHR, degHPrime = 4, 1, 2, 8, 8
-	assert := groth16.NewAssert(t)
 
 	// Attempts to compile the circuit
 	scc := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &scc)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	// Runs a test sumcheck prover to get witness values
 	scProver := sumcheck.InitializeProverForTests(bN)
@@ -59,7 +59,7 @@ func TestSumcheckCircuit(t *testing.T) {
 	proof, expectedQPrime, expectedQR, expectedQL, _ := scProver.Prove()
 	valid, _, _, _, _ := scVer.Verify(firstClaim, proof, bN, bG)
 
-	assert.True(valid, "Sumcheck verifier refused")
+	assert.True(t, valid, "Sumcheck verifier refused")
 
 	witness := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
 	witness.InitialClaim.Assign(firstClaim)
@@ -75,6 +75,5 @@ func TestSumcheckCircuit(t *testing.T) {
 		witness.ExpectedQPrime[i].Assign(expectedQPrime[i])
 	}
 
-	assert.SolvingSucceeded(r1cs, &witness)
-	assert.ProverSucceeded(r1cs, &witness)
+	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 }

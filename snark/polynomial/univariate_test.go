@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
+	"github.com/stretchr/testify/assert"
 )
 
 type univariateTestCircuit struct {
@@ -33,8 +34,7 @@ func TestUnivariate(t *testing.T) {
 	var pc univariateTestCircuit
 	pc.Poly = AllocateUnivariate(degree)
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pc)
-	assert := groth16.NewAssert(t)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	var witness univariateTestCircuit
 	witness.Poly.Coefficients = make([]frontend.Variable, 4)
@@ -46,6 +46,6 @@ func TestUnivariate(t *testing.T) {
 	witness.ZnO.Assign(14)
 	witness.Expected.Assign(194)
 
-	assert.ProverSucceeded(r1cs, &witness)
+	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 
 }

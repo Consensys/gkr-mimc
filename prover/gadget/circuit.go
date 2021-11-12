@@ -40,8 +40,8 @@ func (c *Circuit) Define(curveID ecc.ID, cs frontend.API) error {
 }
 
 // Assigns for the subcircuit
-func (c *Circuit) Assign(i CircuitUsingGkr) {
-	c.InnerCircuit = i
+func (c *Circuit) Assign() {
+	c.Gadget.InitialRandomness.Assign(0)
 }
 
 // Options for the `Circuit` constructor

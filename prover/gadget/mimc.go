@@ -1,22 +1,16 @@
 package gadget
 
 import (
-	"math/big"
-
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
-	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
 	groth16 "github.com/consensys/gkr-mimc/prover/variants"
 	"github.com/consensys/gkr-mimc/snark/gkr"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend/hint"
 	"github.com/consensys/gnark/frontend"
-	"golang.org/x/crypto/sha3"
 )
 
 // HINTS ID that we are using for GKR
@@ -51,8 +45,15 @@ type GkrGadget struct {
 
 	provingKey *groth16.ProvingKey `gnark:"-"`
 	proof      groth16.Proof       `gnark:"-"`
+
+	// Internal state of the GetProofHint() closure
+	getProofHintState struct {
+		gkrProofIterator ChainedSlicesIterator `gnark:"-"`
+		computeProof     bool                  `gnark:"-"`
+	}
 }
 
+// NewGkrGadget
 func NewGkrGadget() *GkrGadget {
 	// Despite the struct having a `Circuit` field, we only allow
 	// it to work with the mimc Circuit
@@ -63,11 +64,6 @@ func NewGkrGadget() *GkrGadget {
 		Circuit:   mimc,
 		chunkSize: DEFAULT_CHUNK_SIZE,
 	}
-}
-
-func (g *GkrGadget) WithChunkSize(chunkSize int) *GkrGadget {
-	g.chunkSize = chunkSize
-	return g
 }
 
 // Pass the update of a hasher to GKR
@@ -169,111 +165,4 @@ func (g *GkrGadget) Close(cs frontend.API) {
 
 	// Run GKR verifier in the define
 	g.GkrProof(cs, initialRandomness, bN)
-}
-
-// Returns the Hint functions that can help gnark's solver figure out that
-// the output of the GKR should be a hash
-func (g *GkrGadget) GenerateComputingHint() hint.Function {
-	return func(curve ecc.ID, inps []*big.Int, outputs *big.Int) error {
-		var state, block fr.Element
-		state.SetBigInt(inps[0])
-		block.SetBigInt(inps[1])
-
-		hashed := state
-
-		// Properly computes the hash
-		hash.MimcUpdateInplace(&hashed, block)
-		hashed.ToBigInt(outputs)
-		return nil
-	}
-}
-
-// Hint for generating the initial randomness
-func (g *GkrGadget) GenerateInitialRandomnessHint() hint.Function {
-	return func(_ ecc.ID, inps []*big.Int, oups *big.Int) error {
-		scalars := make([]fr.Element, len(inps))
-		for i := range scalars {
-			scalars[i].SetBigInt(inps[i])
-		}
-
-		// Compute the KXiBar alongside its proof of computation
-		// g.proof = groth16.Proof{}
-		// g.proof.T.MultiExp(g.provingKey.G1.KAlphaXi, inps, ecc.MultiExpConfig{})
-		var KSumXiBar bn254.G1Affine
-		KSumXiBar.MultiExp(g.provingKey.G1.KAlphaXi, scalars, ecc.MultiExpConfig{})
-
-		// Hash the uncompressed point, then get a field element out of it
-		bytesKSumXiBAr := KSumXiBar.RawBytes()
-		keccak := sha3.NewLegacyKeccak256()
-		keccak.Write(bytesKSumXiBAr[:])
-		hashed := keccak.Sum(nil)
-
-		// Derive the initial randomness from the hash
-		var initialRandomness fr.Element
-		initialRandomness.SetBytes(hashed)
-		initialRandomness.ToBigInt(oups)
-		return nil
-	}
-}
-
-// Returns the Hint functions that can help gnark's solver figure out that
-// we need to compute the GkrProof and verify
-// In order to return the fields one after the other, the function is built as a stateful iterator
-func (g *GkrGadget) GenerateGkrProverHint() hint.Function {
-
-	iterator := NewChainedSlicesIterator()
-	iterator.SetCapacity(1024)
-	computeProof := true
-
-	// The hint functions throws a go-routine
-	return func(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) error {
-		if computeProof {
-			computeProof = false
-
-			nInputs := g.ioStore.Index() * g.Circuit.InputArity()
-			nOutputs := g.ioStore.Index() * g.Circuit.OutputArity()
-			bGinitial := common.Log2Ceil(g.Circuit.OutputArity())
-			bN := common.Log2Ceil(g.ioStore.Index())
-
-			common.Assert(bGinitial == 0, "bGInitial must be zero for Mimc: %v", bGinitial)
-
-			inps := make([]fr.Element, len(inputsBI))
-			for i := range inps {
-				inps[i].SetBigInt(inputsBI[i])
-			}
-
-			inputs, inps := inps[:nInputs], inps[nInputs:]
-			// The output: here is passed to force the solver to wait for all the output
-			_, inps = inps[:nOutputs], inps[nOutputs:]
-			qPrime, inps := inps[:bN], inps[bN:]
-			q, inps := inps[:bGinitial], inps[bGinitial:]
-
-			assignment := g.Circuit.Assign(
-				common.SliceToChunkedSlice(inputs, g.chunkSize),
-				g.gkrNCore,
-			)
-
-			prover := gkrNative.NewProver(
-				g.Circuit,
-				assignment,
-			)
-
-			gkrProof := prover.Prove(g.gkrNCore, qPrime, q)
-
-			for _, sumPi := range gkrProof.SumcheckProofs {
-				iterator.Chain(sumPi.PolyCoeffs...)
-			}
-
-			iterator.Chain(gkrProof.ClaimsLeft)
-			iterator.Chain(gkrProof.ClaimsRight)
-		}
-
-		val, finished := iterator.Next()
-		if finished {
-			panic("The hint was called but all the proof elements were returned")
-		}
-
-		val.ToBigInt(oups)
-		return nil
-	}
 }

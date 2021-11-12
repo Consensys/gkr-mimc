@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/gkr-mimc/examples"
 	"github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -59,12 +60,11 @@ func (c *GKRMimcTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 func TestMimcCircuit(t *testing.T) {
 
 	bN := 2
-	assert := groth16.NewAssert(t)
 
 	mimcCircuit := AllocateGKRMimcTestCircuit(bN)
 	// Attempt to compile the circuit
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	// Generate the witness values by running the prover
 	var witness GKRMimcTestCircuit
@@ -82,7 +82,7 @@ func TestMimcCircuit(t *testing.T) {
 	witness = AllocateGKRMimcTestCircuit(bN)
 	witness.Assign(proof, inputs, outputs, qInitialprime)
 
-	assert.SolvingSucceeded(r1cs, &witness)
+	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 	// Takes 200sec on my laptop
 	// assert.ProverSucceeded(r1cs, &witness)
 }

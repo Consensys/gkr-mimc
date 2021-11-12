@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -58,8 +59,7 @@ func TestEq(t *testing.T) {
 	eq := AllocateTestEqCircuit(5, 5)
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &eq)
 
-	assert := groth16.NewAssert(t)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	witness := AllocateTestEqCircuit(5, 5)
 
@@ -80,6 +80,6 @@ func TestEq(t *testing.T) {
 	}
 
 	witness.Assign(H, Q)
-	assert.SolvingSucceeded(r1cs, &witness)
-	assert.ProverSucceeded(r1cs, &witness)
+	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
+	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
 	"github.com/stretchr/testify/assert"
 )
@@ -52,11 +53,29 @@ func TestGadget(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16))
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16), WithNCore(1))
 
-	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circuit)
+	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circuit)
 	assert.NoError(t, err)
 
-	// r1cs := r1csInterface.(*cs.R1CS)
+	innerAssignment := AllocateTestGadgetCircuit(n)
+	innerAssignment.Assign(preimages, hashes)
+	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
+	assignment.Assign()
+
+	proverOpts := func(opt *backend.ProverOption) error {
+		opt.HintFunctions = append(
+			opt.HintFunctions,
+			assignment.Gadget.InitialRandomnessHint,
+			assignment.Gadget.HashHint,
+			assignment.Gadget.GkrProverHint,
+		)
+		return nil
+	}
+
+	pk, _ := groth16.DummySetup(r1cs)
+	_, err = groth16.Prove(r1cs, pk, &assignment, proverOpts)
+
+	assert.NoError(t, err)
 
 }

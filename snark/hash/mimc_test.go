@@ -8,6 +8,7 @@ import (
 
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/hash"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -54,10 +55,9 @@ func (c *TestMimcCircuit) Assign(x [][]fr.Element) {
 
 func TestMimc(t *testing.T) {
 
-	assert := groth16.NewAssert(t)
 	c := Allocate(5, 5)
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
-	assert.NoError(err)
+	assert.NoError(t, err)
 
 	// Creates a random test vector
 	x := [][]fr.Element{
@@ -70,7 +70,7 @@ func TestMimc(t *testing.T) {
 
 	witness := Allocate(5, 5)
 	witness.Assign(x)
-	assert.SolvingSucceeded(r1cs, &witness)
+	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 }
 
 func BenchmarkMimc(b *testing.B) {
