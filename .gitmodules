@@ -1,0 +1,3 @@
+[submodule "gnark"]
+	path = gnark
+	url = git@github.com:ConsenSys/gnark.git
