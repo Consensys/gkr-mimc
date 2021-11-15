@@ -18,13 +18,12 @@ func (g *GkrGadget) HashHint(curve ecc.ID, inps []*big.Int, outputs *big.Int) er
 	var state, block fr.Element
 	state.SetBigInt(inps[0])
 	block.SetBigInt(inps[1])
-
 	hashed := state
 
 	// Properly computes the hash
 	hash.MimcUpdateInplace(&hashed, block)
-
 	hashed.ToBigIntRegular(outputs)
+	g.ioStore.index++
 	return nil
 }
 
@@ -39,6 +38,10 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 	// g.proof = groth16.Proof{}
 	// g.proof.T.MultiExp(g.provingKey.G1.KAlphaXi, inps, ecc.MultiExpConfig{})
 	var KSumXiBar bn254.G1Affine
+
+	// TODO: Handles the proving key generation
+	g.provingKey.G1.KAlphaXi = make([]bn254.G1Affine, len(scalars))
+
 	KSumXiBar.MultiExp(g.provingKey.G1.KAlphaXi, scalars, ecc.MultiExpConfig{})
 
 	// Hash the uncompressed point, then get a field element out of it
@@ -50,6 +53,7 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 	// Derive the initial randomness from the hash
 	var initialRandomness fr.Element
 	initialRandomness.SetBytes(hashed)
+
 	initialRandomness.ToBigIntRegular(oups)
 	return nil
 }
@@ -58,16 +62,17 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 // we need to compute the GkrProof and verify
 // In order to return the fields one after the other, the function is built as a stateful iterator
 func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) error {
-	iterator := g.getProofHintState.gkrProofIterator
+	iterator := &g.getProofHintState.gkrProofIterator
 
 	if g.getProofHintState.computeProof {
-
 		g.getProofHintState.computeProof = false
 
-		nInputs := g.ioStore.Index() * g.Circuit.InputArity()
-		nOutputs := g.ioStore.Index() * g.Circuit.OutputArity()
-		bGinitial := common.Log2Ceil(g.Circuit.OutputArity())
 		bN := common.Log2Ceil(g.ioStore.Index())
+		paddedIndex := 1 << bN
+
+		nInputs := paddedIndex * g.Circuit.InputArity()
+		nOutputs := paddedIndex * g.Circuit.OutputArity()
+		bGinitial := common.Log2Ceil(g.Circuit.OutputArity())
 
 		common.Assert(bGinitial == 0, "bGInitial must be zero for Mimc: %v", bGinitial)
 
@@ -83,7 +88,7 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 		q, inps := inps[:bGinitial], inps[bGinitial:]
 
 		assignment := g.Circuit.Assign(
-			common.SliceToChunkedSlice(inputs, g.chunkSize),
+			common.SliceToChunkedSlice(inputs, g.chunkSize*g.Circuit.InputArity()),
 			g.gkrNCore,
 		)
 
@@ -100,6 +105,7 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 
 		iterator.Chain(gkrProof.ClaimsLeft)
 		iterator.Chain(gkrProof.ClaimsRight)
+
 	}
 
 	val, finished := iterator.Next()

@@ -48,7 +48,7 @@ func TestGadget(t *testing.T) {
 	hashes := make([]fr.Element, n)
 
 	for i := range preimages {
-		preimages[i].SetRandom()
+		preimages[i].SetUint64(uint64(i))
 		hash.MimcUpdateInplace(&hashes[i], preimages[i])
 	}
 
@@ -63,18 +63,12 @@ func TestGadget(t *testing.T) {
 	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
 	assignment.Assign()
 
-	proverOpts := func(opt *backend.ProverOption) error {
-		opt.HintFunctions = append(
-			opt.HintFunctions,
-			assignment.Gadget.InitialRandomnessHint,
-			assignment.Gadget.HashHint,
-			assignment.Gadget.GkrProverHint,
-		)
-		return nil
-	}
-
 	pk, _ := groth16.DummySetup(r1cs)
-	_, err = groth16.Prove(r1cs, pk, &assignment, proverOpts)
+	_, err = groth16.Prove(r1cs, pk, &assignment, backend.WithHints(
+		assignment.Gadget.InitialRandomnessHint,
+		assignment.Gadget.HashHint,
+		assignment.Gadget.GkrProverHint,
+	))
 
 	assert.NoError(t, err)
 

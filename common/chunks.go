@@ -43,7 +43,7 @@ func SliceToChunkedSlice(slice []fr.Element, chunkSize int) [][]fr.Element {
 	}
 
 	// Then fills a double slice of fr.Element with the passed slice
-	res := make([][]fr.Element, len(slice)/chunkSize)
+	res := make([][]fr.Element, 0, len(slice)/chunkSize)
 	for i := 0; i < len(slice); i += chunkSize {
 		res = append(res, slice[i:i+chunkSize])
 	}

@@ -42,8 +42,8 @@ type GkrGadget struct {
 	chunkSize int
 	gkrNCore  int
 
-	provingKey *groth16.ProvingKey `gnark:"-"`
-	proof      groth16.Proof       `gnark:"-"`
+	provingKey groth16.ProvingKey `gnark:"-"`
+	proof      groth16.Proof      `gnark:"-"`
 
 	// Internal state of the GetProofHint() closure
 	getProofHintState struct {
@@ -62,6 +62,10 @@ func NewGkrGadget() *GkrGadget {
 		ioStore:   NewIoStore(&mimc, 16),
 		Circuit:   mimc,
 		chunkSize: DEFAULT_CHUNK_SIZE,
+		getProofHintState: struct {
+			gkrProofIterator ChainedSlicesIterator "gnark:\"-\""
+			computeProof     bool                  "gnark:\"-\""
+		}{computeProof: true},
 	}
 }
 
@@ -163,8 +167,10 @@ func (g *GkrGadget) Close(cs frontend.API) {
 	// Get the initial randomness
 	ios := g.ioStore.DumpForProverMultiExp()
 	initialRandomness := cs.NewHint(g.InitialRandomnessHint, VariableToInterfaceSlice(ios)...)
-	cs.AssertIsEqual(g.InitialRandomness, initialRandomness)
 
 	// Run GKR verifier in the define
 	g.GkrProof(cs, initialRandomness, bN)
+
+	// The last thing we do is checking that the initialRandomness matches the public one
+	cs.AssertIsEqual(g.InitialRandomness, initialRandomness)
 }
