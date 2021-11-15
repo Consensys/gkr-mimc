@@ -27,16 +27,23 @@ func NewVerifier(bN int, circuit circuit.Circuit) Verifier {
 func (v *Verifier) Verify(
 	proof Proof,
 	inputs, outputs [][]fr.Element,
+	qPrime, q []fr.Element,
 ) bool {
 
 	nLayers := len(v.circuit.Layers)
 
-	qPrime, q := GetInitialQPrimeAndQ(v.bN, v.circuit.Layers[nLayers-1].BGOutputs)
+	if len(qPrime) == 0 && len(q) == 0 {
+		qPrime, q = GetInitialQPrimeAndQ(v.bN, v.circuit.Layers[nLayers-1].BGOutputs)
+	}
+
 	var qL, qR []fr.Element
+
+	qqPrime := append(append([]fr.Element{}, q...), qPrime...)
 
 	claim := polynomial.EvaluateChunked(
 		polynomial.AsChunkedBookKeepingTable(outputs),
-		append(append([]fr.Element{}, q...), qPrime...),
+		qqPrime,
+
 	)
 
 	sumcheckVerifier := sumcheck.Verifier{}

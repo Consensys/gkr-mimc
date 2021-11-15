@@ -16,10 +16,16 @@ func AsChunkedBookKeepingTable(x [][]fr.Element) []BookKeepingTable {
 }
 
 // Always starts by the last elements
+// If there is only one chunk, just returns it
 func chunkedEvalRecombine(bkts []BookKeepingTable, qs []fr.Element) BookKeepingTable {
 	logNChunks := common.Log2Ceil(len(bkts))
 	if logNChunks != len(qs) {
-		panic("q and bkts sizes are not compatible")
+		panic("q and bkts sizes are not consistents")
+	}
+
+	// If there is only one chunk, we just return it
+	if len(qs) == 0 {
+		return bkts[0]
 	}
 
 	var inp, res []BookKeepingTable

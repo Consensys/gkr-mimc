@@ -95,7 +95,7 @@ func TestMimc(t *testing.T) {
 	prover := gkr.NewProver(mimcCircuit, assignment)
 	proof := prover.Prove(1, []fr.Element{}, []fr.Element{})
 	verifier := gkr.NewVerifier(bN, mimcCircuit)
-	valid := verifier.Verify(proof, inputs, outputs)
+	valid := verifier.Verify(proof, inputs, outputs, []fr.Element{}, []fr.Element{})
 	// An error here mostly indicate a problem with the degree calculator
 	assert.True(t, valid, "GKR verifier refused")
 }

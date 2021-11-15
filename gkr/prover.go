@@ -35,6 +35,7 @@ func NewProver(circuit circuit.Circuit, assignment circuit.Assignment) Prover {
 
 // GetInitialQPrimeAndQ returns the initial randomness of the protocol
 func GetInitialQPrimeAndQ(bN, bG int) ([]fr.Element, []fr.Element) {
+
 	q := make([]fr.Element, bG)
 	qPrime := make([]fr.Element, bN)
 

@@ -83,7 +83,7 @@ func TestMultiBGs(t *testing.T) {
 	p := NewProver(c, a)
 	proof := p.Prove(1, []fr.Element{}, []fr.Element{})
 	v := NewVerifier(1, c)
-	validity := v.Verify(proof, inputsV, outputsV)
+	validity := v.Verify(proof, inputsV, outputsV, []fr.Element{}, []fr.Element{})
 
 	assert.Equal(
 		t,
@@ -168,7 +168,7 @@ func TestGKR(t *testing.T) {
 	p := NewProver(c, a)
 	proof := p.Prove(1, []fr.Element{}, []fr.Element{})
 	v := NewVerifier(1, c)
-	validity := v.Verify(proof, inputs, outputs)
+	validity := v.Verify(proof, inputs, outputs, []fr.Element{}, []fr.Element{})
 
 	assert.Equal(
 		t,

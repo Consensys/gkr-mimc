@@ -24,7 +24,7 @@ func PrettyStringFr(x fr.Element) string {
 func FrSliceToString(slice []fr.Element) string {
 	res := "["
 	for _, x := range slice {
-		res += fmt.Sprintf("%v, ", PrettyStringFr(x))
+		res += fmt.Sprintf("%v, ", x.String())
 	}
 	res += "]"
 	return res
