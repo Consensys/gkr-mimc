@@ -36,7 +36,7 @@ func (c *ChainedSlicesIterator) Next() (val fr.Element, finished bool) {
 		return fr.Element{}, true
 	}
 	val = c.slices[c.index][c.indexInner]
-	return val, false
+	return val, c.incIndices()
 }
 
 // update the index and indexInner so they point to the next location
