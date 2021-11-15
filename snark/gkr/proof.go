@@ -69,6 +69,8 @@ func (p *Proof) AssertValid(
 	)
 	cs.AssertIsEqual(expectedTotalClaim, actualTotalClaim)
 
+	cs.Println(expectedTotalClaim, actualTotalClaim, p.ClaimsLeft[nLayers-1], p.ClaimsRight[nLayers-1])
+
 	var qL, qR, qPrime []frontend.Variable
 
 	for layer := nLayers - 2; layer >= 0; layer-- {

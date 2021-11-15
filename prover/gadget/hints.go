@@ -83,29 +83,39 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 
 		inputs, inps := inps[:nInputs], inps[nInputs:]
 		// The output: here is passed to force the solver to wait for all the output
-		_, inps = inps[:nOutputs], inps[nOutputs:]
+		outputs, inps := inps[:nOutputs], inps[nOutputs:]
 		qPrime, inps := inps[:bN], inps[bN:]
 		q, inps := inps[:bGinitial], inps[bGinitial:]
 
+		inputChunkSize := g.chunkSize * g.Circuit.InputArity()
+		outputChunkSize := g.chunkSize * g.Circuit.OutputArity()
+
 		assignment := g.Circuit.Assign(
-			common.SliceToChunkedSlice(inputs, g.chunkSize*g.Circuit.InputArity()),
+			common.SliceToChunkedSlice(inputs, inputChunkSize),
 			g.gkrNCore,
 		)
 
-		prover := gkrNative.NewProver(
-			g.Circuit,
-			assignment,
-		)
-
+		prover := gkrNative.NewProver(g.Circuit, assignment)
 		gkrProof := prover.Prove(g.gkrNCore, qPrime, q)
 
-		for _, sumPi := range gkrProof.SumcheckProofs {
-			iterator.Chain(sumPi.PolyCoeffs...)
+		// For debug : only -> Check that the proof verifies
+		verifier := gkrNative.NewVerifier(bN, g.Circuit)
+		valid := verifier.Verify(gkrProof,
+			common.SliceToChunkedSlice(inputs, inputChunkSize),
+			common.SliceToChunkedSlice(outputs, outputChunkSize),
+			qPrime, q,
+		)
+
+		common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
+
+		// The proof must be iterated in the order we gather its elements
+		// Thus for each layer (in decreasing order), we return the sumcheck proof, the left/right claims
+		nLayers := len(gkrProof.SumcheckProofs)
+		for layer := nLayers - 1; layer >= 0; layer-- {
+			iterator.Chain(gkrProof.SumcheckProofs[layer].PolyCoeffs...)
+			// Oddly, the claimRight is read before the claimLeft. The order matters here.
+			iterator.Chain([]fr.Element{gkrProof.ClaimsRight[layer], gkrProof.ClaimsLeft[layer]})
 		}
-
-		iterator.Chain(gkrProof.ClaimsLeft)
-		iterator.Chain(gkrProof.ClaimsRight)
-
 	}
 
 	val, finished := iterator.Next()

@@ -33,6 +33,7 @@ func (c *ChainedSlicesIterator) SetCapacity(cap int) {
 // it will panic if we call Next() once more
 func (c *ChainedSlicesIterator) Next() (val fr.Element, finished bool) {
 	if c.isFinished() {
+		// Does not do anything, indicate the iterator was already finished
 		return fr.Element{}, true
 	}
 	val = c.slices[c.index][c.indexInner]
@@ -44,7 +45,7 @@ func (c *ChainedSlicesIterator) Next() (val fr.Element, finished bool) {
 func (c *ChainedSlicesIterator) incIndices() bool {
 	// No need to check a second time that the iterator was not consumed. We do it in Next already.
 	// If the inner slices is not iterated over completely, only increment the inner index
-	if c.indexInner+1 < len(c.slices) {
+	if c.indexInner+1 < len(c.slices[c.index]) {
 		c.indexInner++
 		return false
 	}
@@ -54,7 +55,7 @@ func (c *ChainedSlicesIterator) incIndices() bool {
 	c.index++
 
 	// Then, return
-	return c.index >= len(c.slices)
+	return c.isFinished()
 }
 
 // Returns true iff the iterator contains no more items

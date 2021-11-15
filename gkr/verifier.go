@@ -43,7 +43,6 @@ func (v *Verifier) Verify(
 	claim := polynomial.EvaluateChunked(
 		polynomial.AsChunkedBookKeepingTable(outputs),
 		qqPrime,
-
 	)
 
 	sumcheckVerifier := sumcheck.Verifier{}

@@ -25,6 +25,38 @@ func randomInputs(nChunks, bN int) [][]fr.Element {
 	return res
 }
 
+func TestChunkOne(t *testing.T) {
+	// Initialize the circuit
+	mimcCircuit := CreateMimcCircuit()
+
+	inputs := make([][]fr.Element, 1)
+	inputs[0] = make([]fr.Element, 32)
+
+	for i := 0; i < 10; i++ {
+		inputs[0][i].SetUint64(uint64(i))
+	}
+
+	assignment := mimcCircuit.Assign(inputs, 1)
+	outputs := assignment.Values[91]
+
+	q := []fr.Element{}
+	qPrime := make([]fr.Element, 4)
+	qPrime[0].SetString("12674017531719144457961514489412020155949820310579084257497356610663280697266")
+	qPrime[1].SetString("15680445612855895897639426799393555724157944733839973003296739765452665576581")
+	qPrime[2].SetString("20103910461169496479178391262760032563004404394843160487237343404104208642606")
+	qPrime[3].SetString("17694881679643180392697529697365820333255860254082315016447853956318621618728")
+
+	prover := gkr.NewProver(mimcCircuit, assignment)
+	proof := prover.Prove(1, qPrime, q)
+
+	// fmt.Printf("Output = %v \n", common.FrSliceToString(outputs[0]))
+
+	verifier := gkr.NewVerifier(4, mimcCircuit)
+	valid := verifier.Verify(proof, inputs, outputs, qPrime, q)
+
+	assert.Truef(t, valid, "Verifier did not pass")
+}
+
 func TestMimc(t *testing.T) {
 
 	// Initialize the circuit
