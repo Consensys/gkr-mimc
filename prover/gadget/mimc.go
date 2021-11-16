@@ -145,7 +145,6 @@ func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variabl
 		polynomial.NewMultilinearByValues(g.ioStore.InputsForVerifier(g.chunkSize)),
 		polynomial.NewMultilinearByValues(g.ioStore.OutputsForVerifier(g.chunkSize)),
 	)
-
 }
 
 // Pad and close GKR, run the proof

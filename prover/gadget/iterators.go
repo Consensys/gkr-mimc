@@ -37,25 +37,22 @@ func (c *ChainedSlicesIterator) Next() (val fr.Element, finished bool) {
 		return fr.Element{}, true
 	}
 	val = c.slices[c.index][c.indexInner]
-	return val, c.incIndices()
+	c.incIndices()
+	return val, false
 }
 
 // update the index and indexInner so they point to the next location
 // Returns true iff the iteration is finished
-func (c *ChainedSlicesIterator) incIndices() bool {
+func (c *ChainedSlicesIterator) incIndices() {
 	// No need to check a second time that the iterator was not consumed. We do it in Next already.
 	// If the inner slices is not iterated over completely, only increment the inner index
 	if c.indexInner+1 < len(c.slices[c.index]) {
 		c.indexInner++
-		return false
 	}
 
 	// Otherwise, point at the first entry of the next slice
 	c.indexInner = 0
 	c.index++
-
-	// Then, return
-	return c.isFinished()
 }
 
 // Returns true iff the iterator contains no more items
