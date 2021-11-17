@@ -6,12 +6,12 @@ import (
 )
 
 // Gate evaluate either a cipherGate or a copy gate
-type Gate func(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable
+type Gate func(cs frontend.API, vL, vR frontend.Variable) frontend.Variable
 
 // CipherGate returns a cipher gate
 func CipherGate(ark fr.Element) Gate {
-	return func(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
-		tmp := cs.Add(vR, cs.Constant(ark))
+	return func(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
+		tmp := cs.Add(vR, ark)
 		cipher := cs.Mul(tmp, tmp)
 		cipher = cs.Mul(cipher, tmp)
 		cipher = cs.Mul(cipher, cipher)
@@ -22,7 +22,7 @@ func CipherGate(ark fr.Element) Gate {
 
 // CopyGate returns a copy gate
 func CopyGate() Gate {
-	return func(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+	return func(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
 		return vL
 	}
 }

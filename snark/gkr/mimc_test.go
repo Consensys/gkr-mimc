@@ -2,19 +2,21 @@ package gkr
 
 import (
 	"fmt"
+	"runtime"
+	"testing"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
 	"github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
-	"runtime"
-	"testing"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
 )
 
 type GKRMimcTestCircuit struct {
@@ -44,13 +46,13 @@ func (c *GKRMimcTestCircuit) Assign(
 ) {
 	c.Proof.Assign(proof)
 	for i := range qInitialprime {
-		c.QInitialprime[i].Assign(qInitialprime[i])
+		c.QInitialprime[i] = qInitialprime[i]
 	}
 	c.VInput.AssignFromChunkedBKT(inputs)
 	c.VOutput.AssignFromChunkedBKT(outputs)
 }
 
-func (c *GKRMimcTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
 	c.Proof.AssertValid(cs, c.Circuit, c.QInitial, c.QInitialprime, c.VInput, c.VOutput)
 	return nil
 }
@@ -58,12 +60,10 @@ func (c *GKRMimcTestCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSyste
 func TestMimcCircuit(t *testing.T) {
 
 	bN := 2
-	assert := groth16.NewAssert(t)
+	assert := test.NewAssert(t)
 
 	mimcCircuit := AllocateGKRMimcTestCircuit(bN)
 	// Attempt to compile the circuit
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
-	assert.NoError(err)
 
 	// Generate the witness values by running the prover
 	var witness GKRMimcTestCircuit
@@ -81,9 +81,9 @@ func TestMimcCircuit(t *testing.T) {
 	witness = AllocateGKRMimcTestCircuit(bN)
 	witness.Assign(proof, inputs, outputs, qInitialprime)
 
-	assert.SolvingSucceeded(r1cs, &witness)
+	assert.SolvingSucceeded(&mimcCircuit, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
 	// Takes 200sec on my laptop
-	// assert.ProverSucceeded(r1cs, &witness)
+	// assert.ProverSucceeded( &witness)
 }
 
 func BenchmarkMimcCircuit(b *testing.B) {
