@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
+	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
 	groth16 "github.com/consensys/gkr-mimc/prover/variants"
 	"github.com/consensys/gkr-mimc/snark/gkr"
@@ -35,8 +36,8 @@ func init() {
 // Helper for performing hashes using GKR
 type GkrGadget struct {
 	// Pointers to variables that must have been allocated somewhere else
-	ioStore           IoStore `gnark:"-"`
-	InitialRandomness frontend.Variable
+	ioStore           IoStore           `gnark:"-"`
+	InitialRandomness frontend.Variable `gnark:",public"`
 
 	Circuit   circuit.Circuit `gnark:"-"`
 	chunkSize int
@@ -45,11 +46,7 @@ type GkrGadget struct {
 	provingKey groth16.ProvingKey `gnark:"-"`
 	proof      groth16.Proof      `gnark:"-"`
 
-	// Internal state of the GetProofHint() closure
-	getProofHintState struct {
-		gkrProofIterator ChainedSlicesIterator `gnark:"-"`
-		computeProof     bool                  `gnark:"-"`
-	}
+	gkrProof *gkrNative.Proof `gnark:"-"`
 }
 
 // NewGkrGadget
@@ -62,10 +59,6 @@ func NewGkrGadget() *GkrGadget {
 		ioStore:   NewIoStore(&mimc, 16),
 		Circuit:   mimc,
 		chunkSize: DEFAULT_CHUNK_SIZE,
-		getProofHintState: struct {
-			gkrProofIterator ChainedSlicesIterator "gnark:\"-\""
-			computeProof     bool                  "gnark:\"-\""
-		}{computeProof: true},
 	}
 }
 
@@ -100,6 +93,7 @@ func (g *GkrGadget) updateHasherWithZeroes(cs frontend.API) {
 
 // Gadget method to generate the proof
 func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variable, bN int) {
+
 	// Expands the initial randomness into q and qPrime
 	q := make([]frontend.Variable, 0)
 	qPrime := make([]frontend.Variable, bN)
@@ -115,28 +109,36 @@ func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variabl
 		tmp = cs.Mul(tmp, tmp)
 	}
 
-	proofInputsVar := append(g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q), append(q, qPrime...)...)
-	proofInputs := VariableToInterfaceSlice(proofInputsVar)
+	proofInputs := g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q)
 
 	// Preallocates the proof. It's simpler than recomputing
 	// all the dimensions of every slice it contains
 	proof := gkr.AllocateProof(bN, g.Circuit)
-	for i, sumPi := range proof.SumcheckProofs {
-		for j, poly := range sumPi.HPolys {
-			for k := range poly.Coefficients {
-				// The same hint is going to return everytime a different value
-				// The first time it is called, it is going to return all the fields
-				proof.SumcheckProofs[i].HPolys[j].Coefficients[k] = cs.NewHint(
-					g.GkrProverHint,
-					proofInputs...,
+	for layer, sumPi := range proof.SumcheckProofs {
+		for polyIdx, poly := range sumPi.HPolys {
+			for coeffIds := range poly.Coefficients {
+				// Set the 4 entries to tell the hint to return a given value of the proof
+				copy(
+					proofInputs[:4],
+					[]interface{}{cs.Constant(0), cs.Constant(layer), cs.Constant(polyIdx), cs.Constant(coeffIds)},
 				)
+				proof.SumcheckProofs[layer].
+					HPolys[polyIdx].
+					Coefficients[coeffIds] = cs.NewHint(g.GkrProverHint, proofInputs...)
 			}
 		}
 	}
 
 	// Then finally pull the remaining of the proof from the hint
 	for i := range proof.ClaimsLeft {
+		// Set the 4 first entries so that the hint returns the claim lefts
+		copy(
+			proofInputs[:4],
+			[]interface{}{cs.Constant(1), cs.Constant(i), cs.Constant(0), cs.Constant(0)},
+		)
 		proof.ClaimsLeft[i] = cs.NewHint(g.GkrProverHint, proofInputs...)
+		// Returns the claim left but for the same level, only the first entry changes
+		proofInputs[0] = cs.Constant(2)
 		proof.ClaimsRight[i] = cs.NewHint(g.GkrProverHint, proofInputs...)
 	}
 
@@ -149,6 +151,7 @@ func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variabl
 
 // Pad and close GKR, run the proof
 func (g *GkrGadget) Close(cs frontend.API) {
+
 	bN := common.Log2Ceil(g.ioStore.Index())
 	paddedLen := 1 << bN
 
@@ -165,7 +168,7 @@ func (g *GkrGadget) Close(cs frontend.API) {
 
 	// Get the initial randomness
 	ios := g.ioStore.DumpForProverMultiExp()
-	initialRandomness := cs.NewHint(g.InitialRandomnessHint, VariableToInterfaceSlice(ios)...)
+	initialRandomness := cs.NewHint(g.InitialRandomnessHint, ios...)
 
 	// Run GKR verifier in the define
 	g.GkrProof(cs, initialRandomness, bN)

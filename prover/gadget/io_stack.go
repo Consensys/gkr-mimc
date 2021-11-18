@@ -77,24 +77,35 @@ func (io *IoStore) Push(inputs, outputs []frontend.Variable) {
 
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
-func (io *IoStore) DumpForProverMultiExp() []frontend.Variable {
-	res := make([]frontend.Variable, 0)
-	res = append(res, io.inputs...)
-	res = append(res, io.outputs...)
+// The element are also converted to interfaces, in order to please the hint
+func (io *IoStore) DumpForProverMultiExp() []interface{} {
+	nInputs := len(io.inputs)
+	res := make([]interface{}, nInputs+len(io.outputs))
+
+	for i := range io.inputs {
+		res[i] = io.inputs[i]
+	}
+
+	for i := range io.outputs {
+		res[i+nInputs] = io.outputs[i]
+	}
+
 	return res
 }
 
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
-func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []frontend.Variable {
+// The variables are returned in the form of a buffer of interfaces
+// 4 empty entry are appended to the result : they are used by the hint to figure out which
+func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []interface{} {
 
 	nChunks := io.Index() / chunkSize
 	nInputs, nOutputs, bN, bG := len(io.inputs), len(io.outputs), len(qPrimeArg), len(qArg)
-	resSize := nInputs + nOutputs + bN + bG
-	res := make([]frontend.Variable, resSize)
+	resSize := nInputs + nOutputs + bN + bG + 4
+	res := make([]interface{}, resSize)
 
 	// Allocate subslices for each part of the dump
-	drain := res[:]
+	drain := res[4:]
 	dumpedInputs, drain := drain[:nInputs], drain[nInputs:]
 	dumpedOutputs, drain := drain[:nOutputs], drain[nOutputs:]
 	qPrime, drain := drain[:bN], drain[bN:]
@@ -108,9 +119,15 @@ func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Va
 	common.Assert(len(io.outputs) == io.index*io.outputArity, "The output arity is inconsistent")
 	common.Assert(1<<bN == io.index, "bN is inconsistent with the index")
 
-	// Bare copy for qPrime and qArg: Hopefully this works with gnark
-	copy(qPrime, qPrimeArg)
-	copy(q, qArg)
+	// Bare copy for qPrime and qArg.
+	// We can't use copy here because it's `[]interface{} <- []fr.Element`
+	for i := range qPrime {
+		qPrime[i] = qPrimeArg[i]
+	}
+
+	for i := range q {
+		q[i] = qArg[i]
+	}
 
 	// Then assigns the inputs outputs by reordering
 	for msb := 0; msb < nChunks; msb++ {
@@ -186,12 +203,4 @@ func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 	}
 
 	return dumpedOutputs
-}
-
-func VariableToInterfaceSlice(v []frontend.Variable) []interface{} {
-	res := make([]interface{}, len(v))
-	for i := range v {
-		res[i] = v[i]
-	}
-	return res
 }

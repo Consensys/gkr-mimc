@@ -1,6 +1,7 @@
 package gadget
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gkr-mimc/common"
@@ -62,10 +63,11 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 // we need to compute the GkrProof and verify
 // In order to return the fields one after the other, the function is built as a stateful iterator
 func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) error {
-	iterator := &g.getProofHintState.gkrProofIterator
 
-	if g.getProofHintState.computeProof {
-		g.getProofHintState.computeProof = false
+	claims, nLayer, sumRound, coeffIds, inputsBI := inputsBI[0].Uint64(), inputsBI[1].Uint64(),
+		inputsBI[2].Uint64(), inputsBI[3].Uint64(), inputsBI[4:]
+
+	if g.gkrProof == nil {
 
 		bN := common.Log2Ceil(g.ioStore.Index())
 		paddedIndex := 1 << bN
@@ -107,20 +109,29 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 		)
 
 		common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
-
-		// The proof must be iterated in the order we gather its elements
-		// Thus for each layer (in decreasing order), we return the sumcheck proof, the left/right claims
-		nLayers := len(gkrProof.SumcheckProofs)
-		for layer := nLayers - 1; layer >= 0; layer-- {
-			iterator.Chain(gkrProof.SumcheckProofs[layer].PolyCoeffs...)
-			// Oddly, the claimRight is read before the claimLeft. The order matters here.
-			iterator.Chain([]fr.Element{gkrProof.ClaimsRight[layer], gkrProof.ClaimsLeft[layer]})
-		}
+		g.gkrProof = &gkrProof
 	}
 
-	val, finished := iterator.Next()
-	if finished {
-		panic("The hint was called but all the proof elements were returned")
+	var val fr.Element
+	switch claims {
+	default:
+		{
+			panic(fmt.Sprintf("claims was %v \n", claims))
+		}
+	case 0:
+		{
+			// Not a claim, returns the sumcheck poly
+			val = g.gkrProof.SumcheckProofs[nLayer].PolyCoeffs[sumRound][coeffIds]
+		}
+	case 1:
+		{
+			// Returns claimLeft
+			val = g.gkrProof.ClaimsLeft[nLayer]
+		}
+	case 2:
+		{
+			val = g.gkrProof.ClaimsRight[nLayer]
+		}
 	}
 
 	val.ToBigIntRegular(oups)
