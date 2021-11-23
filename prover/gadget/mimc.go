@@ -101,12 +101,16 @@ func (g *GkrGadget) updateHasherWithZeroes(cs frontend.API) {
 	)
 }
 
-// Gadget method to generate the proof
-func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variable, bN int) {
+func (g *GkrGadget) getInitialRandomness(cs frontend.API) (initialRandomness frontend.Variable, qPrime, q []frontend.Variable) {
+	// Get the initial randomness
+	ios := g.ioStore.DumpForProverMultiExp()
+	bN := common.Log2Ceil(g.ioStore.Index())
+
+	initialRandomness = cs.NewHint(g.InitialRandomnessHint, ios...)
 
 	// Expands the initial randomness into q and qPrime
-	q := make([]frontend.Variable, 0)
-	qPrime := make([]frontend.Variable, bN)
+	q = make([]frontend.Variable, 0)
+	qPrime = make([]frontend.Variable, bN)
 
 	tmp := initialRandomness
 	for i := range q {
@@ -119,6 +123,13 @@ func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variabl
 		tmp = cs.Mul(tmp, tmp)
 	}
 
+	return initialRandomness, qPrime, q
+}
+
+// Runs the Gkr Prover
+func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime, q []frontend.Variable) gkr.Proof {
+
+	bN := len(qPrime)
 	proofInputs := g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q)
 
 	// Preallocates the proof. It's simpler than recomputing
@@ -152,14 +163,10 @@ func (g *GkrGadget) GkrProof(cs frontend.API, initialRandomness frontend.Variabl
 		proof.ClaimsRight[i] = cs.NewHint(g.GkrProverHint, proofInputs...)
 	}
 
-	proof.AssertValid(
-		cs, g.Circuit, q, qPrime,
-		polynomial.NewMultilinearByValues(g.ioStore.InputsForVerifier(g.chunkSize)),
-		polynomial.NewMultilinearByValues(g.ioStore.OutputsForVerifier(g.chunkSize)),
-	)
+	return proof
 }
 
-// Pad and close GKR, run the proof
+// Pad and close GKR, run the proof then call the verifier
 func (g *GkrGadget) Close(cs frontend.API) {
 
 	bN := common.Log2Ceil(g.ioStore.Index())
@@ -176,12 +183,15 @@ func (g *GkrGadget) Close(cs frontend.API) {
 		g.chunkSize = paddedLen
 	}
 
-	// Get the initial randomness
-	ios := g.ioStore.DumpForProverMultiExp()
-	initialRandomness := cs.NewHint(g.InitialRandomnessHint, ios...)
+	initialRandomness, qPrime, q := g.getInitialRandomness(cs)
 
-	// Run GKR verifier in the define
-	g.GkrProof(cs, initialRandomness, bN)
+	proof := g.getGkrProof(cs, qPrime, q)
+
+	proof.AssertValid(
+		cs, g.Circuit, q, qPrime,
+		polynomial.NewMultilinearByValues(g.ioStore.InputsForVerifier(g.chunkSize)),
+		polynomial.NewMultilinearByValues(g.ioStore.OutputsForVerifier(g.chunkSize)),
+	)
 
 	// The last thing we do is checking that the initialRandomness matches the public one
 	cs.AssertIsEqual(g.InitialRandomness, initialRandomness)
