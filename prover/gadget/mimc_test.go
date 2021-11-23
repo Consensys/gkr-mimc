@@ -8,9 +8,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/notinternal/backend/bn254/cs"
-	"github.com/consensys/gnark/notinternal/backend/bn254/groth16"
-	"github.com/consensys/gnark/notinternal/backend/bn254/witness"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -65,27 +62,7 @@ func TestGadget(t *testing.T) {
 	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
 	assignment.Assign()
 
-	witness := witness.Witness{}
-	err = witness.FromFullAssignment(&assignment)
-	assert.NoError(t, err)
-
-	opts, _ := backend.NewProverOption(backend.WithHints(
-		assignment.Gadget.InitialRandomnessHint,
-		assignment.Gadget.HashHint,
-		assignment.Gadget.GkrProverHint,
-	))
-
-	r1csHard := r1cs.(*cs.R1CS)
-	wires, a, _, c, err := groth16.Solve(r1csHard, witness, opts)
-	nConstraint := len(a)
-
-	// Fixes the solution with the right initial randomness
-	a[nConstraint-1] = c[nConstraint-1]
-	wires[n*2+1] = c[nConstraint-1]
-
-	// Just check that the witness we get by
-	witness[20] = c[nConstraint-1]
-	wires, a, _, c, err = groth16.Solve(r1csHard, witness, opts)
+	_, err = assignment.Solve(r1cs)
 	assert.NoError(t, err)
 
 }

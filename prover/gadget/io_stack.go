@@ -12,12 +12,14 @@ const DEFAULT_IO_STORE_ALLOCATION_EPOCH int = 32
 
 // Stores the inputs and is responsible for the reordering tasks
 type IoStore struct {
-	inputs      []frontend.Variable
-	outputs     []frontend.Variable
-	allocEpoch  int
-	index       int
-	inputArity  int
-	outputArity int
+	outputsVarIds []int
+	inputsVarIds  []int
+	inputs        []frontend.Variable
+	outputs       []frontend.Variable
+	allocEpoch    int
+	index         int
+	inputArity    int
+	outputArity   int
 }
 
 // Creates a new ioStore for the given circuit
@@ -53,6 +55,18 @@ func (io *IoStore) allocateForOneMore() {
 // Return the number of element allocated
 func (io *IoStore) Index() int {
 	return io.index
+}
+
+func (io *IoStore) PushVarIds(inputs, outputs []int) {
+	// Check that the dimension of the provided arrays is consistent with what was expected
+	if len(inputs) != io.inputArity || len(outputs) != io.outputArity {
+		panic(fmt.Sprintf("Expected inputs/outputs to have size %v/%v but got %v/%v",
+			io.inputArity, io.outputArity, len(inputs), len(outputs),
+		))
+	}
+
+	io.inputsVarIds = append(io.inputsVarIds, inputs...)
+	io.outputsVarIds = append(io.outputsVarIds, outputs...)
 }
 
 // Add an element in the ioStack
