@@ -2,11 +2,7 @@ package gadget
 
 import (
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/notinternal/backend/bn254/cs"
-	"github.com/consensys/gnark/notinternal/backend/bn254/groth16"
-	"github.com/consensys/gnark/notinternal/backend/bn254/witness"
 )
 
 // Interface to be implemented by any circuit willing to use Gkr
@@ -46,45 +42,6 @@ func (c *Circuit) Define(curveID ecc.ID, cs frontend.API) error {
 // Assigns for the subcircuit
 func (c *Circuit) Assign() {
 	c.Gadget.InitialRandomness.Assign(0)
-}
-
-// The first error it returns is the "solver error". So we expect it.
-// The second one is for unexected errors
-func (c *Circuit) partialSolve(compiled frontend.CompiledConstraintSystem, opts ...func(opt *backend.ProverOption) error) (Solution, error, error) {
-	witness := witness.Witness{}
-	err := witness.FromFullAssignment(c)
-
-	if err != nil {
-		return Solution{}, nil, err
-	}
-
-	opts = append(opts, backend.WithHints(c.Gadget.InitialRandomnessHint, c.Gadget.HashHint, c.Gadget.GkrProverHint))
-	proverOption, err := backend.NewProverOption(opts...)
-
-	if err != nil {
-		return Solution{}, nil, err
-	}
-
-	r1csHard := compiled.(*cs.R1CS)
-	wires, aSol, bSol, cSol, _ := groth16.Solve(r1csHard, witness, proverOption)
-
-	return Solution{A: aSol, B: bSol, C: cSol, Wires: wires}, err, nil
-}
-
-// Returns a solution to the circuit
-func (c *Circuit) Solve(compiled frontend.CompiledConstraintSystem, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
-	solution, solverError, err := c.partialSolve(compiled, opt...)
-	if err != nil {
-		// Got an unexpected error
-		return Solution{}, err
-	}
-
-	if !solution.Fix() {
-		// The solver had a non fixable error, we return it
-		return Solution{}, solverError
-	}
-
-	return solution, err
 }
 
 // Options for the `Circuit` constructor
