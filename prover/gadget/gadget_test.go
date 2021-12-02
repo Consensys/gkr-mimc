@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
 	"github.com/stretchr/testify/assert"
 )
@@ -54,7 +53,7 @@ func TestGadget(t *testing.T) {
 	innerCircuit := AllocateTestGadgetCircuit(n)
 	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16), WithNCore(1))
 
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circuit)
+	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
 
 	innerAssignment := AllocateTestGadgetCircuit(n)

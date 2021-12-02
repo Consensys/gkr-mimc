@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gkr-mimc/examples"
 	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
-	groth16 "github.com/consensys/gkr-mimc/prover/variants"
 	"github.com/consensys/gkr-mimc/snark/gkr"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -43,8 +42,9 @@ type GkrGadget struct {
 	chunkSize int
 	gkrNCore  int
 
-	provingKey groth16.ProvingKey `gnark:"-"`
-	proof      groth16.Proof      `gnark:"-"`
+	r1cs       *R1CS       `gnark:"-"`
+	provingKey *ProvingKey `gnark:"-"`
+	proof      *Proof      `gnark:"-"`
 
 	gkrProof *gkrNative.Proof `gnark:"-"`
 }

@@ -30,25 +30,31 @@ func (g *GkrGadget) HashHint(curve ecc.ID, inps []*big.Int, outputs *big.Int) er
 
 // Hint for generating the initial randomness
 func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.Int) error {
-	scalars := make([]fr.Element, len(inpss))
-	for i := range scalars {
-		scalars[i].SetBigInt(inpss[i])
+
+	// Takes a subslice and convert to fr.Element
+	subSlice := func(array []*big.Int, indices []int, offset int) []fr.Element {
+		res := make([]fr.Element, len(indices))
+		for i, idx := range indices {
+			res[i].SetBigInt(array[idx+offset])
+		}
+		return res
 	}
 
-	// Compute the KXiBar alongside its proof of computation
-	// g.proof = groth16.Proof{}
-	// g.proof.T.MultiExp(g.provingKey.G1.KAlphaXi, inps, ecc.MultiExpConfig{})
-	var KSumXiBar bn254.G1Affine
+	// Separate the scalars for the public/private parts
+	scalarsPub := subSlice(inpss, g.r1cs.pubGkrIo, 0)
+	scalarsPriv := subSlice(inpss, g.r1cs.privGkrIo, 0)
 
-	// TODO: Handles the proving key generation
-	g.provingKey.G1.KAlphaXi = make([]bn254.G1Affine, len(scalars))
+	// Compute the K associated to the gkr public/private inputs
+	var KrsGkr bn254.G1Affine
+	KrsGkr.MultiExp(g.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{})
+	g.proof.KrsGkrPriv.MultiExp(g.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{})
 
-	KSumXiBar.MultiExp(g.provingKey.G1.KAlphaXi, scalars, ecc.MultiExpConfig{})
+	KrsGkr.Add(&KrsGkr, &g.proof.KrsGkrPriv)
 
 	// Hash the uncompressed point, then get a field element out of it
-	bytesKSumXiBAr := KSumXiBar.RawBytes()
+	bytesKrsGkr := KrsGkr.RawBytes()
 	keccak := sha3.NewLegacyKeccak256()
-	keccak.Write(bytesKSumXiBAr[:])
+	keccak.Write(bytesKrsGkr[:])
 	hashed := keccak.Sum(nil)
 
 	// Derive the initial randomness from the hash

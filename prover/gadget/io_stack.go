@@ -79,10 +79,10 @@ func (io *IoStore) Push(inputs, outputs []frontend.Variable) {
 		))
 	}
 
-	// Performs an allocation
+	// Performs an allocation if necessary
 	io.allocateForOneMore()
 
-	// If necessary
+	// Then append
 	io.inputs = append(io.inputs, inputs...)
 	io.outputs = append(io.outputs, outputs...)
 
@@ -92,6 +92,7 @@ func (io *IoStore) Push(inputs, outputs []frontend.Variable) {
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
 // The element are also converted to interfaces, in order to please the hint
+// This is what we use `for loops` instead of `append` for.
 func (io *IoStore) DumpForProverMultiExp() []interface{} {
 	nInputs := len(io.inputs)
 	res := make([]interface{}, nInputs+len(io.outputs))

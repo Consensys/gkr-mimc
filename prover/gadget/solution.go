@@ -62,8 +62,8 @@ func (c *Circuit) partialSolve(compiled frontend.CompiledConstraintSystem, opts 
 }
 
 // Returns a solution to the circuit
-func (c *Circuit) Solve(compiled frontend.CompiledConstraintSystem, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
-	solution, solverError, err := c.partialSolve(compiled, opt...)
+func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
+	solution, solverError, err := c.partialSolve(&compiled.r1cs, opt...)
 	if err != nil {
 		// Got an unexpected error
 		return Solution{}, err
