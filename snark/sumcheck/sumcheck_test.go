@@ -1,13 +1,13 @@
 package sumcheck
 
 import (
-	"github.com/consensys/gkr-mimc/sumcheck"
 	"testing"
 
+	"github.com/consensys/gkr-mimc/sumcheck"
+
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
-	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
 )
 
 type SumcheckCircuit struct {
@@ -27,7 +27,7 @@ func AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime int) SumcheckCircui
 	}
 }
 
-func (scc *SumcheckCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (scc *SumcheckCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 	hR, hL, hPrime, _ := scc.Proof.AssertValid(cs, scc.InitialClaim, 1)
 	for i := range hR {
 		cs.AssertIsEqual(hL[i], scc.ExpectedQL[i])
@@ -44,12 +44,12 @@ func (scc *SumcheckCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem
 func TestSumcheckCircuit(t *testing.T) {
 
 	var bN, bG, degHL, degHR, degHPrime = 4, 1, 2, 8, 8
-	assert := groth16.NewAssert(t)
+	assert := test.NewAssert(t)
 
 	// Attempts to compile the circuit
 	scc := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &scc)
-	assert.NoError(err)
+	//r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &scc)
+	//assert.NoError(err)
 
 	// Runs a test sumcheck prover to get witness values
 	scProver := sumcheck.InitializeProverForTests(bN)
@@ -74,6 +74,6 @@ func TestSumcheckCircuit(t *testing.T) {
 		witness.ExpectedQPrime[i].Assign(expectedQPrime[i])
 	}
 
-	assert.SolvingSucceeded(r1cs, &witness)
-	assert.ProverSucceeded(r1cs, &witness)
+	assert.SolvingSucceeded(&scc, &witness)
+	assert.ProverSucceeded(&scc, &witness)
 }

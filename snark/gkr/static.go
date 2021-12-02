@@ -7,4 +7,4 @@ import (
 )
 
 // StaticTableGenerator returns a prefolded static table
-type StaticTableGenerator func(cs *frontend.ConstraintSystem, Q []frontend.Variable) polynomial.MultilinearByValues
+type StaticTableGenerator func(cs frontend.API, Q []frontend.Variable) polynomial.MultilinearByValues

@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
 )
 
 type TestMimcCircuit struct {
@@ -21,7 +22,7 @@ type TestMimcCircuit struct {
 	Y []frontend.Variable
 }
 
-func (c *TestMimcCircuit) Define(curveID ecc.ID, cs *frontend.ConstraintSystem) error {
+func (c *TestMimcCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 	for k := range c.X {
 		y := MimcHash(cs, c.X[k]...)
 		cs.AssertIsEqual(c.Y[k], y)
@@ -54,10 +55,10 @@ func (c *TestMimcCircuit) Assign(x [][]fr.Element) {
 
 func TestMimc(t *testing.T) {
 
-	assert := groth16.NewAssert(t)
+	assert := test.NewAssert(t)
 	c := Allocate(5, 5)
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
-	assert.NoError(err)
+//	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
+//	assert.NoError(err)
 
 	// Creates a random test vector
 	x := [][]fr.Element{
@@ -70,7 +71,7 @@ func TestMimc(t *testing.T) {
 
 	witness := Allocate(5, 5)
 	witness.Assign(x)
-	assert.SolvingSucceeded(r1cs, &witness)
+	assert.SolvingSucceeded(&c, &witness)
 }
 
 func BenchmarkMimc(b *testing.B) {
