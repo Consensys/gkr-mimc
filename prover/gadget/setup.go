@@ -17,9 +17,10 @@ type ProvingKey struct {
 
 // Wrapper around the verifying key
 type VerifyingKey struct {
-	vk                  groth16.VerifyingKey
-	deltaSigmaInvNeg    bn254.G2Affine
-	pubKNotGkr, pubKGkr []bn254.G1Affine
+	vk                          groth16.VerifyingKey
+	deltaSigmaInvNeg            bn254.G2Affine
+	pubKNotGkr, pubKGkr         []bn254.G1Affine
+	pubGkrVarID, pubNotGkrVarID []int
 }
 
 // Wraps the setup of gnark
@@ -74,7 +75,9 @@ func Setup(r1cs R1CS) (ProvingKey, VerifyingKey, error) {
 		vk:               *vkType,
 		deltaSigmaInvNeg: deltaSigmaInvNeg,
 		pubKGkr:          pkRes.pubKGkr,
-		pubKNotGkr:       subSlice(vkType.G1.K, r1cs.pubNotGkrVarID, 1),
+		pubGkrVarID:      r1cs.pubGkrVarID,
+		pubKNotGkr:       append([]bn254.G1Affine{vkType.G1.K[0]}, subSlice(vkType.G1.K, r1cs.pubNotGkrVarID, 1)...),
+		pubNotGkrVarID:   r1cs.pubNotGkrVarID,
 	}
 
 	// Shoots the original K part of the proving key

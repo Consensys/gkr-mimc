@@ -28,6 +28,20 @@ func (g *GkrGadget) HashHint(curve ecc.ID, inps []*big.Int, outputs *big.Int) er
 	return nil
 }
 
+// Derives the initial randomness from an elliptic curve point
+func DeriveRandomnessFromPoint(g1 bn254.G1Affine) fr.Element {
+	// Hash the uncompressed point, then get a field element out of it
+	bytesG1 := g1.RawBytes()
+	keccak := sha3.NewLegacyKeccak256()
+	keccak.Write(bytesG1[:])
+	hashed := keccak.Sum(nil)
+
+	// Derive the initial randomness from the hash
+	var randomness fr.Element
+	randomness.SetBytes(hashed)
+	return randomness
+}
+
 // Hint for generating the initial randomness
 func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.Int) error {
 
@@ -51,15 +65,7 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 
 	KrsGkr.Add(&KrsGkr, &g.proof.KrsGkrPriv)
 
-	// Hash the uncompressed point, then get a field element out of it
-	bytesKrsGkr := KrsGkr.RawBytes()
-	keccak := sha3.NewLegacyKeccak256()
-	keccak.Write(bytesKrsGkr[:])
-	hashed := keccak.Sum(nil)
-
-	// Derive the initial randomness from the hash
-	var initialRandomness fr.Element
-	initialRandomness.SetBytes(hashed)
+	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
 
 	initialRandomness.ToBigIntRegular(oups)
 	return nil

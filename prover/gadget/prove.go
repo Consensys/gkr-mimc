@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"runtime"
 
+	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -17,7 +18,6 @@ import (
 type Proof struct {
 	Ar, Krs    bn254.G1Affine
 	Bs         bn254.G2Affine
-	KSumXiBar  bn254.G1Affine
 	KrsGkrPriv bn254.G1Affine
 }
 
@@ -26,8 +26,15 @@ func ComputeProof(
 	r1cs *R1CS,
 	pk *ProvingKey, a, b, c, wireValues []fr.Element,
 	// Computed during the solving
-	proof Proof,
+	proof *Proof,
 ) (*Proof, error) {
+
+	// By now, the Gkr part of the proof should be processed
+	common.Assert(proof != nil, "Passed an empty proof to the prover")
+	common.Assert(proof.KrsGkrPriv != bn254.G1Affine{}, "The proof misses the GkrPriv")
+
+	// Get the number of public variables
+	_, _, pub := r1cs.r1cs.GetNbVariables()
 
 	// Takes a subslice and convert to fr.Element
 	subSlice := func(array []fr.Element, indices []int, offset int) []fr.Element {
@@ -38,9 +45,9 @@ func ComputeProof(
 		return res
 	}
 
-	// Deduplicate and separate the inputs to either pub/priv part
-	privGkrVars := subSlice(wireValues, r1cs.privGkrVarID, 0)
-	privNotGkrVars := subSlice(wireValues, r1cs.privNotGkrVarID, 0)
+	// Deduplicate and separate the non gkr inputs
+	// As the GKR one where already processed by the Hint
+	privNotGkrVars := subSlice(wireValues, r1cs.privNotGkrVarID, pub)
 
 	// Will perform all the computations beside the one involving `K`
 	grothProof, err := ComputeGroth16Proof(&r1cs.r1cs, &pk.pk, a, b, c, wireValues)
@@ -48,22 +55,19 @@ func ComputeProof(
 		panic(err)
 	}
 
-	// Passes the GKR priv part of the multiexp.
-	var KrsPrivGkr, KrsPrivNotGkr bn254.G1Affine
-	KrsPrivGkr.MultiExp(pk.privKGkrSigma, privGkrVars, ecc.MultiExpConfig{})
+	// Complete our proof with the result of groth16
+	proof.Ar = grothProof.Ar
+	proof.Bs = grothProof.Bs
+	proof.Krs = grothProof.Krs
+
+	// Processes the non-GKR priv part of the multiexp.
+	var KrsPrivNotGkr bn254.G1Affine
 	KrsPrivNotGkr.MultiExp(pk.privKGkrSigma, privNotGkrVars, ecc.MultiExpConfig{})
 
-	res := Proof{
-		Ar:         grothProof.Ar,
-		Bs:         grothProof.Bs,
-		Krs:        grothProof.Krs,
-		KrsGkrPriv: KrsPrivGkr,
-	}
-
 	// Complete the Krs part with the part we calculated
-	res.Krs.Add(&res.Krs, &KrsPrivNotGkr)
+	proof.Krs.Add(&proof.Krs, &KrsPrivNotGkr)
 
-	return &res, err
+	return proof, err
 }
 
 // Modified SNARK prover: we additionally passes a puncturedVersion of the values
