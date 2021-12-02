@@ -71,7 +71,7 @@ func TestMimc(t *testing.T) {
 
 	witness := Allocate(5, 5)
 	witness.Assign(x)
-	assert.SolvingSucceeded(&c, &witness)
+	assert.SolvingSucceeded(&c, &witness, test.WithCurves(ecc.BN254))
 }
 
 func BenchmarkMimc(b *testing.B) {

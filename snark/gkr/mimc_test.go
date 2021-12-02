@@ -73,7 +73,7 @@ func TestMimcCircuit(t *testing.T) {
 	// Creates the assignments values
 	nativeCircuit := examples.CreateMimcCircuit()
 	inputs := common.RandomFrDoubleSlice(1, 2*(1<<bN))
-	assignment := nativeCircuit.Assign(inputs, 1)
+	assignment := nativeCircuit.Assign(inputs, 1,)
 	outputs := assignment.Values[91]
 	prover := gkr.NewProver(nativeCircuit, assignment)
 	proof := prover.Prove(1)
@@ -83,7 +83,7 @@ func TestMimcCircuit(t *testing.T) {
 	witness = AllocateGKRMimcTestCircuit(bN)
 	witness.Assign(proof, inputs, outputs, qInitialprime)
 
-	assert.SolvingSucceeded(&mimcCircuit, &witness)
+	assert.SolvingSucceeded(&mimcCircuit, &witness, test.WithCurves(ecc.BN254))
 	// Takes 200sec on my laptop
 	// assert.ProverSucceeded(r1cs, &witness)
 }

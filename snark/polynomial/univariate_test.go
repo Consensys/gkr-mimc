@@ -45,6 +45,6 @@ func TestUnivariate(t *testing.T) {
 	witness.ZnO.Assign(14)
 	witness.Expected.Assign(194)
 
-	assert.ProverSucceeded(&pc, &witness)
+	assert.ProverSucceeded(&pc, &witness, test.WithCurves(ecc.BN254))
 
 }

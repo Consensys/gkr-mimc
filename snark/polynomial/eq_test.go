@@ -79,6 +79,6 @@ func TestEq(t *testing.T) {
 	}
 
 	witness.Assign(H, Q)
-	assert.SolvingSucceeded(&eq, &witness)
-	assert.ProverSucceeded(&eq, &witness)
+	assert.SolvingSucceeded(&eq, &witness, test.WithCurves(ecc.BN254))
+	assert.ProverSucceeded(&eq, &witness, test.WithCurves(ecc.BN254))
 }

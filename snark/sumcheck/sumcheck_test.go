@@ -74,6 +74,6 @@ func TestSumcheckCircuit(t *testing.T) {
 		witness.ExpectedQPrime[i].Assign(expectedQPrime[i])
 	}
 
-	assert.SolvingSucceeded(&scc, &witness)
-	assert.ProverSucceeded(&scc, &witness)
+	assert.SolvingSucceeded(&scc, &witness, test.WithCurves(ecc.BN254))
+	assert.ProverSucceeded(&scc, &witness, test.WithCurves(ecc.BN254))
 }

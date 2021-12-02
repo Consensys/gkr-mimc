@@ -62,5 +62,5 @@ func TestMultilinear(t *testing.T) {
 	}
 	witness.YEval.Assign(y)
 
-	assert.SolvingSucceeded(&m, &witness)
+	assert.SolvingSucceeded(&m, &witness, test.WithCurves(ecc.BN254))
 }
