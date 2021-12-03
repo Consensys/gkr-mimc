@@ -13,6 +13,8 @@ type R1CS struct {
 	// Maps all subparts of the multiexp to their respective inputs indices
 	pubGkrIo, privGkrIo, pubGkrVarID              []int
 	pubNotGkrVarID, privNotGkrVarID, privGkrVarID []int
+	// Pointer to the proving key
+	provingKey *ProvingKey
 }
 
 // Wraps the gnark circuit compiler
@@ -31,14 +33,16 @@ func (c *Circuit) Compile() (R1CS, error) {
 	// Map of the variable IDs for deduplication
 	// And map to a position
 	varIdToPosition := make(map[int]int)
+	ioStore := &c.Gadget.ioStore
 
 	// Map every Gkr variable IDs to their occurence in the ioStore
-	for ioPosition, varId := range append(
-		c.Gadget.ioStore.inputsVarIds,
-		c.Gadget.ioStore.outputsVarIds...,
-	) {
-		_, ok := varIdToPosition[varId]
-		if !ok {
+	ioVarIDs := append(ioStore.inputsVarIds, ioStore.outputsVarIds...)
+	ioIsConstant := append(ioStore.inputsIsConstant, ioStore.outputsIsConstant...)
+
+	for ioPosition, varId := range ioVarIDs {
+		constantVar := ioIsConstant[ioPosition]
+		_, alreadySeen := varIdToPosition[varId]
+		if !alreadySeen && !constantVar {
 			varIdToPosition[varId] = ioPosition
 		}
 	}

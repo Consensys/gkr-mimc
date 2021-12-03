@@ -42,9 +42,8 @@ type GkrGadget struct {
 	chunkSize int
 	gkrNCore  int
 
-	r1cs       *R1CS       `gnark:"-"`
-	provingKey *ProvingKey `gnark:"-"`
-	proof      *Proof      `gnark:"-"`
+	r1cs  *R1CS  `gnark:"-"`
+	proof *Proof `gnark:"-"`
 
 	gkrProof *gkrNative.Proof `gnark:"-"`
 }
@@ -66,6 +65,7 @@ func NewGkrGadget() *GkrGadget {
 // (as it is basically useless)
 func (g *GkrGadget) updateHasherWithZeroes(cs frontend.API) {
 	g.ioStore.Push(
+		cs,
 		[]frontend.Variable{cs.Constant(0), cs.Constant(0)},
 		[]frontend.Variable{cs.Constant(hashOfZeroes)},
 	)

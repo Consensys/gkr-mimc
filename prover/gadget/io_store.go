@@ -12,14 +12,16 @@ const DEFAULT_IO_STORE_ALLOCATION_EPOCH int = 32
 
 // Stores the inputs and is responsible for the reordering tasks
 type IoStore struct {
-	outputsVarIds []int
-	inputsVarIds  []int
-	inputs        []frontend.Variable
-	outputs       []frontend.Variable
-	allocEpoch    int
-	index         int
-	inputArity    int
-	outputArity   int
+	inputs            []frontend.Variable // The variables as Gkr inputs
+	inputsVarIds      []int               // The variable IDs as Gkr outputs
+	inputsIsConstant  []bool              // True if the variable is a constant
+	outputs           []frontend.Variable // The variables as Gkr outputs
+	outputsVarIds     []int               // The ids of the variable as Gkr outputs
+	outputsIsConstant []bool              // True if the variable is a constant
+	allocEpoch        int
+	index             int
+	inputArity        int
+	outputArity       int
 }
 
 // Creates a new ioStore for the given circuit
@@ -40,15 +42,18 @@ func NewIoStore(circuit *circuit.Circuit, allocEpoch int) IoStore {
 
 // Allocates for one more hash entry
 func (io *IoStore) allocateForOneMore() {
+
 	if io.index%io.allocEpoch == 0 {
-		// Extends the inputs slice capacity
-		inputs := make([]frontend.Variable, 0, io.inputArity*(io.allocEpoch+io.index))
-		copy(inputs, io.inputs)
-		io.inputs = inputs
-		// Extends the outputs slice capacity
-		outputs := make([]frontend.Variable, 0, io.outputArity*(io.allocEpoch+io.index))
-		copy(outputs, io.outputs)
-		io.outputs = outputs
+
+		incInputs := io.inputArity * (io.allocEpoch + io.index)
+		io.inputs = IncreaseCapVariable(io.inputs, incInputs)
+		io.inputsVarIds = IncreaseCapInts(io.inputsVarIds, incInputs)
+		io.inputsIsConstant = IncreaseCapBools(io.inputsIsConstant, incInputs)
+
+		incOutputs := io.outputArity * (io.allocEpoch + io.index)
+		io.outputs = IncreaseCapVariable(io.outputs, incOutputs)
+		io.outputsVarIds = IncreaseCapInts(io.outputsVarIds, incOutputs)
+		io.outputsIsConstant = IncreaseCapBools(io.outputsIsConstant, incOutputs)
 	}
 }
 
@@ -70,7 +75,7 @@ func (io *IoStore) PushVarIds(inputs, outputs []int) {
 }
 
 // Add an element in the ioStack
-func (io *IoStore) Push(inputs, outputs []frontend.Variable) {
+func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 
 	// Check that the dimension of the provided arrays is consistent with what was expected
 	if len(inputs) != io.inputArity || len(outputs) != io.outputArity {
@@ -79,12 +84,36 @@ func (io *IoStore) Push(inputs, outputs []frontend.Variable) {
 		))
 	}
 
+	// Enforces everything as a wire
+	for i := range inputs {
+		inputs[i] = cs.EnforceWire(inputs[i])
+	}
+
+	// And the outputs...
+	for i := range outputs {
+		outputs[i] = cs.EnforceWire(outputs[i])
+	}
+
 	// Performs an allocation if necessary
 	io.allocateForOneMore()
 
-	// Then append
-	io.inputs = append(io.inputs, inputs...)
-	io.outputs = append(io.outputs, outputs...)
+	// Append the inputs
+	for i := range inputs {
+		wire := inputs[i]
+		wireID, wireConstant := wire.WireId()
+		io.inputs = append(io.inputs, wire)
+		io.inputsVarIds = append(io.inputsVarIds, wireID)
+		io.inputsIsConstant = append(io.inputsIsConstant, wireConstant)
+	}
+
+	// Append the outputs
+	for i := range outputs {
+		wire := outputs[i]
+		wireID, wireConstant := wire.WireId()
+		io.outputs = append(io.outputs, wire)
+		io.outputsVarIds = append(io.outputsVarIds, wireID)
+		io.outputsIsConstant = append(io.outputsIsConstant, wireConstant)
+	}
 
 	io.index++
 }
@@ -218,4 +247,25 @@ func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 	}
 
 	return dumpedOutputs
+}
+
+// Increase the capacity of a slice of frontend variable
+func IncreaseCapVariable(arr []frontend.Variable, by int) []frontend.Variable {
+	res := make([]frontend.Variable, 0, len(arr)+by)
+	copy(res, arr)
+	return res
+}
+
+// Increase the capacity of a slice of integers
+func IncreaseCapInts(arr []int, by int) []int {
+	res := make([]int, 0, len(arr)+by)
+	copy(res, arr)
+	return res
+}
+
+// Increase the capacity of a slice of boolean
+func IncreaseCapBools(arr []bool, by int) []bool {
+	res := make([]bool, 0, len(arr)+by)
+	copy(res, arr)
+	return res
 }

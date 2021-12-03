@@ -13,8 +13,28 @@ type Solution struct {
 	Wires, A, B, C []fr.Element
 }
 
+// Returns a solution to the circuit
+func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
+
+	// Re-inject the R1CS into the circuit
+	c.Gadget.r1cs = &compiled
+
+	solution, solverError, err := c.partialSolve(&compiled.r1cs, opt...)
+	if err != nil {
+		// Got an unexpected error
+		return Solution{}, err
+	}
+
+	if !solution.fixSolution() {
+		// The solver had a non fixable error, we return it
+		return Solution{}, solverError
+	}
+
+	return solution, err
+}
+
 // Fixes the partial solution delivered by the solver
-func (s *Solution) Fix() bool {
+func (s *Solution) fixSolution() bool {
 	if !s.isFixable() {
 		return false
 	}
@@ -59,20 +79,4 @@ func (c *Circuit) partialSolve(compiled frontend.CompiledConstraintSystem, opts 
 	wires, aSol, bSol, cSol, _ := groth16.Solve(r1csHard, witness, proverOption)
 
 	return Solution{A: aSol, B: bSol, C: cSol, Wires: wires}, err, nil
-}
-
-// Returns a solution to the circuit
-func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
-	solution, solverError, err := c.partialSolve(&compiled.r1cs, opt...)
-	if err != nil {
-		// Got an unexpected error
-		return Solution{}, err
-	}
-
-	if !solution.Fix() {
-		// The solver had a non fixable error, we return it
-		return Solution{}, solverError
-	}
-
-	return solution, err
 }
