@@ -42,8 +42,8 @@ type GkrGadget struct {
 	chunkSize int
 	gkrNCore  int
 
-	r1cs  *R1CS  `gnark:"-"`
-	proof *Proof `gnark:"-"`
+	r1cs  *R1CS `gnark:"-"`
+	proof Proof `gnark:"-"`
 
 	gkrProof *gkrNative.Proof `gnark:"-"`
 }

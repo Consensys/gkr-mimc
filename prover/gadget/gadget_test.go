@@ -56,6 +56,11 @@ func TestGadget(t *testing.T) {
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
 
+	// We need to at least run the dummy setup so that the solver knows what to do
+	// So that the proving key can attach itself to the R1CS
+	_, _, err = DummySetup(&r1cs)
+	assert.NoError(t, err)
+
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
 	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))

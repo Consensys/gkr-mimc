@@ -1,6 +1,8 @@
 package gadget
 
 import (
+	"fmt"
+
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
@@ -15,6 +17,11 @@ type Solution struct {
 
 // Returns a solution to the circuit
 func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
+
+	if compiled.provingKey == nil {
+		return Solution{}, fmt.Errorf("Solving was called prior to running the setup.\n" +
+			"Run either DummySetup(&r1cs) or Setup(&r1cs) prior to calling Solve.\n")
+	}
 
 	// Re-inject the R1CS into the circuit
 	c.Gadget.r1cs = &compiled

@@ -48,14 +48,14 @@ func (c *Circuit) Compile() (R1CS, error) {
 	}
 
 	// Creates the maps to perform the multiexponentiations
-	pubGkrIo := make([]int, pub)
-	privGkrVarID := make([]int, pub)
-	privGkrIo := make([]int, priv)
+	pubGkrIo := make([]int, 0, pub)
+	pubGkrVarID := make([]int, 0, pub)
+	privGkrVarID := make([]int, 0, pub)
 
 	// Now the variable IDs maps
-	pubGkrVarID := make([]int, pub)
-	pubNotGkrVarID := make([]int, priv)
-	privNotGkrVarID := make([]int, priv)
+	privGkrIo := make([]int, 0, priv)
+	pubNotGkrVarID := make([]int, 0, priv)
+	privNotGkrVarID := make([]int, 0, priv)
 
 	// For all possible public variable IDs
 	for varId := 0; varId < pub; varId++ {
