@@ -24,7 +24,7 @@ type Proof struct {
 // Compute the proof
 func ComputeProof(
 	r1cs *R1CS,
-	pk *ProvingKey, a, b, c, wireValues []fr.Element,
+	pk *ProvingKey, solution Solution,
 	// Computed during the solving
 	proof *Proof,
 ) (*Proof, error) {
@@ -47,10 +47,11 @@ func ComputeProof(
 
 	// Deduplicate and separate the non gkr inputs
 	// As the GKR one where already processed by the Hint
-	privNotGkrVars := subSlice(wireValues, r1cs.privNotGkrVarID, pub)
+	privNotGkrVars := subSlice(solution.Wires, r1cs.privNotGkrVarID, pub)
 
 	// Will perform all the computations beside the one involving `K`
-	grothProof, err := ComputeGroth16Proof(&r1cs.r1cs, &pk.pk, a, b, c, wireValues)
+	grothProof, err := ComputeGroth16Proof(&r1cs.r1cs, &pk.pk,
+		solution.A, solution.B, solution.C, solution.Wires)
 	if err != nil {
 		panic(err)
 	}

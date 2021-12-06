@@ -1,6 +1,7 @@
 package gadget
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254"
@@ -81,6 +82,8 @@ func wrapsSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 		// Also marks deltaNeg in the verification key
 		var deltaSigmaInvNeg bn254.G2Affine
 		deltaSigmaInvNeg.ScalarMultiplication(&vkType.G2.Delta, &sigmaInvBI)
+
+		fmt.Printf("pkType.G1.K = %v \n", len(pkType.G1.K))
 
 		pkRes := ProvingKey{
 			pk:            *pkType,
