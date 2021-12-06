@@ -3,8 +3,8 @@ package polynomial
 import (
 	"fmt"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark/frontend"
 )
 
 // MultilinearByValues represents a multilinear polynomial by its values
@@ -24,7 +24,7 @@ func (m *MultilinearByValues) Assign(values []interface{}) {
 		panic(fmt.Sprintf("Inconsistent assignment expected len %v but got %v", len(m.Table), len(values)))
 	}
 	for i, c := range values {
-		m.Table[i].Assign(c)
+		m.Table[i] = c
 	}
 }
 
@@ -33,7 +33,7 @@ func (m *MultilinearByValues) AssignFromChunkedBKT(values [][]fr.Element) {
 	nChunks := len(values)
 	for b := range values {
 		for i := range values[b] {
-			m.Table[b+i*nChunks].Assign(values[b][i])
+			m.Table[b+i*nChunks] = values[b][i]
 		}
 	}
 }
@@ -51,7 +51,7 @@ func (m MultilinearByValues) DeepCopy() MultilinearByValues {
 }
 
 // Fold partially evaluates the polynomial on one of the variable
-func (m *MultilinearByValues) Fold(cs *frontend.ConstraintSystem, x frontend.Variable) {
+func (m *MultilinearByValues) Fold(cs frontend.API, x frontend.Variable) {
 	k := len(m.Table) / 2
 	for i := 0; i < k; i++ {
 		tmpLinExp := cs.Sub(m.Table[i+k], m.Table[i])
@@ -67,7 +67,7 @@ func (m *MultilinearByValues) Fold(cs *frontend.ConstraintSystem, x frontend.Var
 }
 
 // Eval the multilinear polynomial
-func (m MultilinearByValues) Eval(cs *frontend.ConstraintSystem, xs []frontend.Variable) frontend.Variable {
+func (m MultilinearByValues) Eval(cs frontend.API, xs []frontend.Variable) frontend.Variable {
 	f := m.DeepCopy()
 	for _, x := range xs {
 		// Repeatedly fold the table
@@ -80,7 +80,7 @@ func (m MultilinearByValues) Eval(cs *frontend.ConstraintSystem, xs []frontend.V
 // We must have len(qL) == len(qR)
 // And len(Table) = 2 ** len(qL) + len(qPrime)
 func (m MultilinearByValues) EvalMixed(
-	cs *frontend.ConstraintSystem,
+	cs frontend.API,
 	qL, qR, qPrime []frontend.Variable,
 ) (vL, vR frontend.Variable) {
 	// The function proceeds by putting in common the evaluations over qPrime

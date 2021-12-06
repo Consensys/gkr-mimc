@@ -12,7 +12,7 @@ type Gate interface {
 	// ID returns an ID that is unique for the gate
 	ID() string
 	// GnarkEval performs the same computation as Eval but on Gnark variables
-	GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable
+	GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable
 	// Eval returns an evaluation for a unique pair of Eval
 	Eval(res, vL, vR *fr.Element)
 	// EvalManyVL returns multiple evaluations with the same vR
@@ -47,7 +47,7 @@ func (a AddGate) Eval(res, vL, vR *fr.Element) {
 }
 
 // GnarkEval compute the gate on a gnark circuit
-func (a AddGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+func (a AddGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
 	// Unoptimized, but unlikely to cause any significant performance loss
 	return cs.Add(vL, vR)
 }
@@ -84,7 +84,7 @@ func (m MulGate) Eval(res, vL, vR *fr.Element) {
 }
 
 // GnarkEval performs the gate operation on gnark variables
-func (m MulGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+func (m MulGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
 	return cs.Mul(vL, vR)
 }
 
@@ -120,7 +120,7 @@ func (c CopyGate) Eval(res, vL, vR *fr.Element) {
 }
 
 // GnarkEval performs the copy on gnark variable
-func (c CopyGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
+func (c CopyGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
 	return vL
 }
 
@@ -169,8 +169,8 @@ func (c *CipherGate) Eval(res, vL, vR *fr.Element) {
 }
 
 // GnarkEval performs the cipher operation on gnark variables
-func (c *CipherGate) GnarkEval(cs *frontend.ConstraintSystem, vL, vR frontend.Variable) frontend.Variable {
-	tmp := cs.Add(vR, cs.Constant(c.Ark))
+func (c *CipherGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
+	tmp := cs.Add(vR, c.Ark)
 	cipher := cs.Mul(tmp, tmp)
 	cipher = cs.Mul(cipher, tmp)
 	cipher = cs.Mul(cipher, cipher)

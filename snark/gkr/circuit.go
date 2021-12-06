@@ -22,11 +22,11 @@ type Layer struct {
 
 // Combine returns an evaluation of the GKR layer
 func (l *Layer) Combine(
-	cs *frontend.ConstraintSystem,
+	cs frontend.API,
 	q, qPrime, hL, hR, hPrime []frontend.Variable,
 	vL, vR frontend.Variable,
 ) frontend.Variable {
-	res := cs.Constant(0)
+	res := frontend.Variable(0)
 	hLhR := append(append([]frontend.Variable{}, hL...), hR...)
 
 	for i := range l.Gates {
@@ -39,11 +39,11 @@ func (l *Layer) Combine(
 // CombineWithLinearComb returns a linear comb of 2 evaluation of the GKR layer
 // for 2 values of q: qL and qR
 func (l *Layer) CombineWithLinearComb(
-	cs *frontend.ConstraintSystem,
+	cs frontend.API,
 	qL, qR, qPrime, hL, hR, hPrime []frontend.Variable,
 	lambdaL, lambdaR, vL, vR frontend.Variable,
 ) frontend.Variable {
-	res := cs.Constant(0)
+	res := frontend.Variable(0)
 	hLhR := append(append([]frontend.Variable{}, hL...), hR...)
 
 	for i := range l.Gates {

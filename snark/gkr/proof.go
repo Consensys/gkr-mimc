@@ -42,14 +42,14 @@ func AllocateProof(bN int, circuit Circuit) Proof {
 func (p *Proof) Assign(proof gkr.Proof) {
 	for k := range p.SumcheckProofs {
 		p.SumcheckProofs[k].Assign(proof.SumcheckProofs[k])
-		p.ClaimsLeft[k].Assign(proof.ClaimsLeft[k])
-		p.ClaimsRight[k].Assign(proof.ClaimsRight[k])
+		p.ClaimsLeft[k] = proof.ClaimsLeft[k]
+		p.ClaimsRight[k] = proof.ClaimsRight[k]
 	}
 }
 
 // AssertValid runs the GKR verifier
 func (p *Proof) AssertValid(
-	cs *frontend.ConstraintSystem,
+	cs frontend.API,
 	circuit Circuit,
 	qInitial []frontend.Variable,
 	qPrimeInitial []frontend.Variable,
@@ -70,7 +70,7 @@ func (p *Proof) AssertValid(
 	var qL, qR, qPrime []frontend.Variable
 
 	for layer := nLayers - 2; layer >= 0; layer-- {
-		lambdaL := cs.Constant(1)
+		lambdaL := 1
 		lambdaR := hashGadget.MimcHash(cs, p.ClaimsLeft[layer+1], p.ClaimsRight[layer+1])
 		claim = cs.Add(p.ClaimsLeft[layer+1], cs.Mul(lambdaR, p.ClaimsRight[layer+1]))
 
