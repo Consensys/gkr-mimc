@@ -47,7 +47,10 @@ func ComputeProof(
 
 	// Deduplicate and separate the non gkr inputs
 	// As the GKR one where already processed by the Hint
-	privNotGkrVars := subSlice(solution.Wires, r1cs.privNotGkrVarID, pub)
+	privNotGkrVars := subSlice(solution.Wires, r1cs.privNotGkrVarID, -pub)
+	common.Assert(r1cs.privNotGkrVarID[0] == 4, "Got %v\n", r1cs.privNotGkrVarID[0])
+	common.Assert(pub == 2, "Pub should be 2, got %v\n", pub)
+	common.Assert(privNotGkrVars[0] == solution.Wires[2], "One of the constant wires, Got = %v \n", privNotGkrVars[0])
 
 	// Will perform all the computations beside the one involving `K`
 	grothProof, err := ComputeGroth16Proof(&r1cs.r1cs, &pk.pk,

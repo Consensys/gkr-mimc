@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
@@ -59,6 +60,12 @@ func TestGadgetSolver(t *testing.T) {
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
 
+	_, _, pub := r1cs.r1cs.GetNbVariables()
+	assert.Equal(t, pub, 2) // One for the initial randomness + 1 for the constant = 1
+	assert.Equal(t, 0, len(r1cs.pubGkrVarID), "Got %v", r1cs.pubGkrVarID)
+	assert.Equal(t, []int{1}, r1cs.pubNotGkrVarID, "Got %v", r1cs.pubNotGkrVarID)
+	assert.Equal(t, 2*n, len(r1cs.privGkrVarID), "Got %v", r1cs.privGkrVarID)
+
 	// We need to at least run the dummy setup so that the solver knows what to do
 	// So that the proving key can attach itself to the R1CS
 	_, _, err = DummySetup(&r1cs)
@@ -71,6 +78,8 @@ func TestGadgetSolver(t *testing.T) {
 
 	solution, err := assignment.Solve(r1cs)
 	assert.NoError(t, err)
+
+	assert.Equal(t, solution.Wires[0], fr.NewElement(1), "It should be the constant wire")
 
 	// If everything works as intender, it should be possible
 	// to completely solve the circuit at once by
@@ -95,7 +104,7 @@ func TestGadgetSolver(t *testing.T) {
 
 }
 
-func TestGadgetProof(t *testing.T) {
+func TestGadgetProver(t *testing.T) {
 	n := 10
 	preimages := make([]fr.Element, n)
 	hashes := make([]fr.Element, n)
@@ -110,11 +119,19 @@ func TestGadgetProof(t *testing.T) {
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
+	assert.Equal(t, len(r1cs.pubNotGkrVarID), 1) // One for the initial randomness
+
+	_, _, pub := r1cs.r1cs.GetNbVariables()
+	assert.Equal(t, pub, 2) // One for the initial randomness + 1 for the constant = 1
 
 	// We need to at least run the dummy setup so that the solver knows what to do
 	// So that the proving key can attach itself to the R1CS
 	pk, vk, err := Setup(&r1cs)
 	assert.NoError(t, err)
+	assert.Equal(t, len(pk.privKGkrSigma), 20)
+	assert.Equal(t, len(pk.pubKGkr), 0)
+	assert.Equal(t, len(vk.pubKNotGkr), 2)
+	assert.NotEqual(t, pk.privKGkrSigma, make([]bn254.G1Affine, 20))
 
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
@@ -124,10 +141,10 @@ func TestGadgetProof(t *testing.T) {
 	solution, err := assignment.Solve(r1cs)
 	assert.NoError(t, err)
 
-	proof, err := ComputeProof(&r1cs, &pk, solution, &assignment.Gadget.proof)
+	proof, err := ComputeProof(&r1cs, &pk, solution, assignment.Gadget.proof)
 	assert.NoError(t, err)
 
-	publicWitness := make([]fr.Element, 1)
+	publicWitness := []fr.Element{solution.Wires[1]} // only contains the initial randomness
 	err = Verify(proof, &vk, publicWitness)
 	assert.NoError(t, err)
 

@@ -35,15 +35,15 @@ func init() {
 // Helper for performing hashes using GKR
 type GkrGadget struct {
 	// Pointers to variables that must have been allocated somewhere else
-	ioStore           IoStore           `gnark:"-"`
 	InitialRandomness frontend.Variable `gnark:",public"`
+	ioStore           IoStore           `gnark:"-"`
 
 	Circuit   circuit.Circuit `gnark:"-"`
 	chunkSize int
 	gkrNCore  int
 
-	r1cs  *R1CS `gnark:"-"`
-	proof Proof `gnark:"-"`
+	r1cs  *R1CS  `gnark:"-"`
+	proof *Proof `gnark:"-"`
 
 	gkrProof *gkrNative.Proof `gnark:"-"`
 }

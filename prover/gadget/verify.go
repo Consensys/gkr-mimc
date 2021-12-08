@@ -22,12 +22,14 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 		return res
 	}
 
+	fmt.Printf("The public witness %v \n", common.FrSliceToString(publicWitness))
+
 	// Separate Gkrs / not Gkrs
 	pubVarGkr := subSlice(publicWitness, vk.pubGkrVarID, 0)
-	pubVarNotGkr := subSlice(publicWitness, vk.pubNotGkrVarID, 0)
+	pubVarNotGkr := subSlice(publicWitness, vk.pubNotGkrVarID, -1) // -1 for the public input
 
 	// The initial randomness should have been passes by the prover as part of the public witness
-	common.Assert(pubVarNotGkr[0] != fr.NewElement(0), "The initial randomness should be unknown so far")
+	common.Assert(pubVarNotGkr[0] != fr.NewElement(0), "The initial randomness should be known at this point")
 
 	// Computes separately the priv/pub GKRs
 	var KrsGkr, KrsPub, KrsGkrPub bn254.G1Affine
@@ -36,6 +38,7 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 
 	// Check the initial randomness
 	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
+
 	if initialRandomness != pubVarNotGkr[0] {
 		return fmt.Errorf(
 			"The initial randomness is incorrect. Provided %v != recovered %v",
@@ -48,7 +51,8 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 	// 1) Non-Gkr stuffs
 	KrsPub.MultiExp(vk.pubKNotGkr[1:], pubVarNotGkr, ecc.MultiExpConfig{})
 	// 2) Complete with the GKR stuffs and the constant "1"
-	KrsPub.Add(&KrsPub, &KrsGkrPub).Add(&KrsPub, &vk.pubKNotGkr[0])
+	KrsPub.Add(&KrsPub, &KrsGkrPub)
+	KrsPub.Add(&KrsPub, &vk.pubKNotGkr[0])
 
 	// Run the pairing-checks
 	right, err := bn254.Pair(

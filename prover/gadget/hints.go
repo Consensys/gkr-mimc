@@ -59,14 +59,15 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 	scalarsPriv := subSlice(inpss, g.r1cs.privGkrIo, 0)
 
 	// Compute the K associated to the gkr public/private inputs
-	var KrsGkr bn254.G1Affine
+	var KrsGkr, KrsGkrPriv bn254.G1Affine
 	KrsGkr.MultiExp(g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{})
-	g.proof.KrsGkrPriv.MultiExp(g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{})
+	KrsGkrPriv.MultiExp(g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{})
+	KrsGkr.Add(&KrsGkr, &KrsGkrPriv)
 
-	KrsGkr.Add(&KrsGkr, &g.proof.KrsGkrPriv)
+	g.proof = &Proof{KrsGkrPriv: KrsGkrPriv}
 
 	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
-	initialRandomness.ToBigIntRegular(oups)
+	initialRandomness.ToBigInt(oups)
 	return nil
 }
 

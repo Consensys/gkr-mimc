@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	grothBack "github.com/consensys/gnark/backend/groth16"
@@ -56,8 +57,8 @@ func wrapsSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 		var sigmaBI, sigmaInvBI big.Int
 		sigma.SetRandom()
 		sigmaInv.Inverse(&sigma)
-		sigma.ToBigInt(&sigmaBI)
-		sigmaInv.ToBigInt(&sigmaInvBI)
+		sigma.ToBigIntRegular(&sigmaBI)
+		sigmaInv.ToBigIntRegular(&sigmaInvBI)
 
 		pkType := pk.(*groth16.ProvingKey)
 		vkType := vk.(*groth16.VerifyingKey)
@@ -65,7 +66,7 @@ func wrapsSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 		// Subslices a slice and returns the element in the order of subIndices
 		// offset allows to take (array[index + offset])
 		subSlice := func(array []bn254.G1Affine, subIndices []int, offset int) []bn254.G1Affine {
-			res := make([]bn254.G1Affine, len(subIndices))
+			res := make([]bn254.G1Affine, 0, len(subIndices))
 			for _, idx := range subIndices {
 				res = append(res, array[idx+offset])
 			}
@@ -74,7 +75,13 @@ func wrapsSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 
 		// Marks the privGkrSigma with a sigma to prevent malicious users
 		// to mix it with non-GKR inputs
-		privGkrSigma := subSlice(pkType.G1.K, r1cs.privGkrVarID, -vk.NbPublicWitness())
+		privGkrSigma := subSlice(pkType.G1.K, r1cs.privGkrVarID, -vk.NbPublicWitness()-1)
+
+		// DEBUG ONLY - Check we will check that everthing adds up
+		fmt.Printf("r1cs.privGkrVarID = %v\n", r1cs.privGkrVarID)
+		fmt.Printf("nBPublicWitness = %v \n", vk.NbPublicWitness())
+		common.Assert(privGkrSigma[0] == pkType.G1.K[0], "Misalignement")
+
 		for i := range privGkrSigma {
 			privGkrSigma[i].ScalarMultiplication(&privGkrSigma[i], &sigmaBI)
 		}
@@ -83,13 +90,12 @@ func wrapsSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 		var deltaSigmaInvNeg bn254.G2Affine
 		deltaSigmaInvNeg.ScalarMultiplication(&vkType.G2.Delta, &sigmaInvBI)
 
-		fmt.Printf("pkType.G1.K = %v \n", len(pkType.G1.K))
-
 		pkRes := ProvingKey{
 			pk:            *pkType,
 			privKGkrSigma: privGkrSigma,
-			privKNotGkr:   subSlice(pkType.G1.K, r1cs.privNotGkrVarID, -vk.NbPublicWitness()),
-			pubKGkr:       subSlice(vkType.G1.K, r1cs.pubGkrVarID, 1),
+			// Minus one is for taking the "constant wire" into account
+			privKNotGkr: subSlice(pkType.G1.K, r1cs.privNotGkrVarID, -vk.NbPublicWitness()-1),
+			pubKGkr:     subSlice(vkType.G1.K, r1cs.pubGkrVarID, 0),
 		}
 
 		vkRes := VerifyingKey{
@@ -97,11 +103,38 @@ func wrapsSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 			deltaSigmaInvNeg: deltaSigmaInvNeg,
 			pubKGkr:          pkRes.pubKGkr,
 			pubGkrVarID:      r1cs.pubGkrVarID,
-			pubKNotGkr:       append([]bn254.G1Affine{vkType.G1.K[0]}, subSlice(vkType.G1.K, r1cs.pubNotGkrVarID, 1)...),
+			pubKNotGkr:       append([]bn254.G1Affine{vkType.G1.K[0]}, subSlice(vkType.G1.K, r1cs.pubNotGkrVarID, 0)...),
 			pubNotGkrVarID:   r1cs.pubNotGkrVarID,
 		}
 
+		// For debugging only : we split the proving key but we should still have that
+		{
+			var krsSumPKGroth16, krsSumGkr, krsSumNotGkr bn254.G1Affine
+			for _, k := range pkType.G1.K {
+				krsSumPKGroth16.Add(&krsSumPKGroth16, &k)
+			}
+
+			for _, k := range privGkrSigma {
+				krsSumGkr.Add(&krsSumGkr, &k)
+			}
+
+			for _, k := range pkRes.privKNotGkr {
+				krsSumNotGkr.Add(&krsSumNotGkr, &k)
+			}
+
+			left, err := bn254.Pair([]bn254.G1Affine{krsSumPKGroth16}, []bn254.G2Affine{vkType.G2.DeltaNeg})
+			common.Assert(err == nil, "Error during the pairing")
+
+			right, err := bn254.Pair(
+				[]bn254.G1Affine{krsSumNotGkr, krsSumGkr},
+				[]bn254.G2Affine{vkType.G2.DeltaNeg, vkRes.deltaSigmaInvNeg},
+			)
+
+			common.Assert(left == right, "%v != %v", left.String(), right.String())
+		}
+
 		// Shoots the original K part of the proving key
+		// To save space
 		pkRes.pk.G1.K = []bn254.G1Affine{}
 		vkRes.vk.G1.K = []bn254.G1Affine{}
 
