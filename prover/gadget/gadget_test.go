@@ -60,11 +60,33 @@ func TestGadgetSolver(t *testing.T) {
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
 
+	// Test that the length of the arrays is consistent with what we expect
 	_, _, pub := r1cs.r1cs.GetNbVariables()
 	assert.Equal(t, pub, 2) // One for the initial randomness + 1 for the constant = 1
 	assert.Equal(t, 0, len(r1cs.pubGkrVarID), "Got %v", r1cs.pubGkrVarID)
 	assert.Equal(t, []int{1}, r1cs.pubNotGkrVarID, "Got %v", r1cs.pubNotGkrVarID)
 	assert.Equal(t, 2*n, len(r1cs.privGkrVarID), "Got %v", r1cs.privGkrVarID)
+
+	// Test that no variable is contained twice and that all variables are contained exactly once
+	sumVarIds := 0
+	for _, id := range r1cs.privGkrVarID {
+		sumVarIds += id
+	}
+
+	for _, id := range r1cs.privNotGkrVarID {
+		sumVarIds += id
+	}
+
+	for _, id := range r1cs.pubGkrVarID {
+		sumVarIds += id
+	}
+
+	for _, id := range r1cs.pubNotGkrVarID {
+		sumVarIds += id
+	}
+
+	max := r1cs.privNotGkrVarID[len(r1cs.privNotGkrVarID)-1]
+	assert.Equal(t, (max*(max+1))/2, sumVarIds, "The sum should have matched")
 
 	// We need to at least run the dummy setup so that the solver knows what to do
 	// So that the proving key can attach itself to the R1CS
@@ -102,6 +124,7 @@ func TestGadgetSolver(t *testing.T) {
 	_, _, _, _, err = groth16.Solve(&r1cs.r1cs, witness, proverOption)
 	assert.NoError(t, err)
 
+	t.Fail()
 }
 
 func TestGadgetProver(t *testing.T) {

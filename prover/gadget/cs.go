@@ -1,8 +1,6 @@
 package gadget
 
 import (
-	"fmt"
-
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
@@ -76,12 +74,10 @@ func (c *Circuit) Compile() (R1CS, error) {
 		// variable n° n+1
 		ioPosition, ok := varIdToPosition[varId]
 		if ok {
-			fmt.Printf("Public GKR | var %v pos %v \n", varId, ioPosition)
 			// Gkr variable
 			pubGkrIo = append(pubGkrIo, ioPosition)
 			pubGkrVarID = append(pubGkrVarID, varId+1)
 		} else {
-			fmt.Printf("Public not GKR | var %v pos %v \n", varId, ioPosition)
 			// Non Gkr variable
 			pubNotGkrVarID = append(pubNotGkrVarID, varId+1)
 		}
@@ -91,7 +87,6 @@ func (c *Circuit) Compile() (R1CS, error) {
 	for varId := pub - 1; varId < pub+priv-1; varId++ {
 		ioPosition, ok := varIdToPosition[varId]
 		if ok {
-			fmt.Printf("Secret GKR | var %v pos %v \n", varId, ioPosition)
 			// Gkr variable
 			privGkrIo = append(privGkrIo, ioPosition)
 			privGkrVarID = append(privGkrVarID, varId+1)

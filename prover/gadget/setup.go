@@ -1,7 +1,6 @@
 package gadget
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/consensys/gkr-mimc/common"
@@ -76,25 +75,42 @@ func wrapsSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 		// Marks the privGkrSigma with a sigma to prevent malicious users
 		// to mix it with non-GKR inputs
 		privGkrSigma := subSlice(pkType.G1.K, r1cs.privGkrVarID, -vk.NbPublicWitness()-1)
-
-		// DEBUG ONLY - Check we will check that everthing adds up
-		fmt.Printf("r1cs.privGkrVarID = %v\n", r1cs.privGkrVarID)
-		fmt.Printf("nBPublicWitness = %v \n", vk.NbPublicWitness())
+		privKNotGkr := subSlice(pkType.G1.K, r1cs.privNotGkrVarID, -vk.NbPublicWitness()-1)
 		common.Assert(privGkrSigma[0] == pkType.G1.K[0], "Misalignement")
 
+		// Test that the splitting of the group element is bijective
+		{
+			var krsSplitted, krs0 bn254.G1Affine
+			for _, g := range privGkrSigma {
+				krsSplitted.Add(&krsSplitted, &g)
+			}
+
+			for _, g := range privKNotGkr {
+				krsSplitted.Add(&krsSplitted, &g)
+			}
+
+			for _, g := range pkType.G1.K {
+				krs0.Add(&krs0, &g)
+			}
+
+			common.Assert(krs0 == krsSplitted, "%v != %v \n", krs0.String(), krsSplitted.String())
+		}
+
+		// Marks the privGkrK with sigma so that we can
+		// forcefully isolate this part in a pairing
 		for i := range privGkrSigma {
 			privGkrSigma[i].ScalarMultiplication(&privGkrSigma[i], &sigmaBI)
 		}
 
 		// Also marks deltaNeg in the verification key
 		var deltaSigmaInvNeg bn254.G2Affine
-		deltaSigmaInvNeg.ScalarMultiplication(&vkType.G2.Delta, &sigmaInvBI)
+		deltaSigmaInvNeg.ScalarMultiplication(&vkType.G2.DeltaNeg, &sigmaInvBI)
 
 		pkRes := ProvingKey{
 			pk:            *pkType,
 			privKGkrSigma: privGkrSigma,
 			// Minus one is for taking the "constant wire" into account
-			privKNotGkr: subSlice(pkType.G1.K, r1cs.privNotGkrVarID, -vk.NbPublicWitness()-1),
+			privKNotGkr: privKNotGkr,
 			pubKGkr:     subSlice(vkType.G1.K, r1cs.pubGkrVarID, 0),
 		}
 
@@ -151,9 +167,18 @@ func groth16DummySetup(r1cs frontend.CompiledConstraintSystem) (grothBack.Provin
 	pk, err := grothBack.DummySetup(r1cs)
 	_, _, pub := r1cs.GetNbVariables()
 
+	_, _, _, g2 := bn254.Generators()
+
 	// Creates an empty verifying key
 	vk := groth16.VerifyingKey{}
-	vk.G1.K = make([]bn254.G1Affine, pub+1)
+	vk.G1.K = make([]bn254.G1Affine, pub)
+
+	// In order to not trivialise our test we also set deltaNeg to a random point
+	var rng big.Int
+	var rngFr fr.Element
+	rngFr.SetRandom()
+	rngFr.ToBigIntRegular(&rng)
+	vk.G2.DeltaNeg.ScalarMultiplication(&g2, &rng)
 
 	return pk, &vk, err
 }
