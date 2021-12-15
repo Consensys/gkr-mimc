@@ -27,14 +27,6 @@ func (c *Circuit) Compile() (R1CS, error) {
 		return R1CS{}, err
 	}
 
-	// Will print the constraint system
-
-	// writer, err := os.Create("./circuit.html")
-	// common.Assert(err == nil, "Got %v", err)
-
-	// err = r1cs.ToHTML(writer)
-	// common.Assert(err == nil, "Could not write")
-
 	internal, sec, pub := r1cs.GetNbVariables()
 	priv := internal + sec
 

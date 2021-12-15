@@ -159,8 +159,11 @@ func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Va
 	common.Assert(len(q) == 0, "length of q must be 0")
 	common.Assert(len(qArg) == 0, "Length of qArg must be 0")
 	common.Assert(len(drain) == 0, "The drain should be empty")
-	common.Assert(len(io.inputs) == io.index*io.inputArity, "The input arity is inconsistent")
-	common.Assert(len(io.outputs) == io.index*io.outputArity, "The output arity is inconsistent")
+	common.Assert(
+		len(io.inputs) == io.index*io.inputArity,
+		"The input arity is inconsistent %v / %v", len(io.inputs), io.index*io.inputArity)
+	common.Assert(len(io.outputs) == io.index*io.outputArity,
+		"The output arity is inconsistent %v / %v", len(io.outputs), io.index*io.outputArity)
 	common.Assert(1<<bN == io.index, "bN is inconsistent with the index")
 
 	// Bare copy for qPrime and qArg.
@@ -252,20 +255,20 @@ func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 // Increase the capacity of a slice of frontend variable
 func IncreaseCapVariable(arr []frontend.Variable, by int) []frontend.Variable {
 	res := make([]frontend.Variable, 0, len(arr)+by)
-	copy(res, arr)
+	res = append(res, arr...)
 	return res
 }
 
 // Increase the capacity of a slice of integers
 func IncreaseCapInts(arr []int, by int) []int {
 	res := make([]int, 0, len(arr)+by)
-	copy(res, arr)
+	res = append(res, arr...)
 	return res
 }
 
 // Increase the capacity of a slice of boolean
 func IncreaseCapBools(arr []bool, by int) []bool {
 	res := make([]bool, 0, len(arr)+by)
-	copy(res, arr)
+	res = append(res, arr...)
 	return res
 }

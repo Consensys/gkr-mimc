@@ -4,9 +4,34 @@ import (
 	"testing"
 
 	"github.com/consensys/gkr-mimc/hash"
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark/frontend"
 	"github.com/stretchr/testify/assert"
 )
+
+// Small circuit to perform a few hashes : simplest test case
+type TestGadgetCircuit struct {
+	Preimages []frontend.Variable
+	Hashes    []frontend.Variable
+}
+
+// Allocate the test gadget
+func AllocateTestGadgetCircuit(n int) TestGadgetCircuit {
+	return TestGadgetCircuit{
+		Preimages: make([]frontend.Variable, n),
+		Hashes:    make([]frontend.Variable, n),
+	}
+}
+
+func (t *TestGadgetCircuit) Define(curveID ecc.ID, cs frontend.API, gadget *GkrGadget) error {
+	for i := range t.Preimages {
+		y := gadget.UpdateHasher(cs, cs.Constant(0), t.Preimages[i])
+		cs.AssertIsEqual(t.Hashes[i], y)
+	}
+
+	return nil
+}
 
 func TestFullProver(t *testing.T) {
 	n := 10

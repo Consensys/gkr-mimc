@@ -4,38 +4,13 @@ import (
 	"testing"
 
 	"github.com/consensys/gkr-mimc/hash"
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend"
 	grothBack "github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/notinternal/backend/bn254/groth16"
 	"github.com/consensys/gnark/notinternal/backend/bn254/witness"
 	"github.com/stretchr/testify/assert"
 )
-
-// Small circuit to perform a few hashes
-type TestGadgetCircuit struct {
-	Preimages []frontend.Variable
-	Hashes    []frontend.Variable
-}
-
-// Allocate the test gadget
-func AllocateTestGadgetCircuit(n int) TestGadgetCircuit {
-	return TestGadgetCircuit{
-		Preimages: make([]frontend.Variable, n),
-		Hashes:    make([]frontend.Variable, n),
-	}
-}
-
-func (t *TestGadgetCircuit) Define(curveID ecc.ID, cs frontend.API, gadget *GkrGadget) error {
-	for i := range t.Preimages {
-		y := gadget.UpdateHasher(cs, cs.Constant(0), t.Preimages[i])
-		cs.AssertIsEqual(t.Hashes[i], y)
-	}
-
-	return nil
-}
 
 func (t *TestGadgetCircuit) Assign(preimages, hashes []fr.Element) {
 	for i := range preimages {
@@ -175,49 +150,14 @@ func TestGadgetProver(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
+	// Call the verifier on it
 	publicWitness := []fr.Element{initialRandomnessVal} // only contains the initial randomness
 	err = groth16.Verify(proofComputed, vk.(*groth16.VerifyingKey), publicWitness)
 	assert.NoError(t, err)
-
-	// Call the "traditional prover"
-
-	// Reassign a witness with the right initial randomness
-	innerAssignment = AllocateTestGadgetCircuit(n)
-	innerAssignment.Assign(preimages, hashes)
-	assignment = WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
-
-	// In order for the solving to pass, we need to inject the r1cs and give the right value
-	assignment.Gadget.InitialRandomness.Assign(initialRandomnessVal)
-	assignment.Gadget.r1cs = &r1cs
-	opts := backend.WithHints(
-		assignment.Gadget.InitialRandomnessHint,
-		assignment.Gadget.HashHint,
-		assignment.Gadget.GkrProverHint,
-	)
-
-	// Normally, the solver should be happy
-	err = grothBack.IsSolved(&r1cs.r1cs, &assignment, opts)
-	assert.NoError(t, err)
-
-	proofOld, err := grothBack.Prove(
-		&r1cs.r1cs, pk, &assignment,
-		opts,
-	)
-	assert.NoError(t, err)
-
-	// Verifies that proof old works
-	publicWitnessOld := Circuit{}
-	publicWitnessOld.Gadget.InitialRandomness.Assign(initialRandomnessVal)
-	err = grothBack.Verify(proofOld, vk, &publicWitnessOld)
-	assert.NoError(t, err)
-
-	// Check that we get the same proofs in both cases
-	// Can only work if we make the prover deterministic
-	// assert.Equal(t, proofOld, proofComputed)
 }
 
 // Test for the prover when it is not split
-func TestGadgetOldProver(t *testing.T) {
+func TestGadgetWithOldProver(t *testing.T) {
 	n := 10
 	preimages := make([]fr.Element, n)
 	hashes := make([]fr.Element, n)

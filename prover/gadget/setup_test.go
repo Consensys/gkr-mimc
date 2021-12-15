@@ -3,7 +3,6 @@ package gadget
 import (
 	"testing"
 
-	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -82,14 +81,14 @@ func setupTestGen(t *testing.T, fun innerSetupFunc) {
 		}
 
 		left, err := bn254.Pair([]bn254.G1Affine{krsSumPKGroth16}, []bn254.G2Affine{vk.vk.G2.DeltaNeg})
-		common.Assert(err == nil, "Error during the pairing")
+		assert.NoError(t, err, "Error during the pairing")
 
 		right, err := bn254.Pair(
 			[]bn254.G1Affine{krsSumNotGkr, krsSumGkr},
 			[]bn254.G2Affine{vk.vk.G2.DeltaNeg, vk.deltaSigmaInvNeg},
 		)
 
-		common.Assert(left == right, "%v != %v", left.String(), right.String())
+		assert.Equal(t, left, right, "%v != %v", left.String(), right.String())
 	}
 
 }
