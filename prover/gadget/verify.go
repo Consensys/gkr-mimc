@@ -13,6 +13,9 @@ import (
 // Verify verifies a proof with given VerifyingKey and publicWitness
 func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error {
 
+	// Readd the public randomness in there
+	publicWitness = append([]fr.Element{proof.InitialRandomness}, publicWitness...)
+
 	// Takes a subslice and convert to fr.Element
 	subSlice := func(array []fr.Element, indices []int, offset int) []fr.Element {
 		res := make([]fr.Element, len(indices))
@@ -28,7 +31,7 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 	pubVarNotGkr := subSlice(publicWitness, vk.pubNotGkrVarID, -1) // -1 for the public input
 
 	// The initial randomness should have been passes by the prover as part of the public witness
-	common.Assert(pubVarNotGkr[0] != fr.NewElement(0), "The initial randomness should be known at this point")
+	common.Assert(proof.InitialRandomness != fr.NewElement(0), "The initial randomness should be known at this point")
 
 	// Computes separately the priv/pub GKRs
 	var KrsGkr, KrsPub, KrsGkrPub bn254.G1Affine
@@ -37,9 +40,7 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 
 	// Check the initial randomness
 	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
-	initialRandomness.FromMont()
-
-	if initialRandomness != pubVarNotGkr[0] {
+	if initialRandomness != proof.InitialRandomness {
 		return fmt.Errorf(
 			"The initial randomness is incorrect. Provided %v != recovered %v",
 			pubVarNotGkr[0].String(),

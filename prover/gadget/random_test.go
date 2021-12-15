@@ -63,19 +63,13 @@ func TestWithRandomCircuit(t *testing.T) {
 	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(32), WithNCore(1))
 	assignment.Assign()
 
-	// Test correct assignment
-	assert.NotNil(t, assignment.Gadget.InitialRandomness.WitnessValue)
-	assert.NotNil(t, innerAssignment.Public[0].WitnessValue)
-	assert.NotNil(t, innerAssignment.Private[0].WitnessValue)
-
 	solution, err := assignment.Solve(r1cs)
 	assert.NoError(t, err)
-	initialRandomness := solution.Wires[1]
 
 	proof, err := ComputeProof(&r1cs, &pk, solution, assignment.Gadget.proof)
 	assert.NoError(t, err)
 
-	err = Verify(proof, &vk, append([]fr.Element{initialRandomness}, pubWitness...))
+	err = Verify(proof, &vk, pubWitness)
 	assert.NoError(t, err)
 
 }

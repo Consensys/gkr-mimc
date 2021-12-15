@@ -16,9 +16,25 @@ import (
 
 // Extend proof for GKR-enabled SNARK
 type Proof struct {
-	Ar, Krs    bn254.G1Affine
-	Bs         bn254.G2Affine
-	KrsGkrPriv bn254.G1Affine
+	Ar, Krs           bn254.G1Affine
+	Bs                bn254.G2Affine
+	KrsGkrPriv        bn254.G1Affine
+	InitialRandomness fr.Element
+}
+
+// Solve and compute the proof
+func Prove(r1cs *R1CS, pk *ProvingKey, assignment *Circuit) (*Proof, error) {
+	solution, err := assignment.Solve(*r1cs)
+	if err != nil {
+		return nil, err
+	}
+
+	proof, err := ComputeProof(r1cs, pk, solution, assignment.Gadget.proof)
+	if err != nil {
+		return nil, err
+	}
+
+	return proof, nil
 }
 
 // Compute the proof
@@ -28,6 +44,8 @@ func ComputeProof(
 	// Computed during the solving
 	proof *Proof,
 ) (*Proof, error) {
+
+	proof.InitialRandomness = solution.Wires[1]
 
 	// By now, the Gkr part of the proof should be processed
 	common.Assert(proof != nil, "Passed an empty proof to the prover")

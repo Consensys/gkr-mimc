@@ -59,10 +59,6 @@ func TestFullProver(t *testing.T) {
 	solution, err := assignment.Solve(r1cs)
 	assert.NoError(t, err)
 
-	// Catch the initial randomness into a specific value
-	// to avoid having it "destroyed" by the compute proof
-	initialRandomnessVal := solution.Wires[1]
-
 	proof, err := ComputeProof(
 		&r1cs,
 		&pk,
@@ -71,6 +67,6 @@ func TestFullProver(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	err = Verify(proof, &vk, []fr.Element{initialRandomnessVal})
+	err = Verify(proof, &vk, []fr.Element{})
 	assert.NoError(t, err)
 }
