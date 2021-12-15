@@ -18,11 +18,10 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 		res := make([]fr.Element, len(indices))
 		for i, idx := range indices {
 			res[i] = array[idx+offset]
+			res[i].FromMont()
 		}
 		return res
 	}
-
-	fmt.Printf("The public witness %v \n", common.FrSliceToString(publicWitness))
 
 	// Separate Gkrs / not Gkrs
 	pubVarGkr := subSlice(publicWitness, vk.pubGkrVarID, 0)
@@ -38,6 +37,7 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 
 	// Check the initial randomness
 	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
+	initialRandomness.FromMont()
 
 	if initialRandomness != pubVarNotGkr[0] {
 		return fmt.Errorf(

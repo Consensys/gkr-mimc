@@ -34,23 +34,24 @@ func ComputeProof(
 	common.Assert(proof.KrsGkrPriv != bn254.G1Affine{}, "The proof misses the GkrPriv")
 
 	// Get the number of public variables
-	_, _, pub := r1cs.r1cs.GetNbVariables()
+	// _, _, pub := r1cs.r1cs.GetNbVariables()
 
 	// Takes a subslice and convert to fr.Element
 	subSlice := func(array []fr.Element, indices []int, offset int) []fr.Element {
 		res := make([]fr.Element, len(indices))
 		for i, idx := range indices {
 			res[i] = array[idx+offset]
+			// Also set the result in regular from
+			res[i].FromMont()
 		}
 		return res
 	}
 
 	// Deduplicate and separate the non gkr inputs
 	// As the GKR one where already processed by the Hint
-	privNotGkrVars := subSlice(solution.Wires, r1cs.privNotGkrVarID, -pub)
-	common.Assert(r1cs.privNotGkrVarID[0] == 4, "Got %v\n", r1cs.privNotGkrVarID[0])
-	common.Assert(pub == 2, "Pub should be 2, got %v\n", pub)
-	common.Assert(privNotGkrVars[0] == solution.Wires[2], "One of the constant wires, Got = %v \n", privNotGkrVars[0])
+	privNotGkrVars := subSlice(solution.Wires, r1cs.privNotGkrVarID, 0)
+	var krsNotGkr bn254.G1Affine
+	krsNotGkr.MultiExp(pk.privKNotGkr, privNotGkrVars, ecc.MultiExpConfig{})
 
 	// Will perform all the computations beside the one involving `K`
 	grothProof, err := ComputeGroth16Proof(&r1cs.r1cs, &pk.pk,
@@ -62,24 +63,32 @@ func ComputeProof(
 	// Complete our proof with the result of groth16
 	proof.Ar = grothProof.Ar
 	proof.Bs = grothProof.Bs
-	proof.Krs = grothProof.Krs
 
 	// Processes the non-GKR priv part of the multiexp.
 	var KrsPrivNotGkr bn254.G1Affine
-	KrsPrivNotGkr.MultiExp(pk.privKGkrSigma, privNotGkrVars, ecc.MultiExpConfig{})
+	KrsPrivNotGkr.MultiExp(pk.privKNotGkr, privNotGkrVars, ecc.MultiExpConfig{})
 
 	// Complete the Krs part with the part we calculated
-	proof.Krs.Add(&proof.Krs, &KrsPrivNotGkr)
+	proof.Krs.Add(&grothProof.Krs, &KrsPrivNotGkr)
 
 	return proof, err
 }
 
 // Modified SNARK prover: we additionally passes a puncturedVersion of the values
 func ComputeGroth16Proof(r1cs *cs.R1CS, pk *groth16.ProvingKey, a, b, c, wireValues []fr.Element) (*Proof, error) {
-	// Reallocates a, b, c so they have the right capacity
-	a = append(make([]fr.Element, 0, pk.Domain.Cardinality), a...)
-	b = append(make([]fr.Element, 0, pk.Domain.Cardinality), b...)
-	c = append(make([]fr.Element, 0, pk.Domain.Cardinality), c...)
+	// Changes the capacity of a vector of fr.Element
+	// Panic if the input capacity is below the length of the slice
+	setCapacity := func(vec *[]fr.Element, newCap int) {
+		res := make([]fr.Element, len(*vec), newCap)
+		copy(res, *vec)
+		*vec = res
+
+	}
+
+	// Increase the capacity of a, b, c
+	setCapacity(&a, int(pk.Domain.Cardinality))
+	setCapacity(&b, int(pk.Domain.Cardinality))
+	setCapacity(&c, int(pk.Domain.Cardinality))
 
 	// set the wire values in regular form
 	utils.Parallelize(len(wireValues), func(start, end int) {

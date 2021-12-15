@@ -35,8 +35,8 @@ func (c *Circuit) Compile() (R1CS, error) {
 	// err = r1cs.ToHTML(writer)
 	// common.Assert(err == nil, "Could not write")
 
-	priv, sec, pub := r1cs.GetNbVariables()
-	priv = priv + sec
+	internal, sec, pub := r1cs.GetNbVariables()
+	priv := internal + sec
 
 	// Map of the variable IDs for deduplication
 	// And map to a position
@@ -48,10 +48,12 @@ func (c *Circuit) Compile() (R1CS, error) {
 	ioIsConstant := append(ioStore.inputsIsConstant, ioStore.outputsIsConstant...)
 
 	for ioPosition, varId := range ioVarIDs {
+		// The wire IDs passed to gnark are
+		correctedVarID := varId + pub + sec - 1
 		constantVar := ioIsConstant[ioPosition]
-		_, alreadySeen := varIdToPosition[varId]
+		_, alreadySeen := varIdToPosition[correctedVarID]
 		if !alreadySeen && !constantVar {
-			varIdToPosition[varId] = ioPosition
+			varIdToPosition[correctedVarID] = ioPosition
 		}
 	}
 

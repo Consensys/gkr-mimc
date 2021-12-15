@@ -123,10 +123,10 @@ func TestGadgetSolver(t *testing.T) {
 
 	_, _, _, _, err = groth16.Solve(&r1cs.r1cs, witness, proverOption)
 	assert.NoError(t, err)
-
-	t.Fail()
 }
 
+// Make sure that it works when we use the standard gnark Prover interface
+// and the one we use by splitt
 func TestGadgetProver(t *testing.T) {
 	n := 10
 	preimages := make([]fr.Element, n)

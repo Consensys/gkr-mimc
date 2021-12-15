@@ -84,7 +84,7 @@ func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 		))
 	}
 
-	// Enforces everything as a wire
+	// Enforces everything as a wire in place
 	for i := range inputs {
 		inputs[i] = cs.EnforceWire(inputs[i])
 	}

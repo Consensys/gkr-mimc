@@ -50,6 +50,8 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 		res := make([]fr.Element, len(indices))
 		for i, idx := range indices {
 			res[i].SetBigInt(array[idx+offset])
+			// Switch to MontGommery
+			res[i].FromMont()
 		}
 		return res
 	}
@@ -67,7 +69,8 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 	g.proof = &Proof{KrsGkrPriv: KrsGkrPriv}
 
 	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
-	initialRandomness.ToBigInt(oups)
+	initialRandomness.ToBigIntRegular(oups)
+
 	return nil
 }
 
