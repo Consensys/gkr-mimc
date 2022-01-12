@@ -3,9 +3,9 @@ package gadget
 import (
 	"fmt"
 
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gnark/frontend"
 )
 
 const DEFAULT_IO_STORE_ALLOCATION_EPOCH int = 32

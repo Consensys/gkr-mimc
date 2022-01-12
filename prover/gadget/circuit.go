@@ -1,8 +1,8 @@
 package gadget
 
 import (
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/frontend"
 )
 
 // Interface to be implemented by any circuit willing to use Gkr

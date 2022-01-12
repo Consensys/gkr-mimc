@@ -1,6 +1,8 @@
 package gadget
 
 import (
+	"github.com/AlexandreBelling/gnarkbackend/hint"
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
@@ -9,8 +11,6 @@ import (
 	"github.com/consensys/gkr-mimc/snark/gkr"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/backend/hint"
-	"github.com/consensys/gnark/frontend"
 )
 
 // HINTS ID that we are using for GKR

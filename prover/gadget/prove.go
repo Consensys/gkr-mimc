@@ -4,14 +4,14 @@ import (
 	"math/big"
 	"runtime"
 
+	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/cs"
+	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/groth16"
+	"github.com/AlexandreBelling/gnarknotinternal/utils"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr/fft"
-	"github.com/consensys/gnark/notinternal/backend/bn254/cs"
-	"github.com/consensys/gnark/notinternal/backend/bn254/groth16"
-	"github.com/consensys/gnark/notinternal/utils"
 )
 
 // Extend proof for GKR-enabled SNARK

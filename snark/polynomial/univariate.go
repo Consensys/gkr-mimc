@@ -3,8 +3,8 @@ package polynomial
 import (
 	"fmt"
 
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/frontend"
 )
 
 // Univariate encodes a univariate polynomial: a0 + a1X + ... + ad X^d <=> {a0, a1, ... , ad}

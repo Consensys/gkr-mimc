@@ -3,11 +3,11 @@ package gadget
 import (
 	"fmt"
 
+	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/witness"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/notinternal/backend/bn254/witness"
 )
 
 // Verify verifies a proof with given VerifyingKey and publicWitness

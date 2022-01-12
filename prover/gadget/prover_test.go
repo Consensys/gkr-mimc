@@ -3,10 +3,10 @@ package gadget
 import (
 	"testing"
 
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/frontend"
 	"github.com/stretchr/testify/assert"
 )
 

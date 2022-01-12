@@ -1,8 +1,8 @@
 package circuit
 
 import (
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
-	"github.com/consensys/gnark/frontend"
 )
 
 // GetCopyTable returns a prefolded copy table for the intermediate rounds

@@ -3,8 +3,8 @@ package polynomial
 import (
 	"fmt"
 
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/frontend"
 )
 
 // MultilinearByValues represents a multilinear polynomial by its values

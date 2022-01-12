@@ -3,11 +3,11 @@ package gadget
 import (
 	"math/big"
 
+	grothBack "github.com/AlexandreBelling/gnarkbackend/groth16"
+	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/groth16"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	grothBack "github.com/consensys/gnark/backend/groth16"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/notinternal/backend/bn254/groth16"
 )
 
 func init() {

@@ -1,8 +1,8 @@
 package circuit
 
 import (
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/frontend"
 )
 
 // Gate assumes the gate can only have 2 inputs

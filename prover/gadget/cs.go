@@ -1,10 +1,10 @@
 package gadget
 
 import (
+	"github.com/AlexandreBelling/gnarkbackend"
+	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/cs"
 	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/gnark/backend"
-	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/notinternal/backend/bn254/cs"
 )
 
 // R1CS wraps gnarks r1cs to add its own datas

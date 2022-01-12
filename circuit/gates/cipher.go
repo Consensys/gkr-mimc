@@ -3,8 +3,8 @@ package gates
 import (
 	"fmt"
 
+	"github.com/AlexandreBelling/gnarkfrontend"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/frontend"
 )
 
 // CipherGate cipher gate returns vL + (vR + c)^7
