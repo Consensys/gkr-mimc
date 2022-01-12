@@ -5,7 +5,6 @@ import (
 
 	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gkr-mimc/hash"
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
@@ -24,9 +23,9 @@ func AllocateTestGadgetCircuit(n int) TestGadgetCircuit {
 	}
 }
 
-func (t *TestGadgetCircuit) Define(curveID ecc.ID, cs frontend.API, gadget *GkrGadget) error {
+func (t *TestGadgetCircuit) Define(cs frontend.API, gadget *GkrGadget) error {
 	for i := range t.Preimages {
-		y := gadget.UpdateHasher(cs, cs.Constant(0), t.Preimages[i])
+		y := gadget.UpdateHasher(cs, frontend.Variable(0), t.Preimages[i])
 		cs.AssertIsEqual(t.Hashes[i], y)
 	}
 

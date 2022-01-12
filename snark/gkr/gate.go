@@ -11,7 +11,7 @@ type Gate func(cs frontend.API, vL, vR frontend.Variable) frontend.Variable
 // CipherGate returns a cipher gate
 func CipherGate(ark fr.Element) Gate {
 	return func(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
-		tmp := cs.Add(vR, cs.Constant(ark))
+		tmp := cs.Add(vR, frontend.Variable(ark))
 		cipher := cs.Mul(tmp, tmp)
 		cipher = cs.Mul(cipher, tmp)
 		cipher = cs.Mul(cipher, cipher)

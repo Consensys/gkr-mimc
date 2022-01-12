@@ -72,7 +72,7 @@ func (p *Proof) AssertValid(
 	var qL, qR, qPrime []frontend.Variable
 
 	for layer := nLayers - 2; layer >= 0; layer-- {
-		lambdaL := cs.Constant(1)
+		lambdaL := frontend.Variable(1)
 		lambdaR := hashGadget.MimcHash(cs, p.ClaimsLeft[layer+1], p.ClaimsRight[layer+1])
 		claim = cs.Add(p.ClaimsLeft[layer+1], cs.Mul(lambdaR, p.ClaimsRight[layer+1]))
 

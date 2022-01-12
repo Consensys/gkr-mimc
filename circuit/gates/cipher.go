@@ -37,7 +37,7 @@ func (c *CipherGate) Eval(res, vL, vR *fr.Element) {
 
 // GnarkEval performs the cipher operation on gnark variables
 func (c *CipherGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
-	tmp := cs.Add(vR, cs.Constant(c.Ark))
+	tmp := cs.Add(vR, frontend.Variable(c.Ark))
 	cipher := cs.Mul(tmp, tmp)
 	cipher = cs.Mul(cipher, tmp)
 	cipher = cs.Mul(cipher, cipher)

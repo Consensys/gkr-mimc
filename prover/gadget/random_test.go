@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/AlexandreBelling/gnark/frontend"
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,8 +22,8 @@ func AllocateRandomCircuit(n int) RandomCircuit {
 }
 
 // In order to simplify the test, we make the calculation feed-forward
-func (c *RandomCircuit) Define(curveID ecc.ID, cs frontend.API, gadget *GkrGadget) error {
-	tmp := cs.Constant(1)
+func (c *RandomCircuit) Define(cs frontend.API, gadget *GkrGadget) error {
+	tmp := frontend.Variable(1)
 	for i := range c.Public {
 		tmp := gadget.UpdateHasher(cs, tmp, c.Public[i])
 		tmp = gadget.UpdateHasher(cs, tmp, tmp)
@@ -40,8 +39,8 @@ func (c *RandomCircuit) Assign() []fr.Element {
 	res := make([]fr.Element, len(c.Public))
 	for i := range c.Private {
 		res[i].SetRandom()
-		c.Public[i].Assign(res[i])
-		c.Private[i].Assign(i + 970797)
+		c.Public[i] = res[i]
+		c.Private[i] = i + 970797
 	}
 	return res
 }

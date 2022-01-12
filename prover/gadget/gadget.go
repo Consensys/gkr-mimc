@@ -66,8 +66,8 @@ func NewGkrGadget() *GkrGadget {
 func (g *GkrGadget) updateHasherWithZeroes(cs frontend.API) {
 	g.ioStore.Push(
 		cs,
-		[]frontend.Variable{cs.Constant(0), cs.Constant(0)},
-		[]frontend.Variable{cs.Constant(hashOfZeroes)},
+		[]frontend.Variable{frontend.Variable(0), frontend.Variable(0)},
+		[]frontend.Variable{frontend.Variable(hashOfZeroes)},
 	)
 }
 
@@ -111,7 +111,7 @@ func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime, q []frontend.Variable) 
 				// Set the 4 entries to tell the hint to return a given value of the proof
 				copy(
 					proofInputs[:4],
-					[]interface{}{cs.Constant(0), cs.Constant(layer), cs.Constant(polyIdx), cs.Constant(coeffIds)},
+					[]interface{}{frontend.Variable(0), frontend.Variable(layer), frontend.Variable(polyIdx), frontend.Variable(coeffIds)},
 				)
 				proof.SumcheckProofs[layer].
 					HPolys[polyIdx].
@@ -125,11 +125,11 @@ func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime, q []frontend.Variable) 
 		// Set the 4 first entries so that the hint returns the claim lefts
 		copy(
 			proofInputs[:4],
-			[]interface{}{cs.Constant(1), cs.Constant(i), cs.Constant(0), cs.Constant(0)},
+			[]interface{}{frontend.Variable(1), frontend.Variable(i), frontend.Variable(0), frontend.Variable(0)},
 		)
 		proof.ClaimsLeft[i] = cs.NewHint(g.GkrProverHint, proofInputs...)
 		// Returns the claim left but for the same level, only the first entry changes
-		proofInputs[0] = cs.Constant(2)
+		proofInputs[0] = frontend.Variable(2)
 		proof.ClaimsRight[i] = cs.NewHint(g.GkrProverHint, proofInputs...)
 	}
 

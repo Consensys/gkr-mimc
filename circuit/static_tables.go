@@ -26,11 +26,11 @@ func (l *Layer) GnarkEvalStaticTables(cs frontend.API, i int, q []frontend.Varia
 	gateID := l.Gates[i].ID()
 	// Usefull integer constants
 	gL := 1 << l.BGInputs
-	one := cs.Constant(1)
+	one := frontend.Variable(1)
 	// The tab must be filled with zeroes
 	tab := make([]frontend.Variable, (1 << (2 * l.BGInputs)))
 	for i := range tab {
-		tab[i] = cs.Constant(0)
+		tab[i] = frontend.Variable(0)
 	}
 
 	for _, wire := range l.Wires {
@@ -65,7 +65,7 @@ func (l *Layer) GnarkCombine(
 	q, qPrime, hL, hR, hPrime []frontend.Variable,
 	vL, vR frontend.Variable,
 ) frontend.Variable {
-	res := cs.Constant(0)
+	res := frontend.Variable(0)
 	hLhR := append(append([]frontend.Variable{}, hL...), hR...)
 
 	for i := range l.Gates {
@@ -83,7 +83,7 @@ func (l *Layer) CombineWithLinearComb(
 	qL, qR, qPrime, hL, hR, hPrime []frontend.Variable,
 	lambdaL, lambdaR, vL, vR frontend.Variable,
 ) frontend.Variable {
-	res := cs.Constant(0)
+	res := frontend.Variable(0)
 	hLhR := append(append([]frontend.Variable{}, hL...), hR...)
 
 	for i := range l.Gates {

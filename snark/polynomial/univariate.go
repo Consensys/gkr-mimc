@@ -35,8 +35,8 @@ func (u *Univariate) Assign(coeffs []fr.Element) {
 // Eval returns p(x)
 func (u *Univariate) Eval(cs frontend.API, x frontend.Variable) (res frontend.Variable) {
 
-	res = cs.Constant(0)
-	aux := cs.Constant(0)
+	res = frontend.Variable(0)
+	aux := frontend.Variable(0)
 
 	for i := len(u.Coefficients) - 1; i >= 0; i-- {
 		if i != len(u.Coefficients)-1 {
@@ -45,7 +45,7 @@ func (u *Univariate) Eval(cs frontend.API, x frontend.Variable) (res frontend.Va
 		aux = cs.Add(res, u.Coefficients[i])
 	}
 
-	return cs.Mul(aux, cs.Constant(1))
+	return cs.Mul(aux, frontend.Variable(1))
 }
 
 // ZeroAndOne returns p(0) + p(1)

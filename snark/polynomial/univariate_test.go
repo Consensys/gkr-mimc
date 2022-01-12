@@ -19,7 +19,7 @@ type univariateTestCircuit struct {
 func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
 
 	zno := pc.Poly.ZeroAndOne(cs)
-	x := cs.Constant(5)
+	x := frontend.Variable(5)
 	PAtX := pc.Poly.Eval(cs, x)
 
 	cs.AssertIsEqual(zno, pc.ZnO)
