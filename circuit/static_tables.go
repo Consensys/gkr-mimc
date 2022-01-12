@@ -3,7 +3,7 @@ package circuit
 import (
 	"fmt"
 
-	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gkr-mimc/common"
 
 	snarkPoly "github.com/consensys/gkr-mimc/snark/polynomial"

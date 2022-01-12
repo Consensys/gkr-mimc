@@ -1,7 +1,7 @@
 package gadget
 
 import (
-	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnark/frontend"
 )
 
 // Pass the update of a hasher to GKR

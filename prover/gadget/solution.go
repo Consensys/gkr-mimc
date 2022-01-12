@@ -3,11 +3,11 @@ package gadget
 import (
 	"fmt"
 
-	"github.com/AlexandreBelling/gnarkbackend"
-	"github.com/AlexandreBelling/gnarkfrontend"
-	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/cs"
-	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/groth16"
-	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/witness"
+	"github.com/AlexandreBelling/gnark/backend"
+	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/cs"
+	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/groth16"
+	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 

@@ -3,7 +3,7 @@ package gadget
 import (
 	"fmt"
 
-	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 )

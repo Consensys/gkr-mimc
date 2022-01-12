@@ -3,10 +3,10 @@ package gadget
 import (
 	"testing"
 
-	"github.com/AlexandreBelling/gnarkbackend"
-	grothBack "github.com/AlexandreBelling/gnarkbackend/groth16"
-	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/groth16"
-	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/witness"
+	"github.com/AlexandreBelling/gnark/backend"
+	grothBack "github.com/AlexandreBelling/gnark/backend/groth16"
+	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/groth16"
+	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"

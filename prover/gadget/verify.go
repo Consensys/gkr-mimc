@@ -3,7 +3,7 @@ package gadget
 import (
 	"fmt"
 
-	"github.com/AlexandreBelling/gnarknotinternal/backend/bn254/witness"
+	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254"

@@ -3,7 +3,7 @@ package gadget
 import (
 	"testing"
 
-	"github.com/AlexandreBelling/gnarkbackend/groth16"
+	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"

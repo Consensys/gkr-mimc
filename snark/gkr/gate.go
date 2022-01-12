@@ -1,7 +1,7 @@
 package gkr
 
 import (
-	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 

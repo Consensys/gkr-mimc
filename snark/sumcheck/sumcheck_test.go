@@ -6,9 +6,9 @@ import (
 	"github.com/consensys/gkr-mimc/sumcheck"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/AlexandreBelling/gnarkbackend"
-	"github.com/AlexandreBelling/gnarkbackend/groth16"
-	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnark/backend"
+	"github.com/AlexandreBelling/gnark/backend/groth16"
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gnark-crypto/ecc"
 )
 

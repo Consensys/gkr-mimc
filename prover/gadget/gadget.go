@@ -1,8 +1,8 @@
 package gadget
 
 import (
-	"github.com/AlexandreBelling/gnarkbackend/hint"
-	"github.com/AlexandreBelling/gnarkfrontend"
+	"github.com/AlexandreBelling/gnark/backend/hint"
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
