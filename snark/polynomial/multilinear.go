@@ -24,7 +24,7 @@ func (m *MultilinearByValues) Assign(values []interface{}) {
 		panic(fmt.Sprintf("Inconsistent assignment expected len %v but got %v", len(m.Table), len(values)))
 	}
 	for i, c := range values {
-		m.Table[i].Assign(c)
+		m.Table[i] = c
 	}
 }
 
@@ -33,7 +33,7 @@ func (m *MultilinearByValues) AssignFromChunkedBKT(values [][]fr.Element) {
 	nChunks := len(values)
 	for b := range values {
 		for i := range values[b] {
-			m.Table[b+i*nChunks].Assign(values[b][i])
+			m.Table[b+i*nChunks] = values[b][i]
 		}
 	}
 }

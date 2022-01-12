@@ -44,8 +44,8 @@ func AllocateProof(bN int, circuit circuit.Circuit) Proof {
 func (p *Proof) Assign(proof gkr.Proof) {
 	for k := range p.SumcheckProofs {
 		p.SumcheckProofs[k].Assign(proof.SumcheckProofs[k])
-		p.ClaimsLeft[k].Assign(proof.ClaimsLeft[k])
-		p.ClaimsRight[k].Assign(proof.ClaimsRight[k])
+		p.ClaimsLeft[k] = proof.ClaimsLeft[k]
+		p.ClaimsRight[k] = proof.ClaimsRight[k]
 	}
 }
 

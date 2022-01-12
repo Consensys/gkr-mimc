@@ -1,5 +1,7 @@
 package gadget
 
+import "github.com/AlexandreBelling/gnark/frontend"
+
 type CircuitBaseline struct {
 	X []frontend.Variable
 }
@@ -8,13 +10,10 @@ type CircuitWithGkr struct {
 	X []frontend.Variable
 }
 
-func (c *CircuitBaseline) Define(curveID ecc.ID, cs frontend.API) error {
-	for x := range c.X {
-		_ = 
-	}
+func (c *CircuitBaseline) Define(cs frontend.API) error {
 	return nil
 }
 
-func (c *CircuitWithGkr) Define(curveID ecc.ID, cs frontend.API, gadget *GkrGadget) error {
+func (c *CircuitWithGkr) Define(cs frontend.API, gadget *GkrGadget) error {
 	return nil
 }

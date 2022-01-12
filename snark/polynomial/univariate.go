@@ -28,13 +28,12 @@ func (u *Univariate) Assign(coeffs []fr.Element) {
 		panic(fmt.Sprintf("Inconsistent assignment for univariate poly %v != %v", len(coeffs), len(u.Coefficients)))
 	}
 	for i, c := range coeffs {
-		u.Coefficients[i].Assign(c)
+		u.Coefficients[i] = c
 	}
 }
 
 // Eval returns p(x)
 func (u *Univariate) Eval(cs frontend.API, x frontend.Variable) (res frontend.Variable) {
-
 	res = frontend.Variable(0)
 	aux := frontend.Variable(0)
 
@@ -52,7 +51,7 @@ func (u *Univariate) Eval(cs frontend.API, x frontend.Variable) (res frontend.Va
 func (u *Univariate) ZeroAndOne(cs frontend.API) frontend.Variable {
 
 	// coeffsInterface is required for cs.Add(a, b, coeffsInterface[1:]...) to be accepted.
-	coeffsInterface := make([]interface{}, len(u.Coefficients))
+	coeffsInterface := make([]frontend.Variable, len(u.Coefficients))
 	for i, coeff := range u.Coefficients {
 		coeffsInterface[i] = coeff
 	}

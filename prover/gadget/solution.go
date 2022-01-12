@@ -75,7 +75,7 @@ func (c *Circuit) partialSolve(compiled frontend.CompiledConstraintSystem, opts 
 		return Solution{}, nil, err
 	}
 
-	opts = append(opts, backend.WithHints(c.Gadget.InitialRandomnessHint, c.Gadget.HashHint, c.Gadget.GkrProverHint))
+	opts = append(opts, backend.WithHints(c.Gadget.InitialRandomnessHint(), c.Gadget.HashHint(), c.Gadget.GkrProverHint()))
 	proverOption, err := backend.NewProverOption(opts...)
 
 	if err != nil {

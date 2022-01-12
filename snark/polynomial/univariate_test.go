@@ -16,7 +16,7 @@ type univariateTestCircuit struct {
 	Expected frontend.Variable // for testing purposes only
 }
 
-func (pc *univariateTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
+func (pc *univariateTestCircuit) Define(cs frontend.API) error {
 
 	zno := pc.Poly.ZeroAndOne(cs)
 	x := frontend.Variable(5)
@@ -39,12 +39,12 @@ func TestUnivariate(t *testing.T) {
 	var witness univariateTestCircuit
 	witness.Poly.Coefficients = make([]frontend.Variable, 4)
 	// witness <---> X^3 + 2X^2 + 3X + 4
-	witness.Poly.Coefficients[0].Assign(4)
-	witness.Poly.Coefficients[1].Assign(3)
-	witness.Poly.Coefficients[2].Assign(2)
-	witness.Poly.Coefficients[3].Assign(1)
-	witness.ZnO.Assign(14)
-	witness.Expected.Assign(194)
+	witness.Poly.Coefficients[0] = 4
+	witness.Poly.Coefficients[1] = 3
+	witness.Poly.Coefficients[2] = 2
+	witness.Poly.Coefficients[3] = 1
+	witness.ZnO = 14
+	witness.Expected = 194
 
 	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 

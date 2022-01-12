@@ -27,7 +27,7 @@ func allocateMultilinearTestCircuit(nVars int) multilinearPolyTestCircuit {
 	}
 }
 
-func (m *multilinearPolyTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
+func (m *multilinearPolyTestCircuit) Define(cs frontend.API) error {
 	actualEval := m.P.Eval(cs, m.XEval)
 	cs.AssertIsEqual(actualEval, m.YEval)
 	return nil
@@ -60,9 +60,8 @@ func TestMultilinear(t *testing.T) {
 	witness.P.Assign(common.FrToGenericArray(p))
 
 	for i := 0; i < nVars; i++ {
-		witness.XEval[i].Assign(x[i])
+		witness.XEval[i] = x[i]
 	}
-	witness.YEval.Assign(y)
-
+	witness.YEval = y
 	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
 }

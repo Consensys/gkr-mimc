@@ -46,13 +46,13 @@ func (c *GKRMimcTestCircuit) Assign(
 ) {
 	c.Proof.Assign(proof)
 	for i := range qInitialprime {
-		c.QInitialprime[i].Assign(qInitialprime[i])
+		c.QInitialprime[i] = qInitialprime[i]
 	}
 	c.VInput.AssignFromChunkedBKT(inputs)
 	c.VOutput.AssignFromChunkedBKT(outputs)
 }
 
-func (c *GKRMimcTestCircuit) Define(curveID ecc.ID, cs frontend.API) error {
+func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
 	c.Proof.AssertValid(cs, c.Circuit, c.QInitial, c.QInitialprime, c.VInput, c.VOutput)
 	return nil
 }

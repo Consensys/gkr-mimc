@@ -29,7 +29,7 @@ func AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime int) SumcheckCircui
 	}
 }
 
-func (scc *SumcheckCircuit) Define(curveID ecc.ID, cs frontend.API) error {
+func (scc *SumcheckCircuit) Define(cs frontend.API) error {
 	hR, hL, hPrime, _ := scc.Proof.AssertValid(cs, scc.InitialClaim, 1)
 	for i := range hR {
 		cs.AssertIsEqual(hL[i], scc.ExpectedQL[i])
@@ -62,17 +62,17 @@ func TestSumcheckCircuit(t *testing.T) {
 	assert.True(t, valid, "Sumcheck verifier refused")
 
 	witness := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
-	witness.InitialClaim.Assign(firstClaim)
+	witness.InitialClaim = firstClaim
 	witness.Proof.Assign(proof)
 
 	for i := range expectedQL {
-		witness.ExpectedQL[i].Assign(expectedQL[i])
-		witness.ExpectedQR[i].Assign(expectedQR[i])
+		witness.ExpectedQL[i] = expectedQL[i]
+		witness.ExpectedQR[i] = expectedQR[i]
 
 	}
 
 	for i := range expectedQPrime {
-		witness.ExpectedQPrime[i].Assign(expectedQPrime[i])
+		witness.ExpectedQPrime[i] = expectedQPrime[i]
 	}
 
 	assert.NoError(t, groth16.IsSolved(r1cs, &witness))

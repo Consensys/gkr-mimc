@@ -22,7 +22,7 @@ type TestMimcCircuit struct {
 	Y []frontend.Variable
 }
 
-func (c *TestMimcCircuit) Define(curveID ecc.ID, cs frontend.API) error {
+func (c *TestMimcCircuit) Define(cs frontend.API) error {
 	for k := range c.X {
 		y := MimcHash(cs, c.X[k]...)
 		cs.AssertIsEqual(c.Y[k], y)
@@ -46,10 +46,10 @@ func Allocate(nTests, testSize int) TestMimcCircuit {
 func (c *TestMimcCircuit) Assign(x [][]fr.Element) {
 	for k := range x {
 		for n := range x[k] {
-			c.X[k][n].Assign(x[k][n])
+			c.X[k][n] = x[k][n]
 		}
 		y := hash.MimcHash(x[k])
-		c.Y[k].Assign(y)
+		c.Y[k] = y
 	}
 }
 

@@ -120,33 +120,20 @@ func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
-// The element are also converted to interfaces, in order to please the hint
-// This is what we use `for loops` instead of `append` for.
-func (io *IoStore) DumpForProverMultiExp() []interface{} {
-	nInputs := len(io.inputs)
-	res := make([]interface{}, nInputs+len(io.outputs))
-
-	for i := range io.inputs {
-		res[i] = io.inputs[i]
-	}
-
-	for i := range io.outputs {
-		res[i+nInputs] = io.outputs[i]
-	}
-
-	return res
+func (io *IoStore) DumpForProverMultiExp() []frontend.Variable {
+	return append(io.inputs, io.outputs...)
 }
 
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
 // The variables are returned in the form of a buffer of interfaces
 // 4 empty entry are appended to the result : they are used by the hint to figure out which
-func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []interface{} {
+func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []frontend.Variable {
 
 	nChunks := io.Index() / chunkSize
 	nInputs, nOutputs, bN, bG := len(io.inputs), len(io.outputs), len(qPrimeArg), len(qArg)
 	resSize := nInputs + nOutputs + bN + bG + 4
-	res := make([]interface{}, resSize)
+	res := make([]frontend.Variable, resSize)
 
 	// Allocate subslices for each part of the dump
 	drain := res[4:]

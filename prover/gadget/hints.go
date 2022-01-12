@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/AlexandreBelling/gnark/backend/hint"
 	"github.com/consensys/gkr-mimc/common"
 	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
@@ -13,9 +14,81 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+type HashHint struct {
+	g *GkrGadget
+}
+
+type InitialRandomnessHint struct {
+	g *GkrGadget
+}
+
+type GkrProverHint struct {
+	g *GkrGadget
+}
+
+// Accessor for the hint from the GkrGadget
+func (g *GkrGadget) HashHint() *HashHint {
+	return &HashHint{g: g}
+}
+
+// Accessor for the hint from the InitialRandomnessHint
+func (g *GkrGadget) InitialRandomnessHint() *InitialRandomnessHint {
+	return &InitialRandomnessHint{g: g}
+}
+
+// Accessor for the hint from the GkrProver
+func (g *GkrGadget) GkrProverHint() *GkrProverHint {
+	return &GkrProverHint{g: g}
+}
+
+// UUID of the hash hint
+func (h *HashHint) UUID() hint.ID {
+	return 156461454
+}
+
+// UUID of the initial randomness hint hint
+func (h *InitialRandomnessHint) UUID() hint.ID {
+	return 46842135
+}
+
+// UUID of the gkr prover hint hint
+func (h *GkrProverHint) UUID() hint.ID {
+	return 13135755
+}
+
+// NbOutputs of the hash hint
+func (h *HashHint) NbOutputs(_ ecc.ID, nbInput int) int {
+	return 1
+}
+
+// NbOutputs of the initial randomness hint hint
+func (h *InitialRandomnessHint) NbOutputs(_ ecc.ID, nbInput int) int {
+	return 1
+}
+
+// NbOutputs of the gkr prover hint hint
+func (h *GkrProverHint) NbOutputs(_ ecc.ID, nbInput int) int {
+	return 1
+}
+
+// String of the hash hint
+func (h *HashHint) String() string {
+	return "HashHint"
+}
+
+// String of the initial randomness hint hint
+func (h *InitialRandomnessHint) String() string {
+	return "InitialRandomnessHint"
+}
+
+// String of the gkr prover hint hint
+func (h *GkrProverHint) String() string {
+	return "GkrProverHint"
+}
+
 // Returns the Hint functions that can help gnark's solver figure out that
 // the output of the GKR should be a hash
-func (g *GkrGadget) HashHint(curve ecc.ID, inps []*big.Int, outputs *big.Int) error {
+func (h *HashHint) Call(curve ecc.ID, inps []*big.Int, outputs []*big.Int) error {
 	var state, block fr.Element
 	state.SetBigInt(inps[0])
 	block.SetBigInt(inps[1])
@@ -23,8 +96,8 @@ func (g *GkrGadget) HashHint(curve ecc.ID, inps []*big.Int, outputs *big.Int) er
 
 	// Properly computes the hash
 	hash.MimcUpdateInplace(&hashed, block)
-	hashed.ToBigIntRegular(outputs)
-	g.ioStore.index++
+	hashed.ToBigIntRegular(outputs[0])
+	h.g.ioStore.index++
 	return nil
 }
 
@@ -43,7 +116,7 @@ func DeriveRandomnessFromPoint(g1 bn254.G1Affine) fr.Element {
 }
 
 // Hint for generating the initial randomness
-func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.Int) error {
+func (h *InitialRandomnessHint) Call(_ ecc.ID, inpss []*big.Int, oups []*big.Int) error {
 
 	// Takes a subslice and convert to fr.Element
 	subSlice := func(array []*big.Int, indices []int, offset int) []fr.Element {
@@ -57,19 +130,19 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 	}
 
 	// Separate the scalars for the public/private parts
-	scalarsPub := subSlice(inpss, g.r1cs.pubGkrIo, 0)
-	scalarsPriv := subSlice(inpss, g.r1cs.privGkrIo, 0)
+	scalarsPub := subSlice(inpss, h.g.r1cs.pubGkrIo, 0)
+	scalarsPriv := subSlice(inpss, h.g.r1cs.privGkrIo, 0)
 
 	// Compute the K associated to the gkr public/private inputs
 	var KrsGkr, KrsGkrPriv bn254.G1Affine
-	KrsGkr.MultiExp(g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{})
-	KrsGkrPriv.MultiExp(g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{})
+	KrsGkr.MultiExp(h.g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{})
+	KrsGkrPriv.MultiExp(h.g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{})
 	KrsGkr.Add(&KrsGkr, &KrsGkrPriv)
 
-	g.proof = &Proof{KrsGkrPriv: KrsGkrPriv}
+	h.g.proof = &Proof{KrsGkrPriv: KrsGkrPriv}
 
 	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
-	initialRandomness.ToBigIntRegular(oups)
+	initialRandomness.ToBigIntRegular(oups[0])
 
 	return nil
 }
@@ -77,19 +150,19 @@ func (g *GkrGadget) InitialRandomnessHint(_ ecc.ID, inpss []*big.Int, oups *big.
 // Returns the Hint functions that can help gnark's solver figure out that
 // we need to compute the GkrProof and verify
 // In order to return the fields one after the other, the function is built as a stateful iterator
-func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) error {
+func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) error {
 
 	claims, nLayer, sumRound, coeffIds, inputsBI := inputsBI[0].Uint64(), inputsBI[1].Uint64(),
 		inputsBI[2].Uint64(), inputsBI[3].Uint64(), inputsBI[4:]
 
-	if g.gkrProof == nil {
+	if h.g.gkrProof == nil {
 
-		bN := common.Log2Ceil(g.ioStore.Index())
+		bN := common.Log2Ceil(h.g.ioStore.Index())
 		paddedIndex := 1 << bN
 
-		nInputs := paddedIndex * g.Circuit.InputArity()
-		nOutputs := paddedIndex * g.Circuit.OutputArity()
-		bGinitial := common.Log2Ceil(g.Circuit.OutputArity())
+		nInputs := paddedIndex * h.g.Circuit.InputArity()
+		nOutputs := paddedIndex * h.g.Circuit.OutputArity()
+		bGinitial := common.Log2Ceil(h.g.Circuit.OutputArity())
 
 		common.Assert(bGinitial == 0, "bGInitial must be zero for Mimc: %v", bGinitial)
 
@@ -104,19 +177,19 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 		qPrime, inps := inps[:bN], inps[bN:]
 		q, inps := inps[:bGinitial], inps[bGinitial:]
 
-		inputChunkSize := g.chunkSize * g.Circuit.InputArity()
-		outputChunkSize := g.chunkSize * g.Circuit.OutputArity()
+		inputChunkSize := h.g.chunkSize * h.g.Circuit.InputArity()
+		outputChunkSize := h.g.chunkSize * h.g.Circuit.OutputArity()
 
-		assignment := g.Circuit.Assign(
+		assignment := h.g.Circuit.Assign(
 			common.SliceToChunkedSlice(inputs, inputChunkSize),
-			g.gkrNCore,
+			h.g.gkrNCore,
 		)
 
-		prover := gkrNative.NewProver(g.Circuit, assignment)
-		gkrProof := prover.Prove(g.gkrNCore, qPrime, q)
+		prover := gkrNative.NewProver(h.g.Circuit, assignment)
+		gkrProof := prover.Prove(h.g.gkrNCore, qPrime, q)
 
 		// For debug : only -> Check that the proof verifies
-		verifier := gkrNative.NewVerifier(bN, g.Circuit)
+		verifier := gkrNative.NewVerifier(bN, h.g.Circuit)
 		valid := verifier.Verify(gkrProof,
 			common.SliceToChunkedSlice(inputs, inputChunkSize),
 			common.SliceToChunkedSlice(outputs, outputChunkSize),
@@ -124,7 +197,7 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 		)
 
 		common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
-		g.gkrProof = &gkrProof
+		h.g.gkrProof = &gkrProof
 	}
 
 	var val fr.Element
@@ -136,19 +209,19 @@ func (g *GkrGadget) GkrProverHint(_ ecc.ID, inputsBI []*big.Int, oups *big.Int) 
 	case 0:
 		{
 			// Not a claim, returns the sumcheck poly
-			val = g.gkrProof.SumcheckProofs[nLayer].PolyCoeffs[sumRound][coeffIds]
+			val = h.g.gkrProof.SumcheckProofs[nLayer].PolyCoeffs[sumRound][coeffIds]
 		}
 	case 1:
 		{
 			// Returns claimLeft
-			val = g.gkrProof.ClaimsLeft[nLayer]
+			val = h.g.gkrProof.ClaimsLeft[nLayer]
 		}
 	case 2:
 		{
-			val = g.gkrProof.ClaimsRight[nLayer]
+			val = h.g.gkrProof.ClaimsRight[nLayer]
 		}
 	}
 
-	val.ToBigIntRegular(oups)
+	val.ToBigIntRegular(oups[0])
 	return nil
 }

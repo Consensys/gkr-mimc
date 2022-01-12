@@ -14,8 +14,8 @@ import (
 
 func (t *TestGadgetCircuit) Assign(preimages, hashes []fr.Element) {
 	for i := range preimages {
-		t.Preimages[i].Assign(preimages[i])
-		t.Hashes[i].Assign(hashes[i])
+		t.Preimages[i] = preimages[i]
+		t.Hashes[i] = hashes[i]
 	}
 }
 
@@ -90,9 +90,9 @@ func TestGadgetSolver(t *testing.T) {
 	witness[0] = solution.Wires[1]
 
 	opts := backend.WithHints(
-		assignment.Gadget.InitialRandomnessHint,
-		assignment.Gadget.HashHint,
-		assignment.Gadget.GkrProverHint,
+		assignment.Gadget.InitialRandomnessHint(),
+		assignment.Gadget.HashHint(),
+		assignment.Gadget.GkrProverHint(),
 	)
 	proverOption, err := backend.NewProverOption(opts)
 
@@ -201,12 +201,12 @@ func TestGadgetWithOldProver(t *testing.T) {
 	assignment = WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
 
 	// In order for the solving to pass, we need to inject the r1cs and give the right value
-	assignment.Gadget.InitialRandomness.Assign(solution.Wires[1])
+	assignment.Gadget.InitialRandomness = solution.Wires[1]
 	assignment.Gadget.r1cs = &r1cs
 	opts := backend.WithHints(
-		assignment.Gadget.InitialRandomnessHint,
-		assignment.Gadget.HashHint,
-		assignment.Gadget.GkrProverHint,
+		assignment.Gadget.InitialRandomnessHint(),
+		assignment.Gadget.HashHint(),
+		assignment.Gadget.GkrProverHint(),
 	)
 
 	// Normally, the solver should be happy
@@ -221,7 +221,7 @@ func TestGadgetWithOldProver(t *testing.T) {
 
 	// only contains the initial randomness
 	publicWitness := Circuit{}
-	publicWitness.Gadget.InitialRandomness.Assign(solution.Wires[1])
+	publicWitness.Gadget.InitialRandomness = solution.Wires[1]
 	err = grothBack.Verify(proof, vk, &publicWitness)
 	assert.NoError(t, err)
 
