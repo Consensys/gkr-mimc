@@ -1,3 +1,3 @@
 [submodule "gnark"]
 	path = pkg/gnark
-	url = git@github.com:ConsenSys/gnark.git
+	url = git@github.com:AlexandreBelling/gnark.git
