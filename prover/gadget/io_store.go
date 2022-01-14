@@ -100,7 +100,7 @@ func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 	// Append the inputs
 	for i := range inputs {
 		wire := inputs[i]
-		wireID, wireConstant := wire.WireId()
+		wireID, wireConstant := cs.WireId(wire)
 		io.inputs = append(io.inputs, wire)
 		io.inputsVarIds = append(io.inputsVarIds, wireID)
 		io.inputsIsConstant = append(io.inputsIsConstant, wireConstant)
@@ -109,7 +109,7 @@ func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 	// Append the outputs
 	for i := range outputs {
 		wire := outputs[i]
-		wireID, wireConstant := wire.WireId()
+		wireID, wireConstant := cs.WireId(wire)
 		io.outputs = append(io.outputs, wire)
 		io.outputsVarIds = append(io.outputsVarIds, wireID)
 		io.outputsIsConstant = append(io.outputsIsConstant, wireConstant)

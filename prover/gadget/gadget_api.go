@@ -22,8 +22,8 @@ func (g *GkrGadget) UpdateHasher(
 	g.ioStore.Push(
 		cs,
 		[]frontend.Variable{cs.Add(msg, state), state},
-		[]frontend.Variable{cs.Sub(output, msg, state)},
+		[]frontend.Variable{cs.Sub(output[0], msg, state)},
 	)
 
-	return output
+	return output[0]
 }

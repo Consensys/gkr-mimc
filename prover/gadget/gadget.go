@@ -76,14 +76,15 @@ func (g *GkrGadget) getInitialRandomness(cs frontend.API) (initialRandomness fro
 	ios := g.ioStore.DumpForProverMultiExp()
 	bN := common.Log2Ceil(g.ioStore.Index())
 
-	initialRandomness, err := cs.NewHint(g.InitialRandomnessHint(), ios...)
+	initialRandomnessArr, err := cs.NewHint(g.InitialRandomnessHint(), ios...)
+	initialRandomness = initialRandomnessArr[0]
 	common.Assert(err == nil, "Unexpected error %v", err)
 
 	// Expands the initial randomness into q and qPrime
 	q = make([]frontend.Variable, 0)
 	qPrime = make([]frontend.Variable, bN)
 
-	tmp := initialRandomness
+	tmp := initialRandomnessArr[0]
 	for i := range q {
 		q[i] = tmp
 		tmp = cs.Mul(tmp, tmp)
@@ -114,11 +115,9 @@ func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime, q []frontend.Variable) 
 					proofInputs[:4],
 					[]frontend.Variable{frontend.Variable(0), frontend.Variable(layer), frontend.Variable(polyIdx), frontend.Variable(coeffIds)},
 				)
-				newv, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
+				newvArr, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
 				common.Assert(err == nil, "Unexpected error %v", err)
-				proof.SumcheckProofs[layer].
-					HPolys[polyIdx].
-					Coefficients[coeffIds] = newv
+				proof.SumcheckProofs[layer].HPolys[polyIdx].Coefficients[coeffIds] = newvArr[0]
 			}
 		}
 	}
@@ -130,12 +129,14 @@ func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime, q []frontend.Variable) 
 			proofInputs[:4],
 			[]frontend.Variable{frontend.Variable(1), frontend.Variable(i), frontend.Variable(0), frontend.Variable(0)},
 		)
-		newv, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
+		newvArr, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
 		common.Assert(err == nil, "Unexpected error %v", err)
-		proof.ClaimsLeft[i] = newv
+		proof.ClaimsLeft[i] = newvArr[0]
+
 		// Returns the claim left but for the same level, only the first entry changes
 		proofInputs[0] = frontend.Variable(2)
-		proof.ClaimsRight[i], err = cs.NewHint(g.GkrProverHint(), proofInputs...)
+		newvArr, err = cs.NewHint(g.GkrProverHint(), proofInputs...)
+		proof.ClaimsRight[i] = newvArr[0]
 		common.Assert(err == nil, "Unexpected error %v", err)
 	}
 
