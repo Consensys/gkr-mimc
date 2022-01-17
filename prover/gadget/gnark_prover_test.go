@@ -75,7 +75,6 @@ func TestGadgetSolver(t *testing.T) {
 
 	solution, err := assignment.Solve(r1cs)
 	assert.NoError(t, err)
-
 	assert.Equal(t, solution.Wires[0], fr.NewElement(1), "It should be the constant wire")
 
 	// If everything works as intender, it should be possible
