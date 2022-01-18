@@ -15,7 +15,7 @@ import (
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	n := 1 << 12
+	n := 1 << 5
 	chunkSize := 1024
 	benchCircuitWithGkr(n, chunkSize, b)
 	benchCircuitBaseline(n, b)
@@ -91,7 +91,7 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	assignment.Assign()
 
 	b.Run("Circuit-with-GKR-benchmark", func(b *testing.B) {
-		common.ProfileTrace(b, true, true, "../..", func() {
+		common.ProfileTrace(b, true, true, func() {
 			for i := 0; i < b.N; i++ {
 				_, _ = Prove(&r1cs, &pk, &assignment)
 			}

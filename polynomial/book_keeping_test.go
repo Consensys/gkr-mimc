@@ -95,7 +95,7 @@ func BenchmarkFolding(b *testing.B) {
 	for k := 0; k < b.N; k++ {
 
 		bkt2 := bkt.DeepCopy()
-		common.ProfileTrace(b, false, false, "..", func() {
+		common.ProfileTrace(b, false, false, func() {
 			bkt2.Fold(r)
 		})
 	}
@@ -117,7 +117,7 @@ func BenchmarkEvals(b *testing.B) {
 	// Folding on 5 should yield [10, 11]
 	b.ResetTimer()
 	for k := 0; k < b.N; k++ {
-		common.ProfileTrace(b, false, false, "..", func() {
+		common.ProfileTrace(b, false, false, func() {
 			fEvals = bkt.FunctionEvals()
 		})
 	}

@@ -46,7 +46,7 @@ func benchmarkFullSumcheckMultiThreaded(b *testing.B, bN, nChunks, nCore int, pr
 	b.ResetTimer()
 	for _count := 0; _count < b.N; _count++ {
 		prover := InitializeMultiThreadedProver(bN, nChunks)
-		common.ProfileTrace(b, profiled, traced, "..",
+		common.ProfileTrace(b, profiled, traced,
 			func() {
 				prover.Prove(nChunks)
 			},

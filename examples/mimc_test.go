@@ -146,7 +146,7 @@ func benchmarkMIMCCircuit(b *testing.B, bN, nCore, nChunks int, profiled, traced
 		// Finally checks the entire GKR protocol
 		prover := gkr.NewProver(mimcCircuit, assignment)
 
-		common.ProfileTrace(b, profiled, traced, "..", func() {
+		common.ProfileTrace(b, profiled, traced, func() {
 			_mimcProof = prover.Prove(nCore, []fr.Element{}, []fr.Element{})
 		})
 	}
@@ -183,7 +183,7 @@ func benchmarkMIMCGKRProverMultiProcess(b *testing.B, bN, nProcesses, nCore, nCh
 		wgReady.Wait()
 
 		b.StartTimer()
-		common.ProfileTrace(b, profiled, traced, "..", func() {
+		common.ProfileTrace(b, profiled, traced, func() {
 			wgGo.Done() // Gives the signal
 			wgDone.Wait()
 		})
