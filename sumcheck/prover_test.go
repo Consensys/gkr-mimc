@@ -122,7 +122,7 @@ func benchmarkFullSumcheckProver(b *testing.B, bN int, profiled, traced bool) {
 	b.ResetTimer()
 	for _count := 0; _count < b.N; _count++ {
 		prover := InitializeProverForTests(bN)
-		common.ProfileTrace(b, profiled, traced,
+		common.ProfileTrace(b, profiled, traced, "..",
 			func() {
 				prover.Prove()
 			},
@@ -142,7 +142,7 @@ func benchmarkFineGrainedProver(b *testing.B, bN int, profiled, traced bool) {
 	prover := InitializeProverForTests(bN)
 
 	b.Run(fmt.Sprintf("GetEvalsOnHL-bN=%v", bN), func(b *testing.B) {
-		common.ProfileTrace(b, profiled, traced,
+		common.ProfileTrace(b, profiled, traced, "..",
 			func() {
 				for i := 0; i < b.N; i++ {
 					prover.GetEvalsOnHL()
@@ -153,7 +153,7 @@ func benchmarkFineGrainedProver(b *testing.B, bN int, profiled, traced bool) {
 	prover.FoldHL(two)
 
 	b.Run(fmt.Sprintf("GetEvalsOnHR-bN=%v", bN), func(b *testing.B) {
-		common.ProfileTrace(b, profiled, traced,
+		common.ProfileTrace(b, profiled, traced, "..",
 			func() {
 				for i := 0; i < b.N; i++ {
 					prover.GetEvalsOnHR()
@@ -164,7 +164,7 @@ func benchmarkFineGrainedProver(b *testing.B, bN int, profiled, traced bool) {
 	prover.FoldHR(two)
 
 	b.Run(fmt.Sprintf("GetEvalsOnHPrime-bN=%v", bN), func(b *testing.B) {
-		common.ProfileTrace(b, profiled, traced,
+		common.ProfileTrace(b, profiled, traced, "..",
 			func() {
 				for i := 0; i < b.N; i++ {
 					prover.GetEvalsOnHPrime()

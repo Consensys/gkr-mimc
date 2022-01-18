@@ -8,6 +8,7 @@ import (
 	"github.com/AlexandreBelling/gnark/backend"
 	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/snark/hash"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -89,11 +90,12 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 	assignment.Assign()
 
-	b.Run("Circuit with GKR benchmark", func(b *testing.B) {
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_, _ = Prove(&r1cs, &pk, &assignment)
-		}
+	b.Run("Circuit-with-GKR-benchmark", func(b *testing.B) {
+		common.ProfileTrace(b, true, true, "../..", func() {
+			for i := 0; i < b.N; i++ {
+				_, _ = Prove(&r1cs, &pk, &assignment)
+			}
+		})
 	})
 }
 
@@ -114,7 +116,6 @@ func benchCircuitBaseline(n int, b *testing.B) {
 	assignment := AssignCircuitBaseline(n)
 
 	b.Run("Baseline circuit", func(b *testing.B) {
-		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_, _ = groth16.Prove(r1cs, pk, &assignment)
 		}

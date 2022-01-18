@@ -2,9 +2,10 @@ package sumcheck
 
 import (
 	"fmt"
-	"github.com/consensys/gkr-mimc/common"
 	"runtime"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/common"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -45,7 +46,7 @@ func benchmarkFullSumcheckMultiThreaded(b *testing.B, bN, nChunks, nCore int, pr
 	b.ResetTimer()
 	for _count := 0; _count < b.N; _count++ {
 		prover := InitializeMultiThreadedProver(bN, nChunks)
-		common.ProfileTrace(b, profiled, traced,
+		common.ProfileTrace(b, profiled, traced, "..",
 			func() {
 				prover.Prove(nChunks)
 			},
