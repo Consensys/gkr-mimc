@@ -46,8 +46,8 @@ func (c *Circuit) Assign() {
 // Options for the `Circuit` constructor
 type GkrOption func(c *Circuit)
 
-// Mutates the chunkSize of the circuit
-func WithChunkSize(chunkSize int) GkrOption {
+// Pass maximal chunk size to the gadget
+func WithMinChunkSize(chunkSize int) GkrOption {
 	return func(c *Circuit) {
 		c.Gadget.chunkSize = chunkSize
 	}

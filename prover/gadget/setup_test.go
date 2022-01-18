@@ -29,7 +29,7 @@ func setupTestGen(t *testing.T, fun innerSetupFunc) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(16), WithNCore(1))
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -41,6 +41,8 @@ func setupTestGen(t *testing.T, fun innerSetupFunc) {
 	// We need to at least run the dummy setup so that the solver knows what to do
 	// So that the proving key can attach itself to the R1CS
 	initialPk, initialVk, err := fun(&r1cs.r1cs)
+	assert.NoError(t, err, "Error during the setup")
+
 	pk, vk := PreInitializePublicParams(initialPk, initialVk)
 	SubSlicesPublicParams(&r1cs, &pk, &vk)
 
@@ -88,6 +90,7 @@ func setupTestGen(t *testing.T, fun innerSetupFunc) {
 			[]bn254.G2Affine{vk.vk.G2.DeltaNeg, vk.deltaSigmaInvNeg},
 		)
 
+		assert.NoError(t, err, "Error during the second pairing")
 		assert.Equal(t, left, right, "%v != %v", left.String(), right.String())
 	}
 

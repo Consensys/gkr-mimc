@@ -19,8 +19,8 @@ type Solution struct {
 func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
 
 	if compiled.provingKey == nil {
-		return Solution{}, fmt.Errorf("Solving was called prior to running the setup.\n" +
-			"Run either DummySetup(&r1cs) or Setup(&r1cs) prior to calling Solve.\n")
+		return Solution{}, fmt.Errorf("solving was called prior to running the setup" +
+			"\n run either DummySetup(&r1cs) or Setup(&r1cs) prior to calling Solve")
 	}
 
 	// Re-inject the R1CS into the circuit
@@ -69,6 +69,7 @@ func (s *Solution) isFixable() bool {
 // The second one is for unexected errors
 func (c *Circuit) partialSolve(compiled frontend.CompiledConstraintSystem, opts ...func(opt *backend.ProverOption) error) (Solution, error, error) {
 	witness := witness.Witness{}
+
 	err := witness.FromFullAssignment(c)
 
 	if err != nil {

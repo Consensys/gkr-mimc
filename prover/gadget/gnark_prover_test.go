@@ -30,7 +30,7 @@ func TestGadgetSolver(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(16), WithNCore(1))
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -70,7 +70,7 @@ func TestGadgetSolver(t *testing.T) {
 
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(16), WithNCore(1))
 	assignment.Assign()
 
 	solution, err := assignment.Solve(r1cs)
@@ -94,6 +94,7 @@ func TestGadgetSolver(t *testing.T) {
 		assignment.Gadget.GkrProverHint(),
 	)
 	proverOption, err := backend.NewProverOption(opts)
+	assert.NoError(t, err)
 
 	_, _, _, _, err = groth16.Solve(&r1cs.r1cs, witness, proverOption)
 	assert.NoError(t, err)
@@ -112,7 +113,7 @@ func TestGadgetProver(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(16), WithNCore(1))
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -132,7 +133,7 @@ func TestGadgetProver(t *testing.T) {
 
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(16), WithNCore(1))
 	assignment.Assign()
 
 	// Run the solver
@@ -167,7 +168,7 @@ func TestGadgetWithOldProver(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(16), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(16), WithNCore(1))
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -188,7 +189,7 @@ func TestGadgetWithOldProver(t *testing.T) {
 
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(16), WithNCore(1))
 	assignment.Assign()
 
 	solution, err := assignment.Solve(r1cs)
@@ -197,7 +198,7 @@ func TestGadgetWithOldProver(t *testing.T) {
 	// Reassign a witness with the right initial randomness
 	innerAssignment = AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
-	assignment = WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(16), WithNCore(1))
+	assignment = WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(16), WithNCore(1))
 
 	// In order for the solving to pass, we need to inject the r1cs and give the right value
 	assignment.Gadget.InitialRandomness = solution.Wires[1]

@@ -28,7 +28,7 @@ func (c *RandomCircuit) Define(cs frontend.API, gadget *GkrGadget) error {
 		tmp := gadget.UpdateHasher(cs, tmp, c.Public[i])
 		tmp = gadget.UpdateHasher(cs, tmp, tmp)
 		tmp = gadget.UpdateHasher(cs, tmp, c.Private[i])
-		tmp = cs.Mul(tmp, tmp)
+		_ = cs.Mul(tmp, tmp)
 
 	}
 	return nil
@@ -49,7 +49,7 @@ func TestWithRandomCircuit(t *testing.T) {
 	n := 10
 
 	innerCircuit := AllocateRandomCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithChunkSize(32), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(32), WithNCore(1))
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -59,7 +59,7 @@ func TestWithRandomCircuit(t *testing.T) {
 
 	innerAssignment := AllocateRandomCircuit(n)
 	pubWitness := innerAssignment.Assign()
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithChunkSize(32), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(32), WithNCore(1))
 	assignment.Assign()
 
 	solution, err := assignment.Solve(r1cs)

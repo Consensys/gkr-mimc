@@ -42,7 +42,7 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 	initialRandomness := DeriveRandomnessFromPoint(KrsGkr)
 	if initialRandomness != proof.InitialRandomness {
 		return fmt.Errorf(
-			"The initial randomness is incorrect. Provided %v != recovered %v",
+			"the initial randomness is incorrect. Provided %v != recovered %v",
 			pubVarNotGkr[0].String(),
 			initialRandomness.String(),
 		)
@@ -62,11 +62,11 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 	)
 
 	if err != nil {
-		return fmt.Errorf("Error in the miller loop %v", err)
+		return fmt.Errorf("error in the miller loop %v", err)
 	}
 
 	if !vk.vk.E.Equal(&right) {
-		return fmt.Errorf("The pairing failed")
+		return fmt.Errorf("the pairing failed")
 	}
 
 	return nil

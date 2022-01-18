@@ -13,6 +13,12 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
+func BenchmarkCircuitWithGKR(b *testing.B) {
+	n := 1 << 10
+	benchCircuitWithGkr(n, b)
+	benchCircuitBaseline(n, b)
+}
+
 type CircuitBaseline struct {
 	X []frontend.Variable
 }
@@ -65,7 +71,7 @@ func AssignCircuitWithGkr(n int) CircuitWithGkr {
 
 func benchCircuitWithGkr(n int, b *testing.B) {
 	circ := AllocateCircuitWithGkr(n)
-	circuit := WrapCircuitUsingGkr(circ, WithChunkSize(1024), WithNCore(runtime.NumCPU()))
+	circuit := WrapCircuitUsingGkr(circ, WithMinChunkSize(1024), WithNCore(runtime.NumCPU()))
 	r1cs, err := circuit.Compile()
 
 	if err != nil {
@@ -79,7 +85,8 @@ func benchCircuitWithGkr(n int, b *testing.B) {
 	}
 
 	ass := AssignCircuitWithGkr(n)
-	assignment := WrapCircuitUsingGkr(&ass, WithChunkSize(1024), WithNCore(runtime.NumCPU()))
+	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(1024), WithNCore(runtime.NumCPU()))
+	assignment.Assign()
 
 	b.Run("Circuit with GKR benchmark", func(b *testing.B) {
 		b.ResetTimer()
@@ -105,7 +112,7 @@ func benchCircuitBaseline(n int, b *testing.B) {
 
 	assignment := AssignCircuitBaseline(n)
 
-	b.Run("Circuit with GKR benchmark", func(b *testing.B) {
+	b.Run("Baseline circuit", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_, _ = groth16.Prove(r1cs, pk, &assignment)

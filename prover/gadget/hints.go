@@ -159,6 +159,7 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 
 		bN := common.Log2Ceil(h.g.ioStore.Index())
 		paddedIndex := 1 << bN
+		h.g.chunkSize = common.Min(h.g.chunkSize, paddedIndex)
 
 		nInputs := paddedIndex * h.g.Circuit.InputArity()
 		nOutputs := paddedIndex * h.g.Circuit.OutputArity()
@@ -175,7 +176,7 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 		// The output: here is passed to force the solver to wait for all the output
 		outputs, inps := inps[:nOutputs], inps[nOutputs:]
 		qPrime, inps := inps[:bN], inps[bN:]
-		q, inps := inps[:bGinitial], inps[bGinitial:]
+		q, _ := inps[:bGinitial], inps[bGinitial:]
 
 		inputChunkSize := h.g.chunkSize * h.g.Circuit.InputArity()
 		outputChunkSize := h.g.chunkSize * h.g.Circuit.OutputArity()

@@ -28,7 +28,7 @@ type IoStore struct {
 func NewIoStore(circuit *circuit.Circuit, allocEpoch int) IoStore {
 
 	if allocEpoch == 0 {
-		panic(fmt.Sprintf("Cannot accept allocEpoch = 0"))
+		panic("cannot accept allocEpoch = 0")
 	}
 
 	return IoStore{
@@ -129,6 +129,9 @@ func (io *IoStore) DumpForProverMultiExp() []frontend.Variable {
 // The variables are returned in the form of a buffer of interfaces
 // 4 empty entry are appended to the result : they are used by the hint to figure out which
 func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []frontend.Variable {
+
+	// If the chunk size if too big, mutates to 1 << len(qPrimeArg)
+	chunkSize = common.Min(chunkSize, 1<<len(qPrimeArg))
 
 	nChunks := io.Index() / chunkSize
 	nInputs, nOutputs, bN, bG := len(io.inputs), len(io.outputs), len(qPrimeArg), len(qArg)
