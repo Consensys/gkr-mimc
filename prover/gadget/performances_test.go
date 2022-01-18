@@ -14,8 +14,9 @@ import (
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	n := 1 << 10
-	benchCircuitWithGkr(n, b)
+	n := 1 << 12
+	chunkSize := 1024
+	benchCircuitWithGkr(n, chunkSize, b)
 	benchCircuitBaseline(n, b)
 }
 
@@ -69,9 +70,9 @@ func AssignCircuitWithGkr(n int) CircuitWithGkr {
 	return res
 }
 
-func benchCircuitWithGkr(n int, b *testing.B) {
+func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	circ := AllocateCircuitWithGkr(n)
-	circuit := WrapCircuitUsingGkr(circ, WithMinChunkSize(1024), WithNCore(runtime.NumCPU()))
+	circuit := WrapCircuitUsingGkr(circ, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 	r1cs, err := circuit.Compile()
 
 	if err != nil {
@@ -85,7 +86,7 @@ func benchCircuitWithGkr(n int, b *testing.B) {
 	}
 
 	ass := AssignCircuitWithGkr(n)
-	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(1024), WithNCore(runtime.NumCPU()))
+	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 	assignment.Assign()
 
 	b.Run("Circuit with GKR benchmark", func(b *testing.B) {

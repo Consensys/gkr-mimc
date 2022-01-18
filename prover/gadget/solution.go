@@ -32,37 +32,45 @@ func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) er
 		return Solution{}, err
 	}
 
-	if !solution.fixSolution() {
+	if err = solution.fixSolution(); err != nil {
 		// The solver had a non fixable error, we return it
-		return Solution{}, solverError
+		return Solution{}, fmt.Errorf("%v \n %v", solverError, err)
 	}
 
 	return solution, err
 }
 
 // Fixes the partial solution delivered by the solver
-func (s *Solution) fixSolution() bool {
-	if !s.isFixable() {
-		return false
+func (s *Solution) fixSolution() error {
+	nConstraint := len(s.A)
+	errString := ""
+
+	if s.A[nConstraint-1] != fr.One() {
+		errString += fmt.Sprintf("a[nConstraint] should =1 but got %v \n", s.A[nConstraint-1].String())
 	}
 
-	nConstraint := len(s.A)
+	if s.B[nConstraint-1] != fr.NewElement(0) {
+		errString += fmt.Sprintf("b[nConstraint] should =0 but got %v \n", s.B[nConstraint-1].String())
+	}
+
+	if s.C[nConstraint-1] == fr.NewElement(0) {
+		errString += fmt.Sprintf("c[nConstraint] should != 0 but got %v \n", s.C[nConstraint-1].String())
+	}
+
+	if s.Wires[1] != fr.NewElement(0) {
+		errString += fmt.Sprintf("w[1] should be 0 but got %v \n", s.Wires[1].String())
+	}
+
+	if len(errString) > 0 {
+		return fmt.Errorf(errString)
+	}
+
 	// Fixes the solution with the right initial randomnes
+	// Which contained in CN
 	s.B[nConstraint-1] = s.C[nConstraint-1]
 	s.Wires[1] = s.C[nConstraint-1]
 
-	return true
-}
-
-// Returns true if the solution is "in partial form"
-// Last constraint should be `0 x 1 = !0`. It's useful to
-// check if the solver failed before the last constraint or before.
-func (s *Solution) isFixable() bool {
-	nConstraint := len(s.A)
-	return s.A[nConstraint-1] == fr.One() &&
-		s.B[nConstraint-1] == fr.NewElement(0) &&
-		s.C[nConstraint-1] != fr.NewElement(0) &&
-		s.Wires[1] == fr.NewElement(0)
+	return nil
 }
 
 // The first error it returns is the "solver error". So we expect it.
