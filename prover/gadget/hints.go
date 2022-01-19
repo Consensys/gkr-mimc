@@ -3,7 +3,6 @@ package gadget
 import (
 	"fmt"
 	"math/big"
-	"runtime"
 
 	"github.com/AlexandreBelling/gnark/backend/hint"
 	"github.com/consensys/gkr-mimc/common"
@@ -136,8 +135,8 @@ func (h *InitialRandomnessHint) Call(_ ecc.ID, inpss []*big.Int, oups []*big.Int
 
 	// Compute the K associated to the gkr public/private inputs
 	var KrsGkr, KrsGkrPriv bn254.G1Affine
-	KrsGkr.MultiExp(h.g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{NbTasks: runtime.NumCPU()})
-	KrsGkrPriv.MultiExp(h.g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{NbTasks: runtime.NumCPU()})
+	KrsGkr.MultiExp(h.g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{NbTasks: h.g.gkrNCore})
+	KrsGkrPriv.MultiExp(h.g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{NbTasks: h.g.gkrNCore})
 	KrsGkr.Add(&KrsGkr, &KrsGkrPriv)
 
 	h.g.proof = &Proof{KrsGkrPriv: KrsGkrPriv}
