@@ -149,15 +149,13 @@ func (g *GkrGadget) Close(cs frontend.API) {
 	bN := common.Log2Ceil(g.ioStore.Index())
 	paddedLen := 1 << bN
 
+	// Shrinks the chunkSize so that it does not overflow
+	// the number of hashes (after padding)
+	g.chunkSize = common.Min(g.chunkSize, paddedLen)
+
 	// Pad the inputs in order to get a power of two length vector
 	for g.ioStore.Index() < paddedLen {
 		g.updateHasherWithZeroes(cs)
-	}
-
-	// Shrinks the chunkSize so that it does not overflow
-	// the number of hashes (after padding)
-	if g.chunkSize > paddedLen {
-		g.chunkSize = paddedLen
 	}
 
 	initialRandomness, qPrime, q := g.getInitialRandomness(cs)

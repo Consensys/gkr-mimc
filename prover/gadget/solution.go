@@ -15,6 +15,13 @@ type Solution struct {
 	Wires, A, B, C []fr.Element
 }
 
+// Dump the solution vector : usefull for debugging
+func (s Solution) Dump() {
+	for i := range s.A {
+		fmt.Printf("n = %v a = %v, b = %v, c = %v \n", i, s.A[i].String(), s.B[i].String(), s.C[i].String())
+	}
+}
+
 // Returns a solution to the circuit
 func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
 

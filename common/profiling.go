@@ -73,7 +73,7 @@ func ProfileTrace(b *testing.B, profiled, traced bool, fn func()) {
 	}
 
 	if profiled {
-		_path, err := GetPath(fmt.Sprintf("profiling/%v/profile.pprof", b.Name()))
+		_path, err := GetPath(fmt.Sprintf("profiling/%v", b.Name()))
 		if err != nil {
 			panic(err)
 		}
