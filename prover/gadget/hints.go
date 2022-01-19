@@ -1,5 +1,7 @@
 package gadget
 
+const 
+
 import (
 	"fmt"
 	"math/big"
@@ -135,8 +137,8 @@ func (h *InitialRandomnessHint) Call(_ ecc.ID, inpss []*big.Int, oups []*big.Int
 
 	// Compute the K associated to the gkr public/private inputs
 	var KrsGkr, KrsGkrPriv bn254.G1Affine
-	KrsGkr.MultiExp(h.g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{})
-	KrsGkrPriv.MultiExp(h.g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{})
+	KrsGkr.MultiExp(h.g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiexpConfig{NbTasks: runtime.NumCPU()})
+	KrsGkrPriv.MultiExp(h.g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiexpConfig{NbTasks: runtime.NumCPU()})
 	KrsGkr.Add(&KrsGkr, &KrsGkrPriv)
 
 	h.g.proof = &Proof{KrsGkrPriv: KrsGkrPriv}

@@ -2,6 +2,7 @@ package gadget
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
 	"github.com/consensys/gkr-mimc/common"
@@ -35,7 +36,7 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 
 	// Computes separately the priv/pub GKRs
 	var KrsGkr, KrsPub, KrsGkrPub bn254.G1Affine
-	KrsGkrPub.MultiExp(vk.pubKGkr, pubVarGkr, ecc.MultiExpConfig{})
+	KrsGkrPub.MultiExp(vk.pubKGkr, pubVarGkr, ecc.MultiexpConfig{NbTasks: runtime.NumCPU()})
 	KrsGkr.Add(&KrsGkrPub, &proof.KrsGkrPriv)
 
 	// Check the initial randomness
@@ -50,7 +51,7 @@ func Verify(proof *Proof, vk *VerifyingKey, publicWitness witness.Witness) error
 
 	// Processes the Krs pub
 	// 1) Non-Gkr stuffs
-	KrsPub.MultiExp(vk.pubKNotGkr[1:], pubVarNotGkr, ecc.MultiExpConfig{})
+	KrsPub.MultiExp(vk.pubKNotGkr[1:], pubVarNotGkr, ecc.MultiexpConfig{NbTasks: runtime.NumCPU()})
 	// 2) Complete with the GKR stuffs and the constant "1"
 	KrsPub.Add(&KrsPub, &KrsGkrPub)
 	KrsPub.Add(&KrsPub, &vk.pubKNotGkr[0])

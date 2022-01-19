@@ -69,7 +69,7 @@ func ComputeProof(
 	// As the GKR one where already processed by the Hint
 	privNotGkrVars := subSlice(solution.Wires, r1cs.privNotGkrVarID, 0)
 	var krsNotGkr bn254.G1Affine
-	krsNotGkr.MultiExp(pk.privKNotGkr, privNotGkrVars, ecc.MultiExpConfig{})
+	krsNotGkr.MultiExp(pk.privKNotGkr, privNotGkrVars, ecc.MultiexpConfig{NbTasks: runtime.NumCPU()})
 
 	// Will perform all the computations beside the one involving `K`
 	grothProof, err := ComputeGroth16Proof(&r1cs.r1cs, &pk.pk,
@@ -84,7 +84,7 @@ func ComputeProof(
 
 	// Processes the non-GKR priv part of the multiexp.
 	var KrsPrivNotGkr bn254.G1Affine
-	KrsPrivNotGkr.MultiExp(pk.privKNotGkr, privNotGkrVars, ecc.MultiExpConfig{})
+	KrsPrivNotGkr.MultiExp(pk.privKNotGkr, privNotGkrVars, ecc.MultiexpConfig{NbTasks: runtime.NumCPU()})
 
 	// Complete the Krs part with the part we calculated
 	proof.Krs.Add(&grothProof.Krs, &KrsPrivNotGkr)
