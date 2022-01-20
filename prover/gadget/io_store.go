@@ -207,7 +207,7 @@ func (io *IoStore) InputsForVerifier(chunkSize int) []frontend.Variable {
 			chunkSizeXinputArity := chunkSize * io.inputArity
 			nI := chunkSize * nChunks
 			for subI := 0; subI < io.inputArity; subI++ {
-				dumpIdx := lsb + msb*chunkSize + subI*nI
+				dumpIdx := msb + lsb*nChunks + subI*nI
 				ioIdx := subI + lsb*io.inputArity + msb*chunkSizeXinputArity
 				dumpedInputs[dumpIdx] = io.inputs[ioIdx]
 			}
@@ -234,7 +234,7 @@ func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 			chunkSizeXoutputArity := chunkSize * io.outputArity
 			nO := chunkSize * nChunks
 			for subO := 0; subO < io.outputArity; subO++ {
-				dumpIdx := lsb + msb*chunkSize + subO*nO
+				dumpIdx := msb + lsb*nChunks + subO*nO
 				ioIdx := subO + lsb*io.outputArity + msb*chunkSizeXoutputArity
 				dumpedOutputs[dumpIdx] = io.outputs[ioIdx]
 			}
