@@ -5,9 +5,11 @@ import (
 	"math/big"
 
 	"github.com/AlexandreBelling/gnark/backend/hint"
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gkr-mimc/common"
 	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/snark/gkr"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -61,14 +63,50 @@ func (h *HashHint) NbOutputs(_ ecc.ID, nbInput int) int {
 	return 1
 }
 
-// NbOutputs of the initial randomness hint hint
+// NbOutputs of the initial randomness hint
 func (h *InitialRandomnessHint) NbOutputs(_ ecc.ID, nbInput int) int {
 	return 1
 }
 
-// NbOutputs of the gkr prover hint hint
+// NbOutputs of the gkr prover hint
 func (h *GkrProverHint) NbOutputs(_ ecc.ID, nbInput int) int {
-	return 1
+	// Find the circuit
+	circuit := h.g.Circuit
+	// Iteratively finds the bN of the circuit from the input size
+	// Can't guarantee that g.ioStore.index contains the right values
+	bN := 0
+
+loop:
+	for {
+		gIn := circuit.InputArity()
+		gOut := circuit.OutputArity()
+		inputSize := (1<<bN)*(gIn+gOut) +
+			bN + common.Log2Ceil(gOut)
+
+		if inputSize == nbInput {
+			break loop
+		}
+		// sanity check in case something must be wrong with the formula
+		if inputSize > nbInput {
+			panic(fmt.Sprintf("It's too big : %v > %v", inputSize, nbInput))
+		}
+
+		bN += 1
+	}
+
+	nLayers := len(circuit.Layers)
+
+	nbClaimLeft := nLayers  // claim left
+	nbClaimRight := nLayers // claim right
+
+	sumcheckTotalSize := 0
+	for i, layer := range circuit.Layers {
+		degHL, degHR, degHPrime := layer.Degrees()
+		bG := circuit.Layers[i].BGInputs                           // log width of the previous layer's subcircuit
+		sumcheckTotalSize += bG*(degHL+degHR+2) + bN*(degHPrime+1) // size of the sumcheck i
+	}
+
+	return nbClaimLeft + nbClaimRight + sumcheckTotalSize
 }
 
 // String of the hash hint
@@ -123,7 +161,7 @@ func (h *InitialRandomnessHint) Call(_ ecc.ID, inpss []*big.Int, oups []*big.Int
 		res := make([]fr.Element, len(indices))
 		for i, idx := range indices {
 			res[i].SetBigInt(array[idx+offset])
-			// Switch to MontGommery
+			// Switch to regular
 			res[i].FromMont()
 		}
 		return res
@@ -152,77 +190,122 @@ func (h *InitialRandomnessHint) Call(_ ecc.ID, inpss []*big.Int, oups []*big.Int
 // In order to return the fields one after the other, the function is built as a stateful iterator
 func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) error {
 
-	claims, nLayer, sumRound, coeffIds, inputsBI := inputsBI[0].Uint64(), inputsBI[1].Uint64(),
-		inputsBI[2].Uint64(), inputsBI[3].Uint64(), inputsBI[4:]
+	bN := common.Log2Ceil(h.g.ioStore.Index())
 
-	if h.g.gkrProof == nil {
+	paddedIndex := 1 << bN
+	h.g.chunkSize = common.Min(h.g.chunkSize, paddedIndex)
 
-		bN := common.Log2Ceil(h.g.ioStore.Index())
-		paddedIndex := 1 << bN
-		h.g.chunkSize = common.Min(h.g.chunkSize, paddedIndex)
+	nInputs := paddedIndex * h.g.Circuit.InputArity()
+	nOutputs := paddedIndex * h.g.Circuit.OutputArity()
+	bGinitial := common.Log2Ceil(h.g.Circuit.OutputArity())
 
-		nInputs := paddedIndex * h.g.Circuit.InputArity()
-		nOutputs := paddedIndex * h.g.Circuit.OutputArity()
-		bGinitial := common.Log2Ceil(h.g.Circuit.OutputArity())
+	common.Assert(bGinitial == 0, "bGInitial must be zero for Mimc: %v", bGinitial)
 
-		common.Assert(bGinitial == 0, "bGInitial must be zero for Mimc: %v", bGinitial)
-
-		inps := make([]fr.Element, len(inputsBI))
-		for i := range inps {
-			inps[i].SetBigInt(inputsBI[i])
-		}
-
-		inputs, inps := inps[:nInputs], inps[nInputs:]
-		// The output: here is passed to force the solver to wait for all the output
-		outputs, inps := inps[:nOutputs], inps[nOutputs:]
-		qPrime, inps := inps[:bN], inps[bN:]
-		q, _ := inps[:bGinitial], inps[bGinitial:]
-
-		inputChunkSize := h.g.chunkSize * h.g.Circuit.InputArity()
-		outputChunkSize := h.g.chunkSize * h.g.Circuit.OutputArity()
-
-		assignment := h.g.Circuit.Assign(
-			common.SliceToChunkedSlice(inputs, inputChunkSize),
-			h.g.gkrNCore,
-		)
-
-		prover := gkrNative.NewProver(h.g.Circuit, assignment)
-		gkrProof := prover.Prove(h.g.gkrNCore, qPrime, q)
-
-		// For debug : only -> Check that the proof verifies
-		verifier := gkrNative.NewVerifier(bN, h.g.Circuit)
-		valid := verifier.Verify(gkrProof,
-			common.SliceToChunkedSlice(inputs, inputChunkSize),
-			common.SliceToChunkedSlice(outputs, outputChunkSize),
-			qPrime, q,
-		)
-
-		common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
-		h.g.gkrProof = &gkrProof
+	inps := make([]fr.Element, len(inputsBI))
+	for i := range inps {
+		inps[i].SetBigInt(inputsBI[i])
 	}
 
-	var val fr.Element
-	switch claims {
-	default:
-		{
-			panic(fmt.Sprintf("claims was %v \n", claims))
-		}
-	case 0:
-		{
-			// Not a claim, returns the sumcheck poly
-			val = h.g.gkrProof.SumcheckProofs[nLayer].PolyCoeffs[sumRound][coeffIds]
-		}
-	case 1:
-		{
-			// Returns claimLeft
-			val = h.g.gkrProof.ClaimsLeft[nLayer]
-		}
-	case 2:
-		{
-			val = h.g.gkrProof.ClaimsRight[nLayer]
-		}
-	}
+	inputs, inps := inps[:nInputs], inps[nInputs:]
+	// The output: here is passed to force the solver to wait for all the output
+	outputs, inps := inps[:nOutputs], inps[nOutputs:]
+	qPrime, inps := inps[:bN], inps[bN:]
+	q, _ := inps[:bGinitial], inps[bGinitial:]
 
-	val.ToBigIntRegular(oups[0])
+	inputChunkSize := h.g.chunkSize * h.g.Circuit.InputArity()
+	outputChunkSize := h.g.chunkSize * h.g.Circuit.OutputArity()
+
+	assignment := h.g.Circuit.Assign(
+		common.SliceToChunkedSlice(inputs, inputChunkSize),
+		h.g.gkrNCore,
+	)
+
+	prover := gkrNative.NewProver(h.g.Circuit, assignment)
+	gkrProof := prover.Prove(h.g.gkrNCore, qPrime, q)
+
+	// For debug : only -> Check that the proof verifies
+	verifier := gkrNative.NewVerifier(bN, h.g.Circuit)
+	valid := verifier.Verify(gkrProof,
+		common.SliceToChunkedSlice(inputs, inputChunkSize),
+		common.SliceToChunkedSlice(outputs, outputChunkSize),
+		qPrime, q,
+	)
+
+	common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
+	h.g.gkrProof = &gkrProof
+
+	GkrProofToVec(gkrProof, oups)
 	return nil
+}
+
+// Writes the proof in a res buffer. We assume the res buffer to be allocated a priori
+func GkrProofToVec(proof gkrNative.Proof, resBuff []*big.Int) {
+	cursor := 0
+
+	// Writes the sumcheck proofs
+	for _, layer := range proof.SumcheckProofs {
+		for _, sumcheckRound := range layer.PolyCoeffs {
+			for _, val := range sumcheckRound {
+				val.ToBigIntRegular(resBuff[cursor])
+				cursor += 1
+			}
+		}
+	}
+
+	// Writes the claimLeft
+	for _, val := range proof.ClaimsLeft {
+		val.ToBigIntRegular(resBuff[cursor])
+		cursor += 1
+	}
+
+	// Writes the claimRight
+	for _, val := range proof.ClaimsRight {
+		val.ToBigIntRegular(resBuff[cursor])
+		cursor += 1
+	}
+
+	// sanity check : expect to have written entirely the vector
+	if cursor < len(resBuff) {
+		panic("expected to have written the entire buffer")
+	}
+}
+
+// Reads the proof to obtain the variable equivalent, the gadget is here
+// to provide the dimensions
+func (g *GkrGadget) GkrProofFromVec(vec []frontend.Variable) gkr.Proof {
+	bN := common.Log2Ceil(g.ioStore.index)
+
+	// At this point, all the dimension of the proof are available
+	proof := gkr.AllocateProof(bN, g.Circuit)
+	cursor := 0
+
+	// Writes the sumcheck proofs
+	for i, layer := range proof.SumcheckProofs {
+		for j, sumcheckRound := range layer.HPolys {
+			for k := range sumcheckRound.Coefficients {
+				proof.SumcheckProofs[i].HPolys[j].Coefficients[k] = vec[cursor]
+				cursor += 1
+			}
+		}
+	}
+
+	// Writes the claimLeft
+	for i := range proof.ClaimsLeft {
+		proof.ClaimsLeft[i] = vec[cursor]
+		cursor += 1
+	}
+
+	// Writes the claimRight
+	for i := range proof.ClaimsRight {
+		proof.ClaimsRight[i] = vec[cursor]
+		cursor += 1
+	}
+
+	// sanity check, we expect to have read the entire vector by now
+	if cursor < len(vec) {
+		panic("the vector was not completely read to complete the proof")
+	}
+
+	return proof
+
 }

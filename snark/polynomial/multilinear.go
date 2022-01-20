@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -77,8 +78,8 @@ func (m MultilinearByValues) Eval(cs frontend.API, xs []frontend.Variable) front
 }
 
 // EvalMixed the multilinear polynomial
-// We must have len(qL) == len(qR)
-// And len(Table) = 2 ** len(qL) + len(qPrime)
+// We must have len(qL) == len(qR) and len(Table) = 2 ** (len(qL) + len(qPrime)) ^
+// Otherwise, it panics
 func (m MultilinearByValues) EvalMixed(
 	cs frontend.API,
 	qL, qR, qPrime []frontend.Variable,
@@ -88,6 +89,10 @@ func (m MultilinearByValues) EvalMixed(
 	nChunks := 1 << len(qL)
 	chunkSize := len(m.Table) / nChunks
 	intermediateTable := make([]frontend.Variable, nChunks)
+
+	// sanity checks
+	common.Assert(len(qL) == len(qR), "qL and qR must be equal")
+	common.Assert(len(m.Table) == 1<<(len(qL)+len(qPrime)), "len(Table) = 2 ** (len(qL) + len(qPrime))")
 
 	// Evaluate each portion of the table on qPrime. For different values of q.
 	for i := range intermediateTable {

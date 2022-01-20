@@ -3,7 +3,6 @@ package gkr
 import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/gkr"
-	"github.com/consensys/gkr-mimc/hash"
 	hashGadget "github.com/consensys/gkr-mimc/snark/hash"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
 	"github.com/consensys/gkr-mimc/snark/sumcheck"
@@ -11,14 +10,14 @@ import (
 	"github.com/AlexandreBelling/gnark/frontend"
 )
 
-const nLayers = hash.MimcRounds
-
 // Proof represents a GKR proof
 // Only valid for the MiMC circuit
 type Proof struct {
 	SumcheckProofs []sumcheck.Proof
 	ClaimsLeft     []frontend.Variable
 	ClaimsRight    []frontend.Variable
+	circuit        circuit.Circuit
+	bN             int
 }
 
 // AllocateProof allocates a new proof gadget
@@ -37,6 +36,8 @@ func AllocateProof(bN int, circuit circuit.Circuit) Proof {
 		SumcheckProofs: SumcheckProofs,
 		ClaimsLeft:     ClaimsLeft,
 		ClaimsRight:    ClaimsRight,
+		circuit:        circuit,
+		bN:             bN,
 	}
 }
 
@@ -60,6 +61,8 @@ func (p *Proof) AssertValid(
 
 	qqPrime := append(append([]frontend.Variable{}, qInitial...), qPrimeInitial...)
 	claim := vOutput.Eval(cs, qqPrime)
+
+	nLayers := len(p.SumcheckProofs)
 	hL, hR, hPrime, expectedTotalClaim := p.SumcheckProofs[nLayers-1].AssertValid(cs, claim, circuit.Layers[nLayers-1].BGInputs)
 	actualTotalClaim := circuit.Layers[nLayers-1].GnarkCombine(
 		cs,

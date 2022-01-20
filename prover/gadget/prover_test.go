@@ -32,6 +32,13 @@ func (t *TestGadgetCircuit) Define(cs frontend.API, gadget *GkrGadget) error {
 	return nil
 }
 
+func (t *TestGadgetCircuit) Assign(preimages, hashes []fr.Element) {
+	for i := range preimages {
+		t.Preimages[i] = preimages[i]
+		t.Hashes[i] = hashes[i]
+	}
+}
+
 func TestFullProver(t *testing.T) {
 	n := 10
 	preimages := make([]fr.Element, n)

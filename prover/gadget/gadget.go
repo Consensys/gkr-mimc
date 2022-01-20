@@ -67,7 +67,7 @@ func (g *GkrGadget) updateHasherWithZeroes(cs frontend.API) {
 	g.ioStore.Push(
 		cs,
 		[]frontend.Variable{frontend.Variable(0), frontend.Variable(0)},
-		[]frontend.Variable{frontend.Variable(hashOfZeroes)},
+		[]frontend.Variable{&hashOfZeroes},
 	)
 }
 
@@ -100,47 +100,15 @@ func (g *GkrGadget) getInitialRandomness(cs frontend.API) (initialRandomness fro
 
 // Runs the Gkr Prover
 func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime, q []frontend.Variable) gkr.Proof {
-
-	bN := len(qPrime)
 	proofInputs := g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q)
+	proofVec, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
 
-	// Preallocates the proof. It's simpler than recomputing
-	// all the dimensions of every slice it contains
-	proof := gkr.AllocateProof(bN, g.Circuit)
-	for layer, sumPi := range proof.SumcheckProofs {
-		for polyIdx, poly := range sumPi.HPolys {
-			for coeffIds := range poly.Coefficients {
-				// Set the 4 entries to tell the hint to return a given value of the proof
-				copy(
-					proofInputs[:4],
-					[]frontend.Variable{frontend.Variable(0), frontend.Variable(layer), frontend.Variable(polyIdx), frontend.Variable(coeffIds)},
-				)
-				newvArr, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
-				common.Assert(err == nil, "Unexpected error %v", err)
-				proof.SumcheckProofs[layer].HPolys[polyIdx].Coefficients[coeffIds] = newvArr[0]
-			}
-		}
+	common.Assert(err == nil, "unexpected error in the gkr prover hint %v", err)
+	if err != nil {
+		panic("unexpected error in the gkr prover hint")
 	}
 
-	// Then finally pull the remaining of the proof from the hint
-	for i := range proof.ClaimsLeft {
-		// Set the 4 first entries so that the hint returns the claim lefts
-		copy(
-			proofInputs[:4],
-			[]frontend.Variable{frontend.Variable(1), frontend.Variable(i), frontend.Variable(0), frontend.Variable(0)},
-		)
-		newvArr, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
-		common.Assert(err == nil, "Unexpected error %v", err)
-		proof.ClaimsLeft[i] = newvArr[0]
-
-		// Returns the claim left but for the same level, only the first entry changes
-		proofInputs[0] = frontend.Variable(2)
-		newvArr, err = cs.NewHint(g.GkrProverHint(), proofInputs...)
-		proof.ClaimsRight[i] = newvArr[0]
-		common.Assert(err == nil, "Unexpected error %v", err)
-	}
-
-	return proof
+	return g.GkrProofFromVec(proofVec)
 }
 
 // Pad and close GKR, run the proof then call the verifier

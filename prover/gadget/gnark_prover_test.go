@@ -12,15 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func (t *TestGadgetCircuit) Assign(preimages, hashes []fr.Element) {
-	for i := range preimages {
-		t.Preimages[i] = preimages[i]
-		t.Hashes[i] = hashes[i]
-	}
-}
-
 func TestGadgetSolver(t *testing.T) {
 	n := 10
+	chunkSize := 8
 	preimages := make([]fr.Element, n)
 	hashes := make([]fr.Element, n)
 
@@ -30,7 +24,7 @@ func TestGadgetSolver(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(16), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(chunkSize), WithNCore(1))
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -70,7 +64,7 @@ func TestGadgetSolver(t *testing.T) {
 
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(16), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(chunkSize), WithNCore(1))
 	assignment.Assign()
 
 	solution, err := assignment.Solve(r1cs)
@@ -87,6 +81,9 @@ func TestGadgetSolver(t *testing.T) {
 	assert.Equal(t, witness[0], fr.NewElement(0))
 	// And then, we complete the solution with the initial randomness
 	witness[0] = solution.Wires[1]
+
+	// Reset the index,
+	assignment.Gadget.ioStore.index = 0
 
 	opts := backend.WithHints(
 		assignment.Gadget.InitialRandomnessHint(),

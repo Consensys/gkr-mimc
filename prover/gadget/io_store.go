@@ -135,11 +135,11 @@ func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Va
 
 	nChunks := io.Index() / chunkSize
 	nInputs, nOutputs, bN, bG := len(io.inputs), len(io.outputs), len(qPrimeArg), len(qArg)
-	resSize := nInputs + nOutputs + bN + bG + 4
+	resSize := nInputs + nOutputs + bN + bG
 	res := make([]frontend.Variable, resSize)
 
 	// Allocate subslices for each part of the dump
-	drain := res[4:]
+	drain := res[:]
 	dumpedInputs, drain := drain[:nInputs], drain[nInputs:]
 	dumpedOutputs, drain := drain[:nOutputs], drain[nOutputs:]
 	qPrime, drain := drain[:bN], drain[bN:]
@@ -205,8 +205,9 @@ func (io *IoStore) InputsForVerifier(chunkSize int) []frontend.Variable {
 	for msb := 0; msb < nChunks; msb++ {
 		for lsb := 0; lsb < chunkSize; lsb++ {
 			chunkSizeXinputArity := chunkSize * io.inputArity
+			nI := chunkSize * nChunks
 			for subI := 0; subI < io.inputArity; subI++ {
-				dumpIdx := lsb + subI*chunkSize + msb*chunkSizeXinputArity
+				dumpIdx := lsb + msb*chunkSize + subI*nI
 				ioIdx := subI + lsb*io.inputArity + msb*chunkSizeXinputArity
 				dumpedInputs[dumpIdx] = io.inputs[ioIdx]
 			}
@@ -231,8 +232,9 @@ func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
 	for msb := 0; msb < nChunks; msb++ {
 		for lsb := 0; lsb < chunkSize; lsb++ {
 			chunkSizeXoutputArity := chunkSize * io.outputArity
+			nO := chunkSize * nChunks
 			for subO := 0; subO < io.outputArity; subO++ {
-				dumpIdx := lsb + subO*chunkSize + msb*chunkSizeXoutputArity
+				dumpIdx := lsb + msb*chunkSize + subO*nO
 				ioIdx := subO + lsb*io.outputArity + msb*chunkSizeXoutputArity
 				dumpedOutputs[dumpIdx] = io.outputs[ioIdx]
 			}
