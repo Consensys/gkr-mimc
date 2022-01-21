@@ -77,12 +77,17 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	circ := AllocateCircuitWithGkr(n)
 	circuit := WrapCircuitUsingGkr(circ, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 
-	fmt.Printf("circuit compilation \n")
-	r1cs, err := circuit.Compile()
+	var r1cs R1CS
+	var err error
 
-	if err != nil {
-		panic(fmt.Sprintf("Could not compile = %v", err))
-	}
+	b.Run("Compiler", func(b *testing.B) {
+		common.ProfileTrace(b, true, true, func() {
+			r1cs, err = circuit.Compile()
+			if err != nil {
+				panic(fmt.Sprintf("Could not compile = %v", err))
+			}
+		})
+	})
 
 	fmt.Printf("circuit setup \n")
 	pk, _, err := DummySetup(&r1cs)

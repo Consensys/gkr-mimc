@@ -63,7 +63,6 @@ func (c *Circuit) Compile() (R1CS, error) {
 	// pub denotes the the "r1cs" number of variable
 	// So it includes the constant wire = 1
 	for varId := 0; varId < pub-1; varId++ {
-
 		// There is an offset here, the WireID n corresponds to r1cs
 		// variable n° n+1
 		ioPosition, ok := varIdToPosition[varId]
