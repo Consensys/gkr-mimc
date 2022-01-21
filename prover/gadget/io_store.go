@@ -43,17 +43,20 @@ func NewIoStore(circuit *circuit.Circuit, allocEpoch int) IoStore {
 // Allocates for one more hash entry
 func (io *IoStore) allocateForOneMore() {
 
-	if io.index%io.allocEpoch == 0 {
+	if io.index >= io.allocEpoch {
 
-		incInputs := io.inputArity * (io.allocEpoch + io.index)
+		// Double the size
+		incInputs := io.inputArity * io.index
 		io.inputs = IncreaseCapVariable(io.inputs, incInputs)
 		io.inputsVarIds = IncreaseCapInts(io.inputsVarIds, incInputs)
 		io.inputsIsConstant = IncreaseCapBools(io.inputsIsConstant, incInputs)
 
-		incOutputs := io.outputArity * (io.allocEpoch + io.index)
+		incOutputs := io.outputArity * io.index
 		io.outputs = IncreaseCapVariable(io.outputs, incOutputs)
 		io.outputsVarIds = IncreaseCapInts(io.outputsVarIds, incOutputs)
 		io.outputsIsConstant = IncreaseCapBools(io.outputsIsConstant, incOutputs)
+
+		io.allocEpoch *= 2
 	}
 }
 

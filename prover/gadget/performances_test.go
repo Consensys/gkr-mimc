@@ -15,8 +15,8 @@ import (
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	n := 1 << 10
-	chunkSize := 1 << 5
+	n := 1 << 20
+	chunkSize := 1 << 10
 	benchCircuitWithGkr(n, chunkSize, b)
 	benchCircuitBaseline(n, b)
 }
