@@ -85,8 +85,8 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	var r1cs R1CS
 	var err error
 
-	b.Run("compiler", func(b *testing.B) {
-		common.ProfileTrace(b, true, true, func() {
+	b.Run(fmt.Sprintf("compiler-size-%v", n), func(b *testing.B) {
+		common.ProfileTrace(b, false, false, func() {
 			r1cs, err = circuit.Compile()
 			if err != nil {
 				panic(fmt.Sprintf("Could not compile = %v", err))
@@ -104,8 +104,8 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 	assignment.Assign()
 
-	b.Run("prover", func(b *testing.B) {
-		common.ProfileTrace(b, true, true, func() {
+	b.Run(fmt.Sprintf("prover-size-%v", n), func(b *testing.B) {
+		common.ProfileTrace(b, false, false, func() {
 			for i := 0; i < b.N; i++ {
 				_, err = Prove(&r1cs, &pk, &assignment)
 				common.Assert(err == nil, "Prover failed %v", err)
@@ -130,7 +130,7 @@ func benchCircuitBaseline(n int, b *testing.B) {
 
 	assignment := AssignCircuitBaseline(n)
 
-	b.Run("baseline-prover", func(b *testing.B) {
+	b.Run(fmt.Sprintf("baseline-size-%v", n), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, err = groth16.Prove(r1cs, pk, &assignment)
 			common.Assert(err == nil, "Prover failed %v", err)
