@@ -15,10 +15,16 @@ import (
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	n := 1 << 20
-	chunkSize := 1 << 10
-	benchCircuitWithGkr(n, chunkSize, b)
-	benchCircuitBaseline(n, b)
+	for size := 13; size < 23; size++ {
+		n := 1 << size
+		chunkSize := 1 << 8
+		benchCircuitWithGkr(n, chunkSize, b)
+	}
+
+	for size := 13; size < 17; size++ {
+		n := 1 << size
+		benchCircuitBaseline(n, b)
+	}
 }
 
 type CircuitBaseline struct {
@@ -79,7 +85,7 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	var r1cs R1CS
 	var err error
 
-	b.Run("Compiler", func(b *testing.B) {
+	b.Run("compiler", func(b *testing.B) {
 		common.ProfileTrace(b, true, true, func() {
 			r1cs, err = circuit.Compile()
 			if err != nil {
@@ -98,7 +104,7 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 	assignment.Assign()
 
-	b.Run("Circuit-with-GKR-benchmark", func(b *testing.B) {
+	b.Run("prover", func(b *testing.B) {
 		common.ProfileTrace(b, true, true, func() {
 			for i := 0; i < b.N; i++ {
 				_, err = Prove(&r1cs, &pk, &assignment)
@@ -124,7 +130,7 @@ func benchCircuitBaseline(n int, b *testing.B) {
 
 	assignment := AssignCircuitBaseline(n)
 
-	b.Run("Baseline circuit", func(b *testing.B) {
+	b.Run("baseline-prover", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, err = groth16.Prove(r1cs, pk, &assignment)
 			common.Assert(err == nil, "Prover failed %v", err)
