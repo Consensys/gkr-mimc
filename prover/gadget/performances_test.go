@@ -73,7 +73,6 @@ func AssignCircuitWithGkr(n int) CircuitWithGkr {
 
 func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 
-	fmt.Printf("circuit allocation \n")
 	circ := AllocateCircuitWithGkr(n)
 	circuit := WrapCircuitUsingGkr(circ, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 
@@ -89,7 +88,6 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 		})
 	})
 
-	fmt.Printf("circuit setup \n")
 	pk, _, err := DummySetup(&r1cs)
 
 	if err != nil {
