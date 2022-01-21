@@ -3,6 +3,8 @@ package gadget
 import (
 	"fmt"
 	"math/big"
+	"runtime"
+	"sync"
 
 	grothBack "github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
@@ -142,10 +144,20 @@ func MarkWithSigma(pk *ProvingKey, vk *VerifyingKey) {
 	sigma.ToBigIntRegular(&sigmaBI)
 	sigmaInv.ToBigIntRegular(&sigmaInvBI)
 
-	// Marks the privGkrK with sigma so that we can
-	// forcefully isolate this part in a pairing
-	for i := range pk.privKGkrSigma {
-		pk.privKGkrSigma[i].ScalarMultiplication(&pk.privKGkrSigma[i], &sigmaBI)
+	numCPU := runtime.NumCPU()
+	var wg sync.WaitGroup
+	wg.Add(numCPU)
+
+	for i := 0; i < numCPU; i++ {
+		go func(task int) {
+			batchSize := len(pk.privKGkrSigma) / numCPU
+
+			// Marks the privGkrK with sigma so that we can
+			// forcefully isolate this part in a pairing
+			for j := task * batchSize; j < (task+1)*batchSize; j++ {
+				pk.privKGkrSigma[task].ScalarMultiplication(&pk.privKGkrSigma[task], &sigmaBI)
+			}
+		}(i)
 	}
 
 	// Also marks deltaNeg in the verification key
