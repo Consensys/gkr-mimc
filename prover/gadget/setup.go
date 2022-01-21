@@ -1,6 +1,7 @@
 package gadget
 
 import (
+	"fmt"
 	"math/big"
 
 	grothBack "github.com/AlexandreBelling/gnark/backend/groth16"
@@ -42,14 +43,20 @@ type VerifyingKey struct {
 func wrapSetupFunc(innerF innerSetupFunc) outerSetupFunc {
 	return func(r1cs *R1CS) (ProvingKey, VerifyingKey, error) {
 		// Runs the groth16 setup
+
+		fmt.Printf("gnark dummy setup \n")
 		pk, vk, err := innerF(&r1cs.r1cs)
 		if err != nil {
 			return ProvingKey{}, VerifyingKey{}, err
 		}
 
+		fmt.Printf("preinite public params \n")
 		pkRes, vkRes := PreInitializePublicParams(pk, vk)
+		fmt.Printf("subslice public params \n")
 		SubSlicesPublicParams(r1cs, &pkRes, &vkRes)
+		fmt.Printf("mark with sigma \n")
 		MarkWithSigma(&pkRes, &vkRes)
+		fmt.Printf("erase old k \n")
 		EraseOldK(&pkRes, &vkRes)
 
 		// Injects the proving key inside the R1CS
