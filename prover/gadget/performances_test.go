@@ -14,22 +14,16 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-func TestCircuitWithGKR(t *testing.T) {
+func BenchmarkCircuitWithGKR(b *testing.B) {
 	for size := 17; size < 22; size++ {
 		n := 1 << size
 		chunkSize := 1 << 12
-		fmt.Printf("====================== \n")
-		fmt.Printf("Prover GKR size =2^%v\n", size)
-		fmt.Printf("----------------------\n")
-		benchCircuitWithGkr(n, chunkSize, t)
+		benchCircuitWithGkr(n, chunkSize, b)
 	}
 
 	for size := 13; size < 18; size++ {
 		n := 1 << size
-		fmt.Printf("====================== \n")
-		fmt.Printf("Baseline size =2^%v\n", size)
-		fmt.Printf("----------------------\n")
-		benchCircuitBaseline(n, t)
+		benchCircuitBaseline(n, b)
 	}
 }
 
@@ -83,7 +77,7 @@ func AssignCircuitWithGkr(n int) CircuitWithGkr {
 	return res
 }
 
-func benchCircuitWithGkr(n int, chunkSize int, t *testing.T) {
+func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 
 	circ := AllocateCircuitWithGkr(n)
 	circuit := WrapCircuitUsingGkr(circ, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
@@ -91,14 +85,14 @@ func benchCircuitWithGkr(n int, chunkSize int, t *testing.T) {
 	var r1cs R1CS
 	var err error
 
-	// b.Run(fmt.Sprintf("compiler-size-%v", n), func(b *testing.B) {
-	// 	common.ProfileTrace(b, false, false, func() {
-	r1cs, err = circuit.Compile()
-	if err != nil {
-		panic(fmt.Sprintf("Could not compile = %v", err))
-	}
-	// 	})
-	// })
+	b.Run(fmt.Sprintf("compiler-size-%v", n), func(b *testing.B) {
+		common.ProfileTrace(b, false, false, func() {
+			r1cs, err = circuit.Compile()
+			if err != nil {
+				panic(fmt.Sprintf("Could not compile = %v", err))
+			}
+		})
+	})
 
 	pk, _, err := DummySetup(&r1cs)
 
@@ -110,17 +104,16 @@ func benchCircuitWithGkr(n int, chunkSize int, t *testing.T) {
 	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
 	assignment.Assign()
 
-	// b.Run(fmt.Sprintf("prover-size-%v", n), func(b *testing.B) {
-	// 	common.ProfileTrace(b, true, true, func() {
-	// // for i := 0; i < b.N; i++ {
-	_, err = Prove(&r1cs, &pk, &assignment)
-	common.Assert(err == nil, "Prover failed %v", err)
-	// }
-	// 	})
-	// })
+	b.Run(fmt.Sprintf("prover-size-%v", n), func(b *testing.B) {
+		common.ProfileTrace(b, true, true, func() {
+			// for i := 0; i < b.N; i++ {
+			_, err = Prove(&r1cs, &pk, &assignment)
+			common.Assert(err == nil, "Prover failed %v", err)
+		})
+	})
 }
 
-func benchCircuitBaseline(n int, t *testing.T) {
+func benchCircuitBaseline(n int, b *testing.B) {
 	circuit := AllocateCircuitBaseline(n)
 	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circuit)
 
@@ -136,10 +129,10 @@ func benchCircuitBaseline(n int, t *testing.T) {
 
 	assignment := AssignCircuitBaseline(n)
 
-	// b.Run(fmt.Sprintf("baseline-size-%v", n), func(b *testing.B) {
-	// 	for i := 0; i < b.N; i++ {
-	_, err = groth16.Prove(r1cs, pk, &assignment)
-	common.Assert(err == nil, "Prover failed %v", err)
-	// 	}
-	// })
+	b.Run(fmt.Sprintf("baseline-size-%v", n), func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err = groth16.Prove(r1cs, pk, &assignment)
+			common.Assert(err == nil, "Prover failed %v", err)
+		}
+	})
 }

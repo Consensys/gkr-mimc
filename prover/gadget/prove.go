@@ -29,12 +29,10 @@ func Prove(r1cs *R1CS, pk *ProvingKey, assignment *Circuit) (*Proof, error) {
 		return nil, err
 	}
 
-	t := common.NewTimer("Compute proof")
 	proof, err := ComputeProof(r1cs, pk, solution, assignment.Gadget.proof)
 	if err != nil {
 		return nil, err
 	}
-	t.Close()
 
 	return proof, nil
 }
