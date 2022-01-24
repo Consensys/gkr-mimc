@@ -18,11 +18,17 @@ func TestCircuitWithGKR(t *testing.T) {
 	for size := 17; size < 22; size++ {
 		n := 1 << size
 		chunkSize := 1 << 12
+		fmt.Printf("====================== \n")
+		fmt.Printf("Prover GKR size =2^%v\n", size)
+		fmt.Printf("----------------------\n")
 		benchCircuitWithGkr(n, chunkSize, t)
 	}
 
 	for size := 13; size < 18; size++ {
 		n := 1 << size
+		fmt.Printf("====================== \n")
+		fmt.Printf("Baseline size =2^%v\n", size)
+		fmt.Printf("----------------------\n")
 		benchCircuitBaseline(n, t)
 	}
 }
