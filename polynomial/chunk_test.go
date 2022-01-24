@@ -18,11 +18,6 @@ func TestChunked(t *testing.T) {
 		mixedSize  int
 	}{
 		{
-			logSize:    4,
-			logNChunks: 2,
-			mixedSize:  2,
-		},
-		{
 			logSize:    10,
 			logNChunks: 5,
 			mixedSize:  3,

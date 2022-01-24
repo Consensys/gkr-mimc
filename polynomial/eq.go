@@ -74,10 +74,11 @@ func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTab
 				// Compute r
 				r := one
 				for k := 0; k < logNChunks; k++ {
+					_rho := &qPrime[len(qPrime)-k-1]
 					if noChunk>>k&1 == 1 { // If the k-th bit of i is 1
-						r.Mul(&r, &qPrime[len(qPrime)-logNChunks+k])
+						r.Mul(&r, _rho)
 					} else {
-						tmp.Sub(&one, &qPrime[len(qPrime)-logNChunks+k])
+						tmp.Sub(&one, _rho)
 						r.Mul(&r, &tmp)
 					}
 				}
