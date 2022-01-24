@@ -1,8 +1,9 @@
 package polynomial
 
 import (
-	"github.com/consensys/gkr-mimc/common"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/common"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -16,6 +17,11 @@ func TestChunked(t *testing.T) {
 		logNChunks int
 		mixedSize  int
 	}{
+		{
+			logSize:    4,
+			logNChunks: 2,
+			mixedSize:  2,
+		},
 		{
 			logSize:    10,
 			logNChunks: 5,
