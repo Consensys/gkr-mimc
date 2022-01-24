@@ -15,16 +15,16 @@ import (
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	for size := 13; size < 23; size++ {
-		n := 1 << size
-		chunkSize := 1 << 8
-		benchCircuitWithGkr(n, chunkSize, b)
-	}
+	// for size := 11; size < 12; size++ {
+	n := 1 << 17
+	chunkSize := 1 << 9
+	benchCircuitWithGkr(n, chunkSize, b)
+	// }
 
-	for size := 13; size < 17; size++ {
-		n := 1 << size
-		benchCircuitBaseline(n, b)
-	}
+	// for size := 13; size < 17; size++ {
+	// 	n := 1 << size
+	// 	benchCircuitBaseline(n, b)
+	// }
 }
 
 type CircuitBaseline struct {
@@ -105,7 +105,7 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	assignment.Assign()
 
 	b.Run(fmt.Sprintf("prover-size-%v", n), func(b *testing.B) {
-		common.ProfileTrace(b, false, false, func() {
+		common.ProfileTrace(b, true, true, func() {
 			for i := 0; i < b.N; i++ {
 				_, err = Prove(&r1cs, &pk, &assignment)
 				common.Assert(err == nil, "Prover failed %v", err)

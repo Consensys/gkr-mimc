@@ -16,6 +16,8 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
+const debug bool = false
+
 type HashHint struct {
 	g *GkrGadget
 }
@@ -223,15 +225,17 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 	prover := gkrNative.NewProver(h.g.Circuit, assignment)
 	gkrProof := prover.Prove(h.g.gkrNCore, qPrime, q)
 
-	// For debug : only -> Check that the proof verifies
-	verifier := gkrNative.NewVerifier(bN, h.g.Circuit)
-	valid := verifier.Verify(gkrProof,
-		common.SliceToChunkedSlice(inputs, inputChunkSize),
-		common.SliceToChunkedSlice(outputs, outputChunkSize),
-		qPrime, q,
-	)
+	if debug {
+		// For debug : only -> Check that the proof verifies
+		verifier := gkrNative.NewVerifier(bN, h.g.Circuit)
+		valid := verifier.Verify(gkrProof,
+			common.SliceToChunkedSlice(inputs, inputChunkSize),
+			common.SliceToChunkedSlice(outputs, outputChunkSize),
+			qPrime, q,
+		)
+		common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
+	}
 
-	common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
 	h.g.gkrProof = &gkrProof
 
 	GkrProofToVec(gkrProof, oups)
