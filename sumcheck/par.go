@@ -1,10 +1,12 @@
 package sumcheck
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -98,21 +100,21 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 	// Initialize the channels
 	evalsChan := make(chan []fr.Element, nChunks)
 	finChan := make(chan indexedProver, nChunks)
-	rChans := make([]chan fr.Element, nChunks)
-	semaphore := common.NewSemaphore(nCore)
 
 	// Starts the sub-provers
-	for i := 0; i < nChunks; i++ {
-		rChans[i] = make(chan fr.Element, 1)
-		go p.RunForChunk(i, evalsChan, rChans[i], finChan, semaphore)
+	for i := 0; i < nCore; i++ {
+		maxChunksize := nChunks / nCore
+		chunkStart := i * maxChunksize
+		chunkStop := common.Min(chunkStart+maxChunksize, nChunks)
+		go p.RunForChunks(chunkStart, chunkStop, evalsChan, qL, qR, qPrime, finChan)
 	}
 
 	// Process on all values until all the subprover are completely fold
 	for i := 0; i < 2*bG+bN-logNChunk; i++ {
-		evals := ConsumeAccumulate(evalsChan, nChunks)
+		evals := ConsumeAccumulate(evalsChan, nCore)
+		fmt.Printf("Evals for multi-threaded %v \n", common.FrSliceToString(evals))
 		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
-		Broadcast(rChans, r)
 		if i < bG {
 			qL[i] = r
 		} else if i < 2*bG {
@@ -229,6 +231,98 @@ func (p *MultiThreadedProver) GetClaimForChunk(chunkIndex int, evalsChan chan fr
 	evalsChan <- subProver.GetClaim()
 }
 
+// Runs for a sequence of chunks
+// Lighter on synchronization variables
+func (p *MultiThreadedProver) RunForChunks(
+	chunkStart int,
+	chunkStop int,
+	evalsChan chan []fr.Element,
+	qL, qR, qPrime []fr.Element,
+	finChan chan indexedProver,
+) {
+
+	subProvers := make([]SingleThreadedProver, chunkStop-chunkStart)
+	for chunkIndex := chunkStart; chunkIndex < chunkStop; chunkIndex++ {
+
+		// Deep-copies the static tables
+		staticTablesCopy := make([]polynomial.BookKeepingTable, len(p.staticTables))
+		for i := range staticTablesCopy {
+			staticTablesCopy[i] = p.staticTables[i].DeepCopy()
+		}
+
+		subProvers[chunkIndex] = NewSingleThreadedProver(
+			p.vL[chunkIndex],
+			p.vR[chunkIndex],
+			p.eq[chunkIndex],
+			p.gates,
+			staticTablesCopy,
+		)
+	}
+
+	// Define usefull constants
+	n := len(subProvers[0].eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
+	g := len(subProvers[0].vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
+	bN := common.Log2Ceil(n)
+	bG := common.Log2Ceil(g)
+
+	// Run on hL
+	for i := 0; i < bG; i++ {
+
+		evalHL := subProvers[0].GetEvalsOnHL()
+		for chunkIndex := 1; chunkIndex < chunkStop-chunkStart; chunkIndex++ {
+			eval := subProvers[chunkIndex].GetEvalsOnHL()
+			for k := range eval {
+				evalHL[k].Add(&evalHL[k], &eval[k])
+			}
+		}
+		// Sends on the main thread
+		evalsChan <- evalHL
+		// And spinlock to save the overheads of broadcasting
+		r := SpinLock(&qL[i])
+		for chunkIndex := range subProvers {
+			subProvers[chunkIndex].FoldHL(r)
+		}
+	}
+
+	// Run on hR
+	for i := 0; i < bG; i++ {
+
+		evalHR := subProvers[0].GetEvalsOnHR()
+		for chunkIndex := 1; chunkIndex < chunkStop-chunkStart; chunkIndex++ {
+			eval := subProvers[chunkIndex].GetEvalsOnHR()
+			for k := range eval {
+				evalHR[k].Add(&evalHR[k], &eval[k])
+			}
+		}
+		evalsChan <- evalHR
+		r := SpinLock(&qR[i])
+		for chunkIndex := range subProvers {
+			subProvers[chunkIndex].FoldHR(r)
+		}
+	}
+
+	// Run on hPrime
+	for i := 0; i < bN; i++ {
+		evalHPrime := subProvers[0].GetEvalsOnHPrime()
+		for chunkIndex := 1; chunkIndex < chunkStop-chunkStart; chunkIndex++ {
+			eval := subProvers[chunkIndex].GetEvalsOnHPrime()
+			for k := range eval {
+				evalHPrime[k].Add(&evalHPrime[k], &eval[k])
+			}
+		}
+		// Sends on the main thread
+		evalsChan <- evalHPrime
+		r := SpinLock(&qPrime[i])
+		for chunkIndex := range subProvers {
+			subProvers[chunkIndex].FoldHPrime(r)
+		}
+	}
+
+	for chunkIndex := range subProvers {
+		finChan <- indexedProver{I: chunkIndex + chunkStart, P: subProvers[chunkIndex]}
+	}
+}
+
 // RunForChunk runs thread with a partial prover
 func (p *MultiThreadedProver) RunForChunk(
 	chunkIndex int,
@@ -288,4 +382,12 @@ func (p *MultiThreadedProver) RunForChunk(
 	finChan <- indexedProver{I: chunkIndex, P: subProver}
 	semaphore.Release()
 	close(rChan)
+}
+
+func SpinLock(x *fr.Element) fr.Element {
+	for {
+		if !(*x).IsZero() {
+			return *x
+		}
+	}
 }

@@ -1,6 +1,8 @@
 package sumcheck
 
 import (
+	"fmt"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
@@ -75,6 +77,7 @@ func (p *SingleThreadedProver) Prove() (proof Proof, qPrime, qL, qR, finalClaims
 	// Run on hL
 	for i := 0; i < bG; i++ {
 		evals := p.GetEvalsOnHL()
+		fmt.Printf("Evals for mono-threaded %v \n", common.FrSliceToString(evals))
 		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		p.FoldHL(r)
