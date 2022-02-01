@@ -1,7 +1,6 @@
 package sumcheck
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/consensys/gkr-mimc/circuit"
@@ -103,13 +102,24 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 
 	cond := sync.NewCond(&sync.Mutex{})
 
-	// Starts the sub-provers
-	for i := 0; i < nCore; i++ {
-		maxChunksize := nChunks / nCore
-		chunkStart := i * maxChunksize
-		chunkStop := common.Min(chunkStart+maxChunksize, nChunks)
-		fmt.Printf("Chunk start = %v stop = %v \n", chunkStart, chunkStop)
-		go p.RunForChunks(chunkStart, chunkStop, cond, evalsChan, qL, qR, qPrime, finChan)
+	// Starts the subprovers
+	{
+		// Accounts for the fact that we may have not perfect divisiblity of the tasks
+		// compared to the number of core
+		chunkPerCpus := nChunks / nCore
+		extraTasks := nChunks - nCore*chunkPerCpus
+		extraTasksOffset := 0
+
+		for i := 0; i < nCore; i++ {
+			start := i*chunkPerCpus + extraTasksOffset
+			end := start + chunkPerCpus
+			if extraTasks > 0 {
+				end++
+				extraTasks--
+				extraTasksOffset++
+			}
+			go p.RunForChunks(start, end, cond, evalsChan, qL, qR, qPrime, finChan)
+		}
 	}
 
 	// Process on all values until all the subprover are completely fold
