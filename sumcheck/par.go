@@ -1,7 +1,6 @@
 package sumcheck
 
 import (
-	"fmt"
 	"sync"
 
 	"github.com/consensys/gkr-mimc/circuit"
@@ -112,7 +111,6 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 	// Process on all values until all the subprover are completely fold
 	for i := 0; i < 2*bG+bN-logNChunk; i++ {
 		evals := ConsumeAccumulate(evalsChan, nCore)
-		fmt.Printf("Evals for multi-threaded %v \n", common.FrSliceToString(evals))
 		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
 		if i < bG {
@@ -250,7 +248,7 @@ func (p *MultiThreadedProver) RunForChunks(
 			staticTablesCopy[i] = p.staticTables[i].DeepCopy()
 		}
 
-		subProvers[chunkIndex] = NewSingleThreadedProver(
+		subProvers[chunkIndex-chunkStart] = NewSingleThreadedProver(
 			p.vL[chunkIndex],
 			p.vR[chunkIndex],
 			p.eq[chunkIndex],
