@@ -2,7 +2,6 @@ package polynomial
 
 import (
 	"github.com/consensys/gkr-mimc/common"
-
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -40,9 +39,13 @@ func EvalEq(qPrime, nextQPrime []fr.Element) fr.Element {
 // containing the values of Eq(q1, ... , qn, *, ... , *)
 // where qPrime = [q1 ... qn].
 func GetFoldedEqTable(qPrime []fr.Element) (eq BookKeepingTable) {
+	return foldedEqTableWithMultiplier(qPrime, fr.One())
+}
+
+func foldedEqTableWithMultiplier(qPrime []fr.Element, multiplier fr.Element) (eq BookKeepingTable) {
 	n := len(qPrime)
 	foldedEqTable := make([]fr.Element, 1<<n)
-	foldedEqTable[0].SetOne()
+	foldedEqTable[0] = multiplier
 
 	for i, r := range qPrime {
 		for j := 0; j < (1 << i); j++ {
@@ -60,16 +63,31 @@ func GetFoldedEqTable(qPrime []fr.Element) (eq BookKeepingTable) {
 func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTable {
 	logNChunks := common.Log2Ceil(nChunks)
 	res := make([]BookKeepingTable, nChunks)
-	res[0] = GetFoldedEqTable(qPrime[:len(qPrime)-logNChunks])
 
-	for i, r := range qPrime[len(qPrime)-logNChunks:] {
-		for j := 0; j < (1 << i); j++ {
-			J := j << (logNChunks - i)
-			JNext := J + 1<<(logNChunks-1-i)
-			res[JNext].Mul(r, res[J], nCore)
-			res[J].Sub(res[J], res[JNext], nCore)
-		}
-	}
+	common.Parallelize(
+		nChunks,
+		func(start, stop int) {
+			// Useful preallocations
+			var tmp fr.Element
+			one := fr.One()
+			for noChunk := start; noChunk < stop; noChunk++ {
+				// Compute r
+				r := one
+				for k := 0; k < logNChunks; k++ {
+					_rho := &qPrime[len(qPrime)-k-1]
+					if noChunk>>k&1 == 1 { // If the k-th bit of i is 1
+						r.Mul(&r, _rho)
+					} else {
+						tmp.Sub(&one, _rho)
+						r.Mul(&r, &tmp)
+					}
+				}
+
+				res[noChunk] = foldedEqTableWithMultiplier(qPrime[:len(qPrime)-logNChunks], r)
+			}
+		},
+		nCore,
+	)
 
 	return res
 }
