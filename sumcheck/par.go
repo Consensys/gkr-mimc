@@ -1,6 +1,7 @@
 package sumcheck
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gkr-mimc/circuit"
@@ -174,6 +175,7 @@ func ConsumeMergeProvers(ch chan indexedProver, nToMerge int) SingleThreadedProv
 
 	for i := 0; i < nToMerge-1; i++ {
 		indexed = <-ch
+		fmt.Printf("Got number %v \n", indexed.I)
 		newVL[indexed.I] = indexed.P.vL.Table[0]
 		newVR[indexed.I] = indexed.P.vR.Table[0]
 		newEq[indexed.I] = indexed.P.eq.Table[0]
