@@ -108,6 +108,7 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 		maxChunksize := nChunks / nCore
 		chunkStart := i * maxChunksize
 		chunkStop := common.Min(chunkStart+maxChunksize, nChunks)
+		fmt.Printf("Chunk start = %v stop = %v \n", chunkStart, chunkStop)
 		go p.RunForChunks(chunkStart, chunkStop, cond, evalsChan, qL, qR, qPrime, finChan)
 	}
 
@@ -175,7 +176,6 @@ func ConsumeMergeProvers(ch chan indexedProver, nToMerge int) SingleThreadedProv
 
 	for i := 0; i < nToMerge-1; i++ {
 		indexed = <-ch
-		fmt.Printf("Got number %v \n", indexed.I)
 		newVL[indexed.I] = indexed.P.vL.Table[0]
 		newVR[indexed.I] = indexed.P.vR.Table[0]
 		newEq[indexed.I] = indexed.P.eq.Table[0]
@@ -201,19 +201,6 @@ func ConsumeAccumulate(ch chan []fr.Element, nToConsume int) []fr.Element {
 		}
 	}
 	return res
-}
-
-// Broadcast broadcasts r, to all channels
-func Broadcast(chs []chan fr.Element, r fr.Element) {
-	var wg sync.WaitGroup
-	wg.Add(len(chs))
-	for _, ch := range chs {
-		go func(ch chan fr.Element) {
-			ch <- r
-			wg.Done()
-		}(ch)
-	}
-	wg.Wait()
 }
 
 // GetClaimForChunk runs GetClaim on a chunk, and is aimed at being run in the Background
