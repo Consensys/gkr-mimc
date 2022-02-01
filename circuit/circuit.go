@@ -1,8 +1,6 @@
 package circuit
 
 import (
-	"sync"
-
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
 
@@ -50,21 +48,16 @@ func (c *Circuit) Assign(inputs [][]fr.Element, nCore int) Assignment {
 // LayerAsBKTWithCopy creates a deep-copy of a given layer of the assignment
 func (a *Assignment) LayerAsBKTWithCopy(layer, nCore int) []polynomial.BookKeepingTable {
 	res := make([]polynomial.BookKeepingTable, len(a.Values[layer]))
-	var wg sync.WaitGroup
-	wg.Add(len(res))
-	semaphore := common.NewSemaphore(nCore)
-	defer semaphore.Close()
-	// Deep-copies the values of the assignment
-	for i, tab := range a.Values[layer] {
-		go func(i int, tab []fr.Element) {
-			semaphore.Acquire()
+
+	subCopy := func(start, stop int) {
+		for i := start; i < stop; i++ {
+			tab := a.Values[layer][i]
 			res[i].Table = make([]fr.Element, len(tab))
 			copy(res[i].Table, tab)
-			semaphore.Release()
-			wg.Done()
-		}(i, tab)
+		}
 	}
-	wg.Wait()
+
+	common.Parallelize(len(res), subCopy, nCore)
 	return res
 }
 
@@ -76,4 +69,14 @@ func (a *Assignment) LayerAsBKTNoCopy(layer int) []polynomial.BookKeepingTable {
 		res[i] = polynomial.NewBookKeepingTable(tab)
 	}
 	return res
+}
+
+// Returns the output size of the circuit
+func (c *Circuit) OutputArity() int {
+	return 1 << c.Layers[len(c.Layers)-1].BGOutputs
+}
+
+// Returns the input arity of the circuit
+func (c *Circuit) InputArity() int {
+	return 1 << c.Layers[len(c.Layers)-1].BGInputs
 }

@@ -1,10 +1,11 @@
 package sumcheck
 
 import (
+	"sync"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -98,21 +99,34 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 	// Initialize the channels
 	evalsChan := make(chan []fr.Element, nChunks)
 	finChan := make(chan indexedProver, nChunks)
-	rChans := make([]chan fr.Element, nChunks)
-	semaphore := common.NewSemaphore(nCore)
 
-	// Starts the sub-provers
-	for i := 0; i < nChunks; i++ {
-		rChans[i] = make(chan fr.Element, 1)
-		go p.RunForChunk(i, evalsChan, rChans[i], finChan, semaphore)
+	cond := sync.NewCond(&sync.Mutex{})
+
+	// Starts the subprovers
+	{
+		// Accounts for the fact that we may have not perfect divisiblity of the tasks
+		// compared to the number of core
+		chunkPerCpus := nChunks / nCore
+		extraTasks := nChunks - nCore*chunkPerCpus
+		extraTasksOffset := 0
+
+		for i := 0; i < nCore; i++ {
+			start := i*chunkPerCpus + extraTasksOffset
+			end := start + chunkPerCpus
+			if extraTasks > 0 {
+				end++
+				extraTasks--
+				extraTasksOffset++
+			}
+			go p.RunForChunks(start, end, cond, evalsChan, qL, qR, qPrime, finChan)
+		}
 	}
 
 	// Process on all values until all the subprover are completely fold
 	for i := 0; i < 2*bG+bN-logNChunk; i++ {
-		evals := ConsumeAccumulate(evalsChan, nChunks)
+		evals := ConsumeAccumulate(evalsChan, nCore)
 		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[i])
-		Broadcast(rChans, r)
 		if i < bG {
 			qL[i] = r
 		} else if i < 2*bG {
@@ -120,6 +134,11 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 		} else {
 			qPrime[i-2*bG] = r
 		}
+
+		cond.L.Lock()
+		cond.Broadcast()
+		cond.L.Unlock()
+
 	}
 
 	newP := ConsumeMergeProvers(finChan, nChunks)
@@ -194,19 +213,6 @@ func ConsumeAccumulate(ch chan []fr.Element, nToConsume int) []fr.Element {
 	return res
 }
 
-// Broadcast broadcasts r, to all channels
-func Broadcast(chs []chan fr.Element, r fr.Element) {
-	var wg sync.WaitGroup
-	wg.Add(len(chs))
-	for _, ch := range chs {
-		go func(ch chan fr.Element) {
-			ch <- r
-			wg.Done()
-		}(ch)
-	}
-	wg.Wait()
-}
-
 // GetClaimForChunk runs GetClaim on a chunk, and is aimed at being run in the Background
 func (p *MultiThreadedProver) GetClaimForChunk(chunkIndex int, evalsChan chan fr.Element, semaphore common.Semaphore) {
 	semaphore.Acquire()
@@ -229,63 +235,105 @@ func (p *MultiThreadedProver) GetClaimForChunk(chunkIndex int, evalsChan chan fr
 	evalsChan <- subProver.GetClaim()
 }
 
-// RunForChunk runs thread with a partial prover
-func (p *MultiThreadedProver) RunForChunk(
-	chunkIndex int,
+// Runs for a sequence of chunks
+// Lighter on synchronization variables
+func (p *MultiThreadedProver) RunForChunks(
+	chunkStart int,
+	chunkStop int,
+	cond *sync.Cond,
 	evalsChan chan []fr.Element,
-	rChan chan fr.Element,
+	qL, qR, qPrime []fr.Element,
 	finChan chan indexedProver,
-	semaphore common.Semaphore,
 ) {
-	semaphore.Acquire()
-	// Deep-copies the static tables
-	staticTablesCopy := make([]polynomial.BookKeepingTable, len(p.staticTables))
-	for i := range staticTablesCopy {
-		staticTablesCopy[i] = p.staticTables[i].DeepCopy()
+
+	subProvers := make([]SingleThreadedProver, chunkStop-chunkStart)
+	for chunkIndex := chunkStart; chunkIndex < chunkStop; chunkIndex++ {
+
+		// Deep-copies the static tables
+		staticTablesCopy := make([]polynomial.BookKeepingTable, len(p.staticTables))
+		for i := range staticTablesCopy {
+			staticTablesCopy[i] = p.staticTables[i].DeepCopy()
+		}
+
+		subProvers[chunkIndex-chunkStart] = NewSingleThreadedProver(
+			p.vL[chunkIndex],
+			p.vR[chunkIndex],
+			p.eq[chunkIndex],
+			p.gates,
+			staticTablesCopy,
+		)
 	}
 
-	subProver := NewSingleThreadedProver(
-		p.vL[chunkIndex],
-		p.vR[chunkIndex],
-		p.eq[chunkIndex],
-		p.gates,
-		staticTablesCopy,
-	)
-
 	// Define usefull constants
-	n := len(subProver.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(subProver.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
+	n := len(subProvers[0].eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
+	g := len(subProvers[0].vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
 	bN := common.Log2Ceil(n)
 	bG := common.Log2Ceil(g)
 
 	// Run on hL
 	for i := 0; i < bG; i++ {
-		evalsChan <- subProver.GetEvalsOnHL()
-		semaphore.Release()
-		r := <-rChan
-		semaphore.Acquire()
-		subProver.FoldHL(r)
+
+		evalHL := subProvers[0].GetEvalsOnHL()
+		for chunkIndex := 1; chunkIndex < chunkStop-chunkStart; chunkIndex++ {
+			eval := subProvers[chunkIndex].GetEvalsOnHL()
+			for k := range eval {
+				evalHL[k].Add(&evalHL[k], &eval[k])
+			}
+		}
+		// Sends on the main thread
+		evalsChan <- evalHL
+		// And spinlock to save the overheads of broadcasting
+		r := WaitForIt(cond, &qL[i])
+		for chunkIndex := range subProvers {
+			subProvers[chunkIndex].FoldHL(r)
+		}
 	}
 
 	// Run on hR
 	for i := 0; i < bG; i++ {
-		evalsChan <- subProver.GetEvalsOnHR()
-		semaphore.Release()
-		r := <-rChan
-		semaphore.Acquire()
-		subProver.FoldHR(r)
+
+		evalHR := subProvers[0].GetEvalsOnHR()
+		for chunkIndex := 1; chunkIndex < chunkStop-chunkStart; chunkIndex++ {
+			eval := subProvers[chunkIndex].GetEvalsOnHR()
+			for k := range eval {
+				evalHR[k].Add(&evalHR[k], &eval[k])
+			}
+		}
+		evalsChan <- evalHR
+		r := WaitForIt(cond, &qR[i])
+		for chunkIndex := range subProvers {
+			subProvers[chunkIndex].FoldHR(r)
+		}
 	}
 
 	// Run on hPrime
 	for i := 0; i < bN; i++ {
-		evalsChan <- subProver.GetEvalsOnHPrime()
-		semaphore.Release()
-		r := <-rChan
-		semaphore.Acquire()
-		subProver.FoldHPrime(r)
+		evalHPrime := subProvers[0].GetEvalsOnHPrime()
+		for chunkIndex := 1; chunkIndex < chunkStop-chunkStart; chunkIndex++ {
+			eval := subProvers[chunkIndex].GetEvalsOnHPrime()
+			for k := range eval {
+				evalHPrime[k].Add(&evalHPrime[k], &eval[k])
+			}
+		}
+		// Sends on the main thread
+		evalsChan <- evalHPrime
+		r := WaitForIt(cond, &qPrime[i])
+		for chunkIndex := range subProvers {
+			subProvers[chunkIndex].FoldHPrime(r)
+		}
 	}
 
-	finChan <- indexedProver{I: chunkIndex, P: subProver}
-	semaphore.Release()
-	close(rChan)
+	for chunkIndex := range subProvers {
+		finChan <- indexedProver{I: chunkIndex + chunkStart, P: subProvers[chunkIndex]}
+	}
+}
+
+func WaitForIt(cond *sync.Cond, rsc *fr.Element) fr.Element {
+	// this go routine wait for changes to the sharedRsc
+	cond.L.Lock()
+	for rsc.IsZero() {
+		cond.Wait()
+	}
+	cond.L.Unlock()
+	return *rsc
 }

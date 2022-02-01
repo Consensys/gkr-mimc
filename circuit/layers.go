@@ -3,7 +3,6 @@ package circuit
 import (
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -15,11 +14,17 @@ type Wire struct {
 	Gate    Gate
 }
 
+// Function that can be used
+type Evaluator func(in []fr.Element) []fr.Element
+
 // Layer describes how a layer feeds its inputs
 type Layer struct {
 	Wires               []Wire
 	BGInputs, BGOutputs int
 	Gates               []Gate
+	// Optional method to help solving faster
+	// Computes the solving and put it in chunk
+	CustomEvaluator Evaluator
 }
 
 // NewLayer construct a new layer from a list of wires
@@ -42,6 +47,8 @@ func (l *Layer) GetStaticTable(q []fr.Element) []polynomial.BookKeepingTable {
 	gO, gL := (1 << (2 * l.BGInputs)), 1<<l.BGInputs
 	var one fr.Element
 	one.SetOne()
+
+	one = fr.One()
 
 	for i, gate := range l.Gates {
 		// The tab is filled with zeroes
@@ -67,38 +74,42 @@ func (l *Layer) GetStaticTable(q []fr.Element) []polynomial.BookKeepingTable {
 // It can be multi-threaded
 func (l *Layer) Evaluate(inputs [][]fr.Element, nCore int) [][]fr.Element {
 	res := make([][]fr.Element, len(inputs))
-	semaphore := common.NewSemaphore(nCore)
-	defer semaphore.Close()
-	var wg sync.WaitGroup
-	wg.Add(len(inputs))
-	// Multi-thread the evaluation
-	for i := range inputs {
-		go func(i int) {
-			semaphore.Acquire()
-			inps := inputs[i]
-			GInputs := 1 << l.BGInputs
-			GOutputs := 1 << l.BGOutputs
-			N := len(inps) / GInputs
-			subRes := make([]fr.Element, N*GOutputs)
-			var tmp fr.Element
-			for _, w := range l.Wires {
-				// Precompute the indices
-				wON := w.O * N
-				wLN := w.L * N
-				wRN := w.R * N
-				for h := 0; h < N; h++ {
-					// Runs the gate evaluator
-					w.Gate.Eval(&tmp, &inps[wLN+h], &inps[wRN*N+h])
-					subRes[wON+h].Add(&subRes[wON+h], &tmp)
-				}
-			}
-			res[i] = subRes
-			semaphore.Release()
-			wg.Done()
-		}(i)
+	nIterations := len(inputs)
+
+	f := l.defaultEvaluation
+	if l.CustomEvaluator != nil {
+		// Uses the custom function, when applicable
+		f = l.CustomEvaluator
 	}
-	wg.Wait()
+
+	evaluateOnRange := func(start, stop int) {
+		for k := start; k < stop; k++ {
+			res[k] = f(inputs[k])
+		}
+	}
+
+	common.Parallelize(nIterations, evaluateOnRange, nCore)
 	return res
+}
+
+func (l *Layer) defaultEvaluation(inps []fr.Element) []fr.Element {
+	GInputs := 1 << l.BGInputs
+	GOutputs := 1 << l.BGOutputs
+	N := len(inps) / GInputs
+	subRes := make([]fr.Element, N*GOutputs)
+	var tmp fr.Element
+	for _, w := range l.Wires {
+		// Precompute the indices
+		wON := w.O * N
+		wLN := w.L * N
+		wRN := w.R * N
+		for h := 0; h < N; h++ {
+			// Runs the gate evaluator
+			w.Gate.Eval(&tmp, &inps[wLN+h], &inps[wRN*N+h])
+			subRes[wON+h].Add(&subRes[wON+h], &tmp)
+		}
+	}
+	return subRes
 }
 
 // BGOutputs return the log-size of the input layer of the layer

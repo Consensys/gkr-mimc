@@ -1,9 +1,11 @@
 package gkr
 
 import (
-	"github.com/consensys/gkr-mimc/circuit"
-	"github.com/consensys/gkr-mimc/common"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/circuit/gates"
+	"github.com/consensys/gkr-mimc/common"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
@@ -58,20 +60,20 @@ func TestMultiBGs(t *testing.T) {
 	c := circuit.NewCircuit(
 		[][]circuit.Wire{
 			// Layer 0
-			[]circuit.Wire{
-				circuit.Wire{L: 0, R: 1, O: 0, Gate: circuit.AddGate{}},
-				circuit.Wire{L: 0, R: 1, O: 1, Gate: circuit.MulGate{}},
+			{
+				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
+				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
 			},
 			// Layer 1
-			[]circuit.Wire{
-				circuit.Wire{L: 0, R: 1, O: 0, Gate: circuit.AddGate{}},
+			{
+				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
 			},
 		},
 	)
 
 	inputs := [][]fr.Element{
-		[]fr.Element{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-		[]fr.Element{common.Uint64ToFr(3), common.Uint64ToFr(4)},
+		{common.Uint64ToFr(1), common.Uint64ToFr(2)},
+		{common.Uint64ToFr(3), common.Uint64ToFr(4)},
 	}
 
 	a := c.Assign(inputs, 2)
@@ -91,17 +93,17 @@ func TestMultiBGs(t *testing.T) {
 	)
 
 	actualValues := [][][]fr.Element{
-		[][]fr.Element{
-			[]fr.Element{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-			[]fr.Element{common.Uint64ToFr(3), common.Uint64ToFr(4)},
+		{
+			{common.Uint64ToFr(1), common.Uint64ToFr(2)},
+			{common.Uint64ToFr(3), common.Uint64ToFr(4)},
 		},
-		[][]fr.Element{
-			[]fr.Element{common.Uint64ToFr(3), common.Uint64ToFr(2)},
-			[]fr.Element{common.Uint64ToFr(7), common.Uint64ToFr(12)},
+		{
+			{common.Uint64ToFr(3), common.Uint64ToFr(2)},
+			{common.Uint64ToFr(7), common.Uint64ToFr(12)},
 		},
-		[][]fr.Element{
-			[]fr.Element{common.Uint64ToFr(5)},
-			[]fr.Element{common.Uint64ToFr(19)},
+		{
+			{common.Uint64ToFr(5)},
+			{common.Uint64ToFr(19)},
 		},
 	}
 
@@ -120,37 +122,37 @@ func TestGKR(t *testing.T) {
 	c := circuit.NewCircuit(
 		[][]circuit.Wire{
 			// Layer 0
-			[]circuit.Wire{
-				circuit.Wire{L: 0, R: 1, O: 0, Gate: circuit.AddGate{}},
-				circuit.Wire{L: 0, R: 1, O: 1, Gate: circuit.MulGate{}},
+			{
+				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
+				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
 			},
 			// Layer 1
-			[]circuit.Wire{
-				circuit.Wire{L: 0, R: 1, O: 0, Gate: circuit.AddGate{}},
-				circuit.Wire{L: 0, R: 1, O: 1, Gate: circuit.MulGate{}},
+			{
+				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
+				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
 			},
 		},
 	)
 
 	inputs := [][]fr.Element{
-		[]fr.Element{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-		[]fr.Element{common.Uint64ToFr(3), common.Uint64ToFr(4)},
+		{common.Uint64ToFr(1), common.Uint64ToFr(2)},
+		{common.Uint64ToFr(3), common.Uint64ToFr(4)},
 	}
 
 	a := c.Assign(inputs, 2)
 
 	expectedValues := [][][]fr.Element{
-		[][]fr.Element{
-			[]fr.Element{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-			[]fr.Element{common.Uint64ToFr(3), common.Uint64ToFr(4)},
+		{
+			{common.Uint64ToFr(1), common.Uint64ToFr(2)},
+			{common.Uint64ToFr(3), common.Uint64ToFr(4)},
 		},
-		[][]fr.Element{
-			[]fr.Element{common.Uint64ToFr(3), common.Uint64ToFr(2)},
-			[]fr.Element{common.Uint64ToFr(7), common.Uint64ToFr(12)},
+		{
+			{common.Uint64ToFr(3), common.Uint64ToFr(2)},
+			{common.Uint64ToFr(7), common.Uint64ToFr(12)},
 		},
-		[][]fr.Element{
-			[]fr.Element{common.Uint64ToFr(5), common.Uint64ToFr(6)},
-			[]fr.Element{common.Uint64ToFr(19), common.Uint64ToFr(84)},
+		{
+			{common.Uint64ToFr(5), common.Uint64ToFr(6)},
+			{common.Uint64ToFr(19), common.Uint64ToFr(84)},
 		},
 	}
 

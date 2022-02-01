@@ -41,13 +41,13 @@ func GetProfiled() bool {
 	return os.Getenv(profileEnv) == "1"
 }
 
-// GetTraced attempts to parse the environment variable PROFILE_GKR
+// GetTraced attempts to parse the environment variable TRACE_GKR
 // It return false if it's not set or set to a value != 1
 func GetTraced() bool {
 	return os.Getenv(traceEnv) == "1"
 }
 
-// GetNProcesses returns the env variable and panic if it does not find it
+// GetNProcesses returns the env variable NPROCESSES_ENV and panic if it does not find it
 func GetNProcesses() int {
 	nProcesses, err := strconv.Atoi(os.Getenv(nProcessesEnv))
 	if err != nil {

@@ -2,9 +2,10 @@ package sumcheck
 
 import (
 	"fmt"
-	"github.com/consensys/gkr-mimc/common"
 	"runtime"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/common"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -30,11 +31,11 @@ func TestMultiThreaded(t *testing.T) {
 	sTProof, sQPrime, sQL, sQR, sFClaim := sTProver.Prove()
 
 	// Compare their proofs
-	assert.Equal(t, sTProof, mTProof, "Bad proof length")
-	assert.Equal(t, sQPrime, mQPrime, "Bad qPrime")
 	assert.Equal(t, sQL, mQL, "Bad qL")
 	assert.Equal(t, sQR, mQR, "Bad qR")
+	assert.Equal(t, sQPrime, mQPrime, "Bad qPrime")
 	assert.Equal(t, sFClaim, mFClaim, "Bad final claim")
+	assert.Equal(t, sTProof, mTProof, "Bad proof")
 
 	verifier := Verifier{}
 	valid, _, _, _, _ := verifier.Verify(mTClaim, mTProof, 1, 1)
