@@ -51,6 +51,6 @@ func (u *Univariate) Eval(cs frontend.API, x frontend.Variable) (res frontend.Va
 
 // ZeroAndOne returns p(0) + p(1)
 func (u *Univariate) ZeroAndOne(cs frontend.API) frontend.Variable {
-	res := cs.Add(u.Coefficients[0], u.Coefficients[0], u.Coefficients...)
+	res := cs.Add(u.Coefficients[0], u.Coefficients[0], u.Coefficients[1:]...)
 	return res
 }
