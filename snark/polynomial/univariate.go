@@ -51,14 +51,6 @@ func (u *Univariate) Eval(cs frontend.API, x frontend.Variable) (res frontend.Va
 
 // ZeroAndOne returns p(0) + p(1)
 func (u *Univariate) ZeroAndOne(cs frontend.API) frontend.Variable {
-
-	// coeffsInterface is required for cs.Add(a, b, coeffsInterface[1:]...) to be accepted.
-	coeffsInterface := make([]interface{}, len(u.Coefficients))
-	for i, coeff := range u.Coefficients {
-		coeffsInterface[i] = coeff
-	}
-
-	res := cs.Add(u.Coefficients[0], u.Coefficients[0], coeffsInterface[1:]...)
-
+	res := cs.Add(u.Coefficients[0], u.Coefficients[0], u.Coefficients...)
 	return res
 }

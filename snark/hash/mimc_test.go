@@ -103,7 +103,8 @@ func BenchmarkMimc(b *testing.B) {
 	pk, _ := groth16.DummySetup(r1cs)
 	b.Run("Gnark prover", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = groth16.Prove(r1cs, pk, &witness)
+			w, _ := frontend.NewWitness(&witness, ecc.BN254)
+			_, _ = groth16.Prove(r1cs, pk, w)
 		}
 	})
 
