@@ -24,15 +24,19 @@ type Proof struct {
 
 // Solve and compute the proof
 func Prove(r1cs *R1CS, pk *ProvingKey, assignment *Circuit) (*Proof, error) {
+	t := common.NewTimer("solver")
 	solution, err := assignment.Solve(*r1cs)
 	if err != nil {
 		return nil, err
 	}
+	t.Close()
 
+	t = common.NewTimer("compute proof")
 	proof, err := ComputeProof(r1cs, pk, solution, assignment.Gadget.proof)
 	if err != nil {
 		return nil, err
 	}
+	t.Close()
 
 	return proof, nil
 }
