@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/AlexandreBelling/gnark/backend"
-	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/test"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -57,7 +57,7 @@ func (eq *TestEqCircuit) Define(cs frontend.API) error {
 func TestEq(t *testing.T) {
 
 	eq := AllocateTestEqCircuit(5, 5)
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &eq)
+	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &eq)
 
 	assert.NoError(t, err)
 
@@ -80,6 +80,6 @@ func TestEq(t *testing.T) {
 	}
 
 	witness.Assign(H, Q)
-	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
-	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
+	assert.NoError(t, test.IsSolved(&eq, &witness, ecc.BN254, backend.GROTH16))
+
 }

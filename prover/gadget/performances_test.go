@@ -131,7 +131,9 @@ func benchCircuitBaseline(n int, b *testing.B) {
 
 	b.Run(fmt.Sprintf("baseline-size-%v", n), func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, err = groth16.Prove(r1cs, pk, &assignment)
+			witness, err := frontend.NewWitness(&assignment, ecc.BN254)
+			common.Assert(err == nil, "Parsing assignment to witness failed %v", err)
+			_, err = groth16.Prove(r1cs, pk, witness)
 			common.Assert(err == nil, "Prover failed %v", err)
 		}
 	})

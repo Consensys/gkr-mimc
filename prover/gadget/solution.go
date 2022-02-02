@@ -7,7 +7,8 @@ import (
 	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/cs"
 	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/groth16"
-	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
+	witness_bn254 "github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -23,7 +24,7 @@ func (s Solution) Dump() {
 }
 
 // Returns a solution to the circuit
-func (c *Circuit) Solve(compiled R1CS, opt ...func(opt *backend.ProverOption) error) (Solution, error) {
+func (c *Circuit) Solve(compiled R1CS, opt ...backend.ProverOption) (Solution, error) {
 
 	if compiled.provingKey == nil {
 		return Solution{}, fmt.Errorf("solving was called prior to running the setup" +
@@ -82,23 +83,23 @@ func (s *Solution) fixSolution() error {
 
 // The first error it returns is the "solver error". So we expect it.
 // The second one is for unexected errors
-func (c *Circuit) partialSolve(compiled frontend.CompiledConstraintSystem, opts ...func(opt *backend.ProverOption) error) (Solution, error, error) {
-	witness := witness.Witness{}
+func (c *Circuit) partialSolve(compiled frontend.CompiledConstraintSystem, opts ...backend.ProverOption) (Solution, error, error) {
 
-	err := witness.FromFullAssignment(c)
-
+	witness, err := frontend.NewWitness(c, ecc.BN254)
 	if err != nil {
 		return Solution{}, nil, err
 	}
 
 	opts = append(opts, backend.WithHints(c.Gadget.InitialRandomnessHint(), c.Gadget.HashHint(), c.Gadget.GkrProverHint()))
-	proverOption, err := backend.NewProverOption(opts...)
+	proverOption, err := backend.NewProverConfig(opts...)
 
 	if err != nil {
 		return Solution{}, nil, err
 	}
 
 	r1csHard := compiled.(*cs.R1CS)
-	wires, aSol, bSol, cSol, _ := groth16.Solve(r1csHard, witness, proverOption)
+
+	_w := witness.Vector.(*witness_bn254.Witness)
+	wires, aSol, bSol, cSol, _ := groth16.Solve(r1csHard, *_w, proverOption)
 	return Solution{A: aSol, B: bSol, C: cSol, Wires: wires}, err, nil
 }

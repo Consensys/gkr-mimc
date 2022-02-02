@@ -13,6 +13,7 @@ import (
 	"github.com/AlexandreBelling/gnark/backend"
 	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/test"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -56,7 +57,7 @@ func (c *TestMimcCircuit) Assign(x [][]fr.Element) {
 func TestMimc(t *testing.T) {
 
 	c := Allocate(5, 5)
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
+	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
 	assert.NoError(t, err)
 
 	// Creates a random test vector
@@ -70,7 +71,8 @@ func TestMimc(t *testing.T) {
 
 	witness := Allocate(5, 5)
 	witness.Assign(x)
-	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
+	assert.NoError(t, test.IsSolved(&c, &witness, ecc.BN254, backend.GROTH16))
+
 }
 
 func BenchmarkMimc(b *testing.B) {
@@ -102,9 +104,11 @@ func BenchmarkMimc(b *testing.B) {
 	})
 
 	pk, _ := groth16.DummySetup(r1cs)
+	_w, _ := frontend.NewWitness(&witness, ecc.BN254)
+
 	b.Run("Gnark prover", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = groth16.Prove(r1cs, pk, &witness)
+			_, _ = groth16.Prove(r1cs, pk, _w)
 		}
 	})
 

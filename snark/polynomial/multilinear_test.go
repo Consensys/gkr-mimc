@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/AlexandreBelling/gnark/backend"
-	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/test"
 	"github.com/consensys/gnark-crypto/ecc"
 )
 
@@ -63,5 +63,6 @@ func TestMultilinear(t *testing.T) {
 		witness.XEval[i] = x[i]
 	}
 	witness.YEval = y
-	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
+	assert.NoError(t, test.IsSolved(&m, &witness, ecc.BN254, backend.GROTH16))
+
 }

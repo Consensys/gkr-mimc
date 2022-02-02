@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/AlexandreBelling/gnark/backend"
-	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/test"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,7 +33,7 @@ func TestUnivariate(t *testing.T) {
 	degree := 3
 	var pc univariateTestCircuit
 	pc.Poly = AllocateUnivariate(degree)
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pc)
+	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &pc)
 	assert.NoError(t, err)
 
 	var witness univariateTestCircuit
@@ -46,6 +46,6 @@ func TestUnivariate(t *testing.T) {
 	witness.ZnO = 14
 	witness.Expected = 194
 
-	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
+	assert.NoError(t, test.IsSolved(&pc, &witness, ecc.BN254, backend.GROTH16))
 
 }

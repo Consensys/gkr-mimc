@@ -2,12 +2,11 @@ package gadget
 
 import (
 	"math/big"
-	"runtime"
-	"sync"
 
 	grothBack "github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/groth16"
+	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -127,6 +126,7 @@ func SubSlicesPublicParams(r1cs *R1CS, pk *ProvingKey, vk *VerifyingKey) {
 	vk.pubNotGkrVarID = r1cs.pubNotGkrVarID
 }
 
+// Marks the public and private key with a random field element sigma
 func MarkWithSigma(pk *ProvingKey, vk *VerifyingKey) {
 
 	// Sigma and its inverse are toxic wastes
@@ -137,21 +137,11 @@ func MarkWithSigma(pk *ProvingKey, vk *VerifyingKey) {
 	sigma.ToBigIntRegular(&sigmaBI)
 	sigmaInv.ToBigIntRegular(&sigmaInvBI)
 
-	numCPU := runtime.NumCPU()
-	var wg sync.WaitGroup
-	wg.Add(numCPU)
-
-	for i := 0; i < numCPU; i++ {
-		go func(task int) {
-			batchSize := len(pk.privKGkrSigma) / numCPU
-
-			// Marks the privGkrK with sigma so that we can
-			// forcefully isolate this part in a pairing
-			for j := task * batchSize; j < (task+1)*batchSize; j++ {
-				pk.privKGkrSigma[task].ScalarMultiplication(&pk.privKGkrSigma[task], &sigmaBI)
-			}
-		}(i)
-	}
+	common.Parallelize(len(pk.privKGkrSigma), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			pk.privKGkrSigma[i].ScalarMultiplication(&pk.privKGkrSigma[i], &sigmaBI)
+		}
+	})
 
 	// Also marks deltaNeg in the verification key
 	vk.deltaSigmaInvNeg.ScalarMultiplication(&vk.vk.G2.DeltaNeg, &sigmaInvBI)

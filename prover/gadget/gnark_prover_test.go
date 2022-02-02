@@ -4,9 +4,11 @@ import (
 	"testing"
 
 	"github.com/AlexandreBelling/gnark/backend"
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/groth16"
-	"github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
+	witness_bn254 "github.com/AlexandreBelling/gnark/notinternal/backend/bn254/witness"
 	"github.com/consensys/gkr-mimc/hash"
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
@@ -72,14 +74,14 @@ func TestGadgetSolver(t *testing.T) {
 
 	// If everything works as intender, it should be possible
 	// to completely solve the circuit at once by
-	witness := witness.Witness{}
-	err = witness.FromFullAssignment(&assignment)
+	witness, err := frontend.NewWitness(&assignment, ecc.BN254)
 	assert.NoError(t, err)
+	_w := *witness.Vector.(*witness_bn254.Witness)
 
 	// If we are not mistaken, this should be zero at this point
-	assert.Equal(t, witness[0], fr.NewElement(0))
+	assert.Equal(t, _w[0], fr.NewElement(0))
 	// And then, we complete the solution with the initial randomness
-	witness[0] = solution.Wires[1]
+	_w[0] = solution.Wires[1]
 
 	// Reset the index,
 	assignment.Gadget.ioStore.index = 0
@@ -89,9 +91,9 @@ func TestGadgetSolver(t *testing.T) {
 		assignment.Gadget.HashHint(),
 		assignment.Gadget.GkrProverHint(),
 	)
-	proverOption, err := backend.NewProverOption(opts)
+	proverOption, err := backend.NewProverConfig(opts)
 	assert.NoError(t, err)
 
-	_, _, _, _, err = groth16.Solve(&r1cs.r1cs, witness, proverOption)
+	_, _, _, _, err = groth16.Solve(&r1cs.r1cs, _w, proverOption)
 	assert.NoError(t, err)
 }

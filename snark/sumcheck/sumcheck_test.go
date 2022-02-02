@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/AlexandreBelling/gnark/backend"
-	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/test"
 	"github.com/consensys/gnark-crypto/ecc"
 )
 
@@ -49,7 +49,7 @@ func TestSumcheckCircuit(t *testing.T) {
 
 	// Attempts to compile the circuit
 	scc := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &scc)
+	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &scc)
 	assert.NoError(t, err)
 
 	// Runs a test sumcheck prover to get witness values
@@ -75,5 +75,5 @@ func TestSumcheckCircuit(t *testing.T) {
 		witness.ExpectedQPrime[i] = expectedQPrime[i]
 	}
 
-	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
+	assert.NoError(t, test.IsSolved(&scc, &witness, ecc.BN254, backend.GROTH16))
 }

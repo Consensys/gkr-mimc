@@ -15,6 +15,7 @@ import (
 	"github.com/AlexandreBelling/gnark/backend"
 	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/test"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -63,7 +64,7 @@ func TestMimcCircuit(t *testing.T) {
 
 	mimcCircuit := AllocateGKRMimcTestCircuit(bN)
 	// Attempt to compile the circuit
-	r1cs, err := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
+	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
 	assert.NoError(t, err)
 
 	// Generate the witness values by running the prover
@@ -82,7 +83,7 @@ func TestMimcCircuit(t *testing.T) {
 	witness = AllocateGKRMimcTestCircuit(bN)
 	witness.Assign(proof, inputs, outputs, qInitialprime)
 
-	assert.NoError(t, groth16.IsSolved(r1cs, &witness))
+	assert.NoError(t, test.IsSolved(&mimcCircuit, &witness, ecc.BN254, backend.GROTH16))
 	// Takes 200sec on my laptop
 	// assert.ProverSucceeded(r1cs, &witness)
 }
@@ -145,9 +146,11 @@ func BenchmarkMimcCircuit(b *testing.B) {
 	})
 
 	pk, _ := groth16.DummySetup(r1cs)
+	_w, _ := frontend.NewWitness(&witness, ecc.BN254)
+
 	b.Run("Gnark prover", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = groth16.Prove(r1cs, pk, &witness)
+			_, _ = groth16.Prove(r1cs, pk, _w)
 		}
 	})
 }

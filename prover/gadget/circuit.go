@@ -12,8 +12,8 @@ type CircuitUsingGkr interface {
 // Generic wrapper circuit in which, we can plug any circuit using
 // Gkr. The wrapper holds all the logic for the proving etc...
 type Circuit struct {
-	Gadget       GkrGadget       `gnark:",embed"`
-	InnerCircuit CircuitUsingGkr `gnark:",embed"`
+	Gadget       GkrGadget
+	InnerCircuit CircuitUsingGkr
 }
 
 // Wraps the given circuit into a `Circuit` object
