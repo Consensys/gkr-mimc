@@ -177,3 +177,66 @@ func TestGKR(t *testing.T) {
 		"Proof invalid.",
 	)
 }
+
+func TestMoreCoresThanChunks(t *testing.T) {
+	var one fr.Element
+	one.SetOne()
+
+	c := circuit.NewCircuit(
+		[][]circuit.Wire{
+			// Layer 0
+			{
+				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
+				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
+			},
+			// Layer 1
+			{
+				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
+				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
+			},
+		},
+	)
+
+	inputs := [][]fr.Element{
+		{common.Uint64ToFr(1), common.Uint64ToFr(2)},
+		{common.Uint64ToFr(3), common.Uint64ToFr(4)},
+	}
+
+	a := c.Assign(inputs, 2)
+
+	expectedValues := [][][]fr.Element{
+		{
+			{common.Uint64ToFr(1), common.Uint64ToFr(2)},
+			{common.Uint64ToFr(3), common.Uint64ToFr(4)},
+		},
+		{
+			{common.Uint64ToFr(3), common.Uint64ToFr(2)},
+			{common.Uint64ToFr(7), common.Uint64ToFr(12)},
+		},
+		{
+			{common.Uint64ToFr(5), common.Uint64ToFr(6)},
+			{common.Uint64ToFr(19), common.Uint64ToFr(84)},
+		},
+	}
+
+	assert.Equal(
+		t,
+		expectedValues,
+		a.Values,
+		"Assignment invalid.",
+	)
+
+	outputs := a.Values[2]
+
+	p := NewProver(c, a)
+	proof := p.Prove(4)
+	v := NewVerifier(1, c)
+	validity := v.Verify(proof, inputs, outputs)
+
+	assert.Equal(
+		t,
+		validity,
+		true,
+		"Proof invalid.",
+	)
+}

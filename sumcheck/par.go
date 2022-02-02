@@ -83,6 +83,7 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 
 	// Define usefull constants
 	nChunks := len(p.eq)
+	nCore = common.Min(nChunks, nCore)    // If there are more core available than cores, truncate the number of cores
 	n := nChunks * len(p.eq[0].Table)     // Number of subcircuit. Since we haven't fold on h' yet
 	g := nChunks * len(p.vL[0].Table) / n // SubCircuit size. Since we haven't fold on hR yet
 	bN := common.Log2Ceil(n)
