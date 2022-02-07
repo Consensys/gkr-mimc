@@ -34,7 +34,7 @@ func initializeSumcheckInstance(bN int) (L, R polynomial.BookKeepingTable, qPrim
 func BenchmarkSumcheck(b *testing.B) {
 	bn := 22
 	b.Run(fmt.Sprintf("sumcheck-bn-%v", bn), func(b *testing.B) {
-		common.ProfileTrace(b, true, false, func() {
+		common.ProfileTrace(b, false, false, func() {
 			for c_ := 0; c_ < b.N; c_++ {
 				b.StopTimer()
 				L, R, qPrime, gate := initializeSumcheckInstance(bn)

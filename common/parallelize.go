@@ -83,6 +83,6 @@ func TryDispatch(nbIteration, minTaskSize int, dispatch func(start, stop int)) i
 		dispatch(start, stop)
 	}
 
-	return nbIteration
+	return nbTasks
 
 }

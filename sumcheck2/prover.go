@@ -57,7 +57,7 @@ func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Eleme
 	mid := len(inst.Eq) / 2
 
 	// The value `minTaskSize` is purely empirical
-	minTaskSize := 1 << 10
+	minTaskSize := 1 << 8
 	nTasks := common.TryDispatch(mid, minTaskSize, func(start, stop int) {
 		jobQueue <- &proverJob{
 			type_: partialEval,
@@ -83,7 +83,7 @@ func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
 	mid := len(inst.Eq) / 2
 
 	// The value `minTaskSize` is purely empirical
-	minTaskSize := 1 << 13
+	minTaskSize := 1 << 8
 	nbTasks := common.TryDispatch(mid, minTaskSize, func(start, stop int) {
 		jobQueue <- &proverJob{
 			type_: folding,
@@ -104,6 +104,11 @@ func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
 	for i := 0; i < nbTasks; i++ {
 		<-callback
 	}
+
+	// And cut in half the tables
+	inst.Eq = inst.Eq[:mid]
+	inst.L = inst.L[:mid]
+	inst.R = inst.R[:mid]
 }
 
 // Computes the eq table for the comming round
@@ -114,11 +119,12 @@ func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Ele
 	minTaskSize := 1
 	nbTasks := common.TryDispatch(nbChunks, minTaskSize, func(start, stop int) {
 		jobQueue <- &proverJob{
-			type_:  eqTable,
-			start:  start,
-			stop:   stop,
-			inst:   inst,
-			qPrime: qPrime,
+			type_:    eqTable,
+			start:    start,
+			stop:     stop,
+			inst:     inst,
+			qPrime:   qPrime,
+			callback: callback,
 		}
 	})
 

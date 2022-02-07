@@ -33,7 +33,6 @@ func ProfileTrace(b *testing.B, profiled, traced bool, fn func()) {
 		pprof = profile.Start(
 			profile.ProfilePath(fmt.Sprintf("../profiling/%v-pprof", b.Name())),
 			profile.Quiet,
-			profile.MemProfileAllocs(),
 		)
 		defer pprof.Stop()
 	}

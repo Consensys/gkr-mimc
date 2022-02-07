@@ -37,6 +37,9 @@ func init() {
 }
 
 func startWorkerPool() {
+	// Initialize the jobQueue
+	jobQueue = make(chan *proverJob, 8*runtime.NumCPU())
+
 	nbWorkers := runtime.NumCPU()
 	for i := 0; i < nbWorkers; i++ {
 		go func() {
