@@ -2,8 +2,6 @@ package polynomial
 
 import (
 	"fmt"
-	"math"
-	"runtime"
 	"sync"
 
 	"github.com/consensys/gkr-mimc/common"
@@ -35,27 +33,22 @@ func (bkt BookKeepingTable) InterleavedChunk(on, nChunk int) BookKeepingTable {
 
 // Fold folds the table on its first coordinate using the given value r
 func (bkt *BookKeepingTable) Fold(r fr.Element) {
-
-	bkt_ := *bkt
 	mid := bkt.middleIndex()
-	bottom, top := bkt_[:mid], bkt_[mid:]
+	bkt.FoldChunk(r, 0, mid)
+	*bkt = (*bkt)[:mid]
+}
 
-	// If have mid / nCpu lower, than this threshold, then each goroutine works for less than 1 ms
-	PARALLELIZATION_THRESHOLD := float64(1 << 14)
-	numCpus := int(math.Ceil(float64(mid) / PARALLELIZATION_THRESHOLD)) // Therefore we should not use more than this number of thread
-	numCpus = common.Min(numCpus, runtime.NumCPU())
-
-	common.Parallelize(mid, func(start, stop int) {
-		for i := start; i < stop; i++ {
-			// updating bookkeeping table
-			// table[i] <- table[i] + r (table[i + mid] - table[i])
-			top[i].Sub(&top[i], &bottom[i])
-			top[i].Mul(&top[i], &r)
-			bottom[i].Add(&bottom[i], &top[i])
-		}
-	}, numCpus)
-
-	*bkt = bkt_[:mid]
+// Folds one part of the table
+func (bkt *BookKeepingTable) FoldChunk(r fr.Element, start, stop int) {
+	mid := bkt.middleIndex()
+	bottom, top := (*bkt)[:mid], (*bkt)[mid:]
+	for i := start; i < stop; i++ {
+		// updating bookkeeping table
+		// table[i] <- table[i] + r (table[i + mid] - table[i])
+		top[i].Sub(&top[i], &bottom[i])
+		top[i].Mul(&top[i], &r)
+		bottom[i].Add(&bottom[i], &top[i])
+	}
 }
 
 // FunctionEvals evaluates implicitly over the first variable in bkt

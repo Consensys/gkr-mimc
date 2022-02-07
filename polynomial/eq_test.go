@@ -138,8 +138,9 @@ func TestGetFoldedEqTable(t *testing.T) {
 
 	// a.SetUint64(1776)
 	qPrime := []fr.Element{a, b, c, d}
+	eq := make(BookKeepingTable, 1<<len(qPrime))
 
-	computedResult := GetFoldedEqTable(qPrime)
+	computedResult := GetFoldedEqTable(qPrime, eq)
 
 	assert.Equal(
 		t,

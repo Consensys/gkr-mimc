@@ -62,7 +62,7 @@ func InitializeProverForTests(bN int) SingleThreadedProver {
 	for i := range qPrime {
 		qPrime[i] = two
 	}
-	eq := polynomial.GetFoldedEqTable(qPrime)
+	eq := polynomial.GetFoldedEqTable(qPrime, make(polynomial.BookKeepingTable, 1<<bN))
 	cipher := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, one, zero, zero, zero, zero, zero})
 	copy := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, zero, zero, zero, zero, one, zero})
 	cipher.Fold(two)

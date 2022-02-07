@@ -11,7 +11,7 @@ import (
 // X is the evaluation point
 type instance struct {
 	L, R, Eq polynomial.BookKeepingTable
-	Gate     circuit.Gate
+	gate     circuit.Gate
 	// Overall degree of the sumcheck instance
 	degree int
 }
@@ -20,7 +20,7 @@ type instance struct {
 func (i *instance) Evaluation() (res fr.Element) {
 	var tmp fr.Element
 	for n := range i.L {
-		i.Gate.Eval(&tmp, &i.L[n], &i.R[n])
+		i.gate.Eval(&tmp, &i.L[n], &i.R[n])
 		tmp.Mul(&tmp, &i.Eq[n])
 		res.Add(&res, &tmp)
 	}

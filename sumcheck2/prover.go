@@ -10,124 +10,138 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// Runs the sumcheck prover
-func Prove(
-	L, R polynomial.BookKeepingTable,
-	evalAt []fr.Element,
-	gate circuit.Gate,
-) (proof sumcheck.Proof, q, finalClaims []fr.Element) {
-	i := prepareInstance(L, R, evalAt, gate)
-	return prove(&i)
-}
+// Proof is the object produced by the prover
+type Proof [][]fr.Element
 
-// Prepare the instance to run `prove` on
-func prepareInstance(L, R polynomial.BookKeepingTable,
-	evalAt []fr.Element,
-	gate circuit.Gate) instance {
+// Prove contains the coordination logic for all workers contributing to the sumcheck proof
+func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.Gate) (proof sumcheck.Proof, challenges, finalClaims []fr.Element) {
 
+	// Define usefull constants & initializes the instance
+	bN := len(qPrime)
+	n := 1 << bN // Number of subcircuit. Since we haven't fold on h' yet
 	_, _, deg := gate.Degrees()
-
-	i := instance{
-		L: L, R: R,
-		Eq:     polynomial.GetFoldedEqTable(evalAt),
-		Gate:   gate,
-		degree: deg + 1,
-	}
-
-	return i
-}
-
-// Runs the core meat of the prover sumcheck
-func prove(i *instance) (proof sumcheck.Proof, q, finalClaims []fr.Element) {
-
-	// Define usefull constants
-	n := len(i.Eq) // Number of subcircuit. Since we haven't fold on h' yet
-	bN := common.Log2Ceil(n)
+	inst := &instance{L: L, R: R, Eq: make(polynomial.BookKeepingTable, n), gate: gate, degree: deg + 1}
 
 	// Initialized the results
-	proof.PolyCoeffs = make([][]fr.Element, bN)
-	q = make([]fr.Element, bN)
+	proof.PolyCoeffs = make(Proof, bN)
+	challenges = make([]fr.Element, bN)
 	finalClaims = make([]fr.Element, 3)
+
+	// 8 . runtime.NumCPU() -> To be sure, this will never clog
+	callback := make(chan []fr.Element, 8*runtime.NumCPU())
+
+	// Precomputes the eq table
+	dispatchEqTable(inst, qPrime, callback)
 
 	// Run on hPrime
 	for k := 0; k < bN; k++ {
-		evals := i.getPartialPoly()
+		evals := dispatchPartialEvals(inst, callback)
 		proof.PolyCoeffs[k] = polynomial.InterpolateOnRange(evals)
 		r := common.GetChallenge(proof.PolyCoeffs[k])
-		i.fold(r)
-		q[k] = r
+		dispatchFolding(inst, r, callback)
+		challenges[k] = r
 	}
 
-	finalClaims[0] = i.L[0]
-	finalClaims[1] = i.R[0]
-	finalClaims[2] = i.Eq[0]
+	// Final claim is
+	finalClaims[0] = inst.L[0]
+	finalClaims[1] = inst.R[0]
+	finalClaims[2] = inst.Eq[0]
 
-	return proof, q, finalClaims
+	return proof, challenges, finalClaims
 
 }
 
-func proveAsync(i *instance)
+// Calls the partial evals by calling the worker pool if that's usefull
+// evalChan is passed for reuse purpose
+func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Element {
+	mid := len(inst.Eq) / 2
 
-// Evaluates and return the partial polynomial of the sumcheck
-func (i *instance) getPartialPoly() []fr.Element {
-
-	// Define usefull constants
-	nEvals := i.degree + 1
-	mid := len(i.Eq) / 2
-
-	evalChan := make(chan []fr.Element, runtime.NumCPU())
-
-	nJob := common.ParallelizeNonBlocking(mid, func(start, stop int) {
-		evals := make([]fr.Element, nEvals)
-		var v, dL, dR, dEq fr.Element
-
-		// Accumulates the combinator's result
-		evalL := make([]fr.Element, nEvals)
-		evalR := make([]fr.Element, nEvals)
-		evalEq := make([]fr.Element, nEvals)
-
-		for x := start; x < stop; x++ {
-
-			// Computes the preEvaluations
-			evalL[0] = i.L[x]
-			evalR[0] = i.R[x]
-			evalEq[0] = i.Eq[x]
-
-			dL.Sub(&i.L[x+mid], &i.L[x])
-			dR.Sub(&i.R[x+mid], &i.R[x])
-			dEq.Sub(&i.Eq[x+mid], &i.Eq[x])
-
-			for t := 1; t < nEvals; t++ {
-				evalL[t].Add(&evalL[t-1], &dL)
-				evalR[t].Add(&evalR[t-1], &dR)
-				evalEq[t].Add(&evalEq[t-1], &dEq)
-			}
-
-			for t := 0; t < nEvals; t++ {
-				i.Gate.Eval(&v, &evalL[t], &evalR[t])
-				v.Mul(&v, &evalEq[t])
-				evals[t].Add(&evals[t], &v)
-			}
+	// The value `minTaskSize` is purely empirical
+	minTaskSize := 1 << 10
+	nTasks := common.TryDispatch(mid, minTaskSize, func(start, stop int) {
+		jobQueue <- &proverJob{
+			type_: partialEval,
+			start: start, stop: stop,
+			inst:     inst,
+			callback: callback,
 		}
-
-		evalChan <- evals
 	})
 
-	// Collect the result of each thread
-	eval := <-evalChan
-	for j := 1; j < nJob; j++ {
-		otherEval := <-evalChan
-		for t := range eval {
-			eval[t].Add(&eval[t], &otherEval[t])
-		}
+	// `0` means the tasks where not dispatched as it
+	// deemed unprofitable to parallelize this task
+	if nTasks < 1 {
+		return inst.getPartialPolyChunk(0, mid)
 	}
 
-	return eval
+	// Otherwise consumes happily the callback channel and return the eval
+	return consumeAccumulate(callback, nTasks)
 }
 
-// Fold all the tables
-func (i *instance) fold(r fr.Element) {
-	i.L.Fold(r)
-	i.R.Fold(r)
-	i.Eq.Fold(r)
+// Calls the folding by either passing to the worker pool if this is deemed usefull
+// or synchronously if not
+func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
+	mid := len(inst.Eq) / 2
+
+	// The value `minTaskSize` is purely empirical
+	minTaskSize := 1 << 13
+	nbTasks := common.TryDispatch(mid, minTaskSize, func(start, stop int) {
+		jobQueue <- &proverJob{
+			type_: folding,
+			start: start, stop: stop,
+			inst:     inst,
+			callback: callback,
+		}
+	})
+
+	// `0` means the tasks where not dispatched as it
+	// deemed unprofitable to parallelize this task
+	if nbTasks < 1 {
+		inst.foldChunk(r, 0, mid)
+		return
+	}
+
+	// Otherwise, wait for all callback to be done
+	for i := 0; i < nbTasks; i++ {
+		<-callback
+	}
+}
+
+// Computes the eq table for the comming round
+func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Element) {
+	nbChunks := len(inst.Eq) / eqTableChunkSize
+
+	// No need to fix limit size of the batch as it already done
+	minTaskSize := 1
+	nbTasks := common.TryDispatch(nbChunks, minTaskSize, func(start, stop int) {
+		jobQueue <- &proverJob{
+			type_:  eqTable,
+			start:  start,
+			stop:   stop,
+			inst:   inst,
+			qPrime: qPrime,
+		}
+	})
+
+	if nbTasks < 1 {
+		polynomial.GetFoldedEqTable(qPrime, inst.Eq)
+		return
+	}
+
+	// Otherwise, wait for all callback to be done
+	for i := 0; i < nbTasks; i++ {
+		<-callback
+	}
+}
+
+// ConsumeAccumulate consumes `nToConsume` elements from `ch`,
+// and return their sum Element-wise
+func consumeAccumulate(ch chan []fr.Element, nToConsume int) []fr.Element {
+	res := <-ch
+	for i := 0; i < nToConsume-1; i++ {
+		tmp := <-ch
+		for i := range res {
+			res[i].Add(&res[i], &tmp[i])
+		}
+	}
+	return res
 }

@@ -42,7 +42,7 @@ func TestChunked(t *testing.T) {
 		chunkSize := 1 << (test.logSize - test.logNChunks)
 		// Initialize the tables
 		eqChunked := GetChunkedEqTable(qPrime, nChunks, 1)
-		eq := GetFoldedEqTable(qPrime)
+		eq := GetFoldedEqTable(qPrime, make(BookKeepingTable, 1<<len(qPrime)))
 
 		// The first and the last elements should match
 		assert.Equal(t, eq[0], eqChunked[0][0], "Eq and EqChunk are inconsistent")
