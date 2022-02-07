@@ -60,8 +60,8 @@ func NewSingleThreadedProver(
 func (p *SingleThreadedProver) Prove() (proof Proof, qPrime, qL, qR, finalClaims []fr.Element) {
 
 	// Define usefull constants
-	n := len(p.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
+	n := len(p.eq)     // Number of subcircuit. Since we haven't fold on h' yet
+	g := len(p.vR) / n // SubCircuit size. Since we haven't fold on hR yet
 	bN := common.Log2Ceil(n)
 	bG := common.Log2Ceil(g)
 
@@ -99,11 +99,11 @@ func (p *SingleThreadedProver) Prove() (proof Proof, qPrime, qL, qR, finalClaims
 		qPrime[i-2*bG] = r
 	}
 
-	finalClaims[0] = p.vL.Table[0]
-	finalClaims[1] = p.vR.Table[0]
-	finalClaims[2] = p.eq.Table[0]
+	finalClaims[0] = p.vL[0]
+	finalClaims[1] = p.vR[0]
+	finalClaims[2] = p.eq[0]
 	for i, bkt := range p.staticTables {
-		finalClaims[3+i] = bkt.Table[0]
+		finalClaims[3+i] = bkt[0]
 	}
 
 	return proof, qPrime, qL, qR, finalClaims

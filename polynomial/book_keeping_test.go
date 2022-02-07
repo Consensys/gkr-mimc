@@ -1,8 +1,9 @@
 package polynomial
 
 import (
-	"github.com/consensys/gkr-mimc/common"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/common"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
@@ -52,8 +53,8 @@ func TestFold(t *testing.T) {
 	ten.SetUint64(uint64(10))
 	eleven.SetUint64(uint64(11))
 
-	assert.Equal(t, ten, bkt.Table[0], "Mismatch on 0")
-	assert.Equal(t, eleven, bkt.Table[1], "Mismatch on 1")
+	assert.Equal(t, ten, bkt[0], "Mismatch on 0")
+	assert.Equal(t, eleven, bkt[1], "Mismatch on 1")
 }
 
 func TestFuncEval(t *testing.T) {

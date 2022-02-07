@@ -1,8 +1,9 @@
 package polynomial
 
 import (
-	"github.com/consensys/gkr-mimc/common"
 	"testing"
+
+	"github.com/consensys/gkr-mimc/common"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -44,14 +45,14 @@ func TestChunked(t *testing.T) {
 		eq := GetFoldedEqTable(qPrime)
 
 		// The first and the last elements should match
-		assert.Equal(t, eq.Table[0], eqChunked[0].Table[0], "Eq and EqChunk are inconsistent")
-		assert.Equal(t, eq.Table[size-1], eqChunked[nChunks-1].Table[chunkSize-1], "Eq and EqChunk are inconsistent")
+		assert.Equal(t, eq[0], eqChunked[0][0], "Eq and EqChunk are inconsistent")
+		assert.Equal(t, eq[size-1], eqChunked[nChunks-1][chunkSize-1], "Eq and EqChunk are inconsistent")
 		// Then tests at random points
 		u := []int{1897979 % chunkSize, 987950 % chunkSize, 4547687 % chunkSize}
 		s := []int{5648709 % nChunks, 907532 % nChunks, 367570 % nChunks}
 		for k := range u {
 			id := u[k]*nChunks + s[k]
-			assert.Equal(t, eq.Table[id], eqChunked[s[k]].Table[u[k]], "Eq and EqChunk are inconsistent")
+			assert.Equal(t, eq[id], eqChunked[s[k]][u[k]], "Eq and EqChunk are inconsistent")
 		}
 
 		// Test that evaluation gives the same results

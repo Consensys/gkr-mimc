@@ -174,7 +174,7 @@ func benchmarkFineGrainedProver(b *testing.B, bN int, profiled, traced bool) {
 }
 
 func BenchmarkSumcheck(b *testing.B) {
-	bNs := [1]int{23}
+	bNs := []int{15, 16, 17, 18, 19, 20, 21, 22}
 
 	for _, bN := range bNs {
 		b.Run(fmt.Sprintf("bN=%d", bN), func(b *testing.B) {

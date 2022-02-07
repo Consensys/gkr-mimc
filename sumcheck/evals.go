@@ -10,8 +10,8 @@ import (
 func (p SingleThreadedProver) GetClaim() fr.Element {
 
 	// Define usefull constants
-	n := len(p.eq.Table)         // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(p.vL.Table) / n     // SubCircuit size. Since we haven't fold on hR yet
+	n := len(p.eq)               // Number of subcircuit. Since we haven't fold on h' yet
+	g := len(p.vL) / n           // SubCircuit size. Since we haven't fold on hR yet
 	nGate := len(p.staticTables) // Number of different gates
 
 	var eq, vL, vR, v fr.Element
@@ -26,17 +26,17 @@ func (p SingleThreadedProver) GetClaim() fr.Element {
 		splitValues[i] = make([]fr.Element, g*g)
 		staticIsNotZero[i] = make([]bool, g*g)
 		for h = 0; h < g*g; h++ {
-			staticIsNotZero[i][h] = !p.staticTables[i].Table[h].IsZero()
+			staticIsNotZero[i][h] = !p.staticTables[i][h].IsZero()
 		}
 	}
 
 	// Mail loop to accumulate the evaluations in split values
 	for hPrime := 0; hPrime < n; hPrime++ {
-		eq = p.eq.Table[hPrime]
+		eq = p.eq[hPrime]
 		for hL = 0; hL < g; hL++ {
-			vL = p.vL.Table[hL*n+hPrime]
+			vL = p.vL[hL*n+hPrime]
 			for hR = 0; hR < g; hR++ {
-				vR = p.vR.Table[hR*n+hPrime]
+				vR = p.vR[hR*n+hPrime]
 				for i = 0; i < nGate; i++ {
 					if staticIsNotZero[i][hL*g+hR] {
 						p.gates[i].Eval(&v, &vL, &vR)
@@ -52,7 +52,7 @@ func (p SingleThreadedProver) GetClaim() fr.Element {
 	var res fr.Element
 	for i := range splitValues {
 		for h, v := range splitValues[i] {
-			v.Mul(&v, &p.staticTables[i].Table[h])
+			v.Mul(&v, &p.staticTables[i][h])
 			res.Add(&res, &v)
 		}
 	}
@@ -64,10 +64,10 @@ func (p SingleThreadedProver) GetClaim() fr.Element {
 func (p SingleThreadedProver) GetEvalsOnHL() []fr.Element {
 
 	// Define usefull constants
-	n := len(p.eq.Table)                      // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(p.vR.Table) / n                  // SubCircuit size. Since we haven't fold on hR yet
-	lenHL := len(p.staticTables[0].Table) / g // Number of remaining variables on R
-	nGate := len(p.staticTables)              // Number of different gates
+	n := len(p.eq)                      // Number of subcircuit. Since we haven't fold on h' yet
+	g := len(p.vR) / n                  // SubCircuit size. Since we haven't fold on hR yet
+	lenHL := len(p.staticTables[0]) / g // Number of remaining variables on R
+	nGate := len(p.staticTables)        // Number of different gates
 	nEvals := p.degreeHL + 1
 
 	// PreEvaluates the bookKeepingTable so we can reuse them results multiple time later
@@ -80,11 +80,11 @@ func (p SingleThreadedProver) GetEvalsOnHL() []fr.Element {
 		staticIsNotZero[i] = make([]bool, lenHL*g/2)
 		evaledStaticTables[i] = make([][]fr.Element, lenHL*g/2)
 		for h := range staticIsNotZero[i] {
-			staticIsNotZero[i][h] = !(tab.Table[h].IsZero() &&
+			staticIsNotZero[i][h] = !(tab[h].IsZero() &&
 				preEvaluatedStaticTables[h].IsZero())
 			// Computes all the preEvaluations of the staticTables
 			evaledStaticTables[i][h] = make([]fr.Element, nEvals)
-			evaledStaticTables[i][h][0] = tab.Table[h]
+			evaledStaticTables[i][h][0] = tab[h]
 			for t := 1; t < nEvals; t++ {
 				evaledStaticTables[i][h][t].Add(
 					&evaledStaticTables[i][h][t-1],
@@ -100,8 +100,8 @@ func (p SingleThreadedProver) GetEvalsOnHL() []fr.Element {
 // GetEvalsOnHR get the values of the partial on the first variable on hR
 func (p SingleThreadedProver) GetEvalsOnHR() []fr.Element {
 	// Define usefull constants
-	n := len(p.eq.Table)         // Number of subcircuit. Since we haven't fold on h' yet
-	lenHR := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
+	n := len(p.eq)               // Number of subcircuit. Since we haven't fold on h' yet
+	lenHR := len(p.vR) / n       // SubCircuit size. Since we haven't fold on hR yet
 	nGate := len(p.staticTables) // Number of different gates
 	nEvals := p.degreeHR + 1
 
@@ -114,11 +114,11 @@ func (p SingleThreadedProver) GetEvalsOnHR() []fr.Element {
 		staticIsNotZero[i] = make([]bool, lenHR/2)
 		evaledStaticTables[i] = make([][]fr.Element, lenHR/2)
 		for hR := range staticIsNotZero[i] {
-			staticIsNotZero[i][hR] = !(tab.Table[hR].IsZero() &&
+			staticIsNotZero[i][hR] = !(tab[hR].IsZero() &&
 				preEvaluatedStaticTables[hR].IsZero())
 			// Computes all the preEvaluations of the staticTables
 			evaledStaticTables[i][hR] = make([]fr.Element, nEvals)
-			evaledStaticTables[i][hR][0] = tab.Table[hR]
+			evaledStaticTables[i][hR][0] = tab[hR]
 			for t := 1; t < nEvals; t++ {
 				evaledStaticTables[i][hR][t].Add(
 					&evaledStaticTables[i][hR][t-1],
@@ -139,7 +139,7 @@ func (p *SingleThreadedProver) GetEvalsOnHPrime() []fr.Element {
 	// Precomputes the functions evals
 	staticTablesVals := make([]fr.Element, nGate)
 	for i, tab := range p.staticTables {
-		staticTablesVals[i] = tab.Table[0] // The table are already completely folded
+		staticTablesVals[i] = tab[0] // The table are already completely folded
 	}
 
 	return p.accumulateEvalsOnHPrime(staticTablesVals)
@@ -151,12 +151,12 @@ func (p SingleThreadedProver) accumulateEvalsOnHL(
 ) []fr.Element {
 
 	// Define usefull constants
-	n := len(p.eq.Table)                      // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(p.vR.Table) / n                  // SubCircuit size. Since we haven't fold on hR yet
-	lenHL := len(p.staticTables[0].Table) / g // Number of remaining variables on R
-	nGate := len(p.staticTables)              // Number of different gates
+	n := len(p.eq)                      // Number of subcircuit. Since we haven't fold on h' yet
+	g := len(p.vR) / n                  // SubCircuit size. Since we haven't fold on hR yet
+	lenHL := len(p.staticTables[0]) / g // Number of remaining variables on R
+	nGate := len(p.staticTables)        // Number of different gates
 	nEvals := p.degreeHL + 1
-	mid := len(p.vL.Table) / 2
+	mid := len(p.vL) / 2
 
 	// Accumulate the evaluations
 	evaledVLs := make([]fr.Element, nEvals)
@@ -180,17 +180,17 @@ func (p SingleThreadedProver) accumulateEvalsOnHL(
 	}
 
 	for hPrime := 0; hPrime < n; hPrime++ {
-		evaledEq = p.eq.Table[hPrime] // Keep the value of Eq
+		evaledEq = p.eq[hPrime] // Keep the value of Eq
 		for hL = 0; hL < lenHL/2; hL++ {
 			bVL = hL*n + hPrime
-			evaledVLs[0] = p.vL.Table[bVL] // Keep the values of VL
-			deltaVL.Sub(&p.vL.Table[bVL+mid], &p.vL.Table[bVL])
+			evaledVLs[0] = p.vL[bVL] // Keep the values of VL
+			deltaVL.Sub(&p.vL[bVL+mid], &p.vL[bVL])
 			for t = 1; t < nEvals; t++ {
 				evaledVLs[t].Add(&evaledVLs[t-1], &deltaVL)
 			}
 			for hR = 0; hR < g; hR++ {
 				h = hL*g + hR
-				evaledVR = p.vR.Table[hR*n+hPrime] // Keep the values of VR
+				evaledVR = p.vR[hR*n+hPrime] // Keep the values of VR
 				for i, gate = range p.gates {
 					if staticIsNotZero[i][h] {
 						gate.EvalManyVL(vS, evaledVLs, &evaledVR)
@@ -226,11 +226,11 @@ func (p SingleThreadedProver) accumulateEvalsOnHR(
 ) []fr.Element {
 
 	// Define usefull constants
-	n := len(p.eq.Table)         // Number of subcircuit. Since we haven't fold on h' yet
-	lenHR := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
+	n := len(p.eq)               // Number of subcircuit. Since we haven't fold on h' yet
+	lenHR := len(p.vR) / n       // SubCircuit size. Since we haven't fold on hR yet
 	nGate := len(p.staticTables) // Number of different gates
 	nEvals := p.degreeHR + 1
-	mid := len(p.vR.Table) / 2
+	mid := len(p.vR) / 2
 	// Accumulate the evaluations in splitValues
 	var evaledEq, evaledVL, deltaVR fr.Element
 	evaledVRs := make([]fr.Element, nEvals)
@@ -253,12 +253,12 @@ func (p SingleThreadedProver) accumulateEvalsOnHR(
 	}
 
 	for hPrime := 0; hPrime < n; hPrime++ {
-		evaledEq = p.eq.Table[hPrime] // Keep the value of Eq
-		evaledVL = p.vL.Table[hPrime] // Keep the values of VL
+		evaledEq = p.eq[hPrime] // Keep the value of Eq
+		evaledVL = p.vL[hPrime] // Keep the values of VL
 		for hR = 0; hR < lenHR/2; hR++ {
 			bVR = hR*n + hPrime
-			evaledVRs[0] = p.vR.Table[bVR]
-			deltaVR.Sub(&p.vR.Table[bVR+mid], &p.vR.Table[bVR])
+			evaledVRs[0] = p.vR[bVR]
+			deltaVR.Sub(&p.vR[bVR+mid], &p.vR[bVR])
 			for t = 1; t < nEvals; t++ {
 				evaledVRs[t].Add(&evaledVRs[t-1], &deltaVR)
 			}
@@ -297,7 +297,7 @@ func (p SingleThreadedProver) accumulateEvalsOnHPrime(
 	// Define usefull constants
 	nGate := len(p.staticTables) // Number of different gates
 	nEvals := p.degreeHPrime + 1
-	mid := len(p.eq.Table) / 2
+	mid := len(p.eq) / 2
 
 	// splitValues[nGate][len(hR) * len(hL)][nEvals]
 	// We accumulate the combinators results in this table, by separating the gates
@@ -318,13 +318,13 @@ func (p SingleThreadedProver) accumulateEvalsOnHPrime(
 
 	for hPrime := 0; hPrime < mid; hPrime++ {
 		// Computes the preEvaluations
-		evaledVL[0] = p.vL.Table[hPrime]
-		evaledVR[0] = p.vR.Table[hPrime]
-		evaledEq[0] = p.eq.Table[hPrime]
+		evaledVL[0] = p.vL[hPrime]
+		evaledVR[0] = p.vR[hPrime]
+		evaledEq[0] = p.eq[hPrime]
 
-		deltaVL.Sub(&p.vL.Table[hPrime+mid], &p.vL.Table[hPrime])
-		deltaVR.Sub(&p.vR.Table[hPrime+mid], &p.vR.Table[hPrime])
-		deltaEq.Sub(&p.eq.Table[hPrime+mid], &p.eq.Table[hPrime])
+		deltaVL.Sub(&p.vL[hPrime+mid], &p.vL[hPrime])
+		deltaVR.Sub(&p.vR[hPrime+mid], &p.vR[hPrime])
+		deltaEq.Sub(&p.eq[hPrime+mid], &p.eq[hPrime])
 
 		for t = 1; t < nEvals; t++ {
 			evaledVL[t].Add(&evaledVL[t-1], &deltaVL)

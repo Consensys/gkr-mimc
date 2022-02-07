@@ -1,6 +1,8 @@
 package polynomial
 
 import (
+	"runtime"
+
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -39,12 +41,59 @@ func EvalEq(qPrime, nextQPrime []fr.Element) fr.Element {
 // containing the values of Eq(q1, ... , qn, *, ... , *)
 // where qPrime = [q1 ... qn].
 func GetFoldedEqTable(qPrime []fr.Element) (eq BookKeepingTable) {
-	return foldedEqTableWithMultiplier(qPrime, fr.One())
+	nCpus := runtime.NumCPU()
+	nChunks := common.Min(nCpus*4, 1<<len(qPrime))
+	logNChunks := common.Log2Ceil(nCpus)
+	res := make([]fr.Element, 1<<len(qPrime))
+	chunkSize := len(res) / nChunks
+
+	common.Parallelize(
+		nChunks,
+		func(start, stop int) {
+			// Useful preallocations
+			var tmp fr.Element
+			one := fr.One()
+			chunk := res[start*chunkSize : stop*chunkSize]
+
+			for noChunk := start; noChunk < stop; noChunk++ {
+				// Compute r
+				r := one
+				for k := 0; k < logNChunks; k++ {
+					_rho := &qPrime[len(qPrime)-k-1]
+					if noChunk>>k&1 == 1 { // If the k-th bit of i is 1
+						r.Mul(&r, _rho)
+					} else {
+						tmp.Sub(&one, _rho)
+						r.Mul(&r, &tmp)
+					}
+				}
+
+				foldedEqTableWithPrealloc(chunk, qPrime[:len(qPrime)-logNChunks], r)
+			}
+		})
+
+	return NewBookKeepingTable(res)
 }
 
 func foldedEqTableWithMultiplier(qPrime []fr.Element, multiplier fr.Element) (eq BookKeepingTable) {
 	n := len(qPrime)
-	foldedEqTable := make([]fr.Element, 1<<n)
+	foldedEqTable := make([]fr.Element, 1<<len(qPrime))
+	foldedEqTable[0] = multiplier
+
+	for i, r := range qPrime {
+		for j := 0; j < (1 << i); j++ {
+			J := j << (n - i)
+			JNext := J + 1<<(n-1-i)
+			foldedEqTable[JNext].Mul(&r, &foldedEqTable[J])
+			foldedEqTable[J].Sub(&foldedEqTable[J], &foldedEqTable[JNext])
+		}
+	}
+
+	return NewBookKeepingTable(foldedEqTable)
+}
+
+func foldedEqTableWithPrealloc(foldedEqTable []fr.Element, qPrime []fr.Element, multiplier fr.Element) (eq BookKeepingTable) {
+	n := len(qPrime)
 	foldedEqTable[0] = multiplier
 
 	for i, r := range qPrime {
@@ -83,7 +132,7 @@ func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTab
 					}
 				}
 
-				res[noChunk] = foldedEqTableWithMultiplier(qPrime[:len(qPrime)-logNChunks], r)
+				foldedEqTableWithMultiplier(qPrime[:len(qPrime)-logNChunks], r)
 			}
 		},
 		nCore,

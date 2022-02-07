@@ -52,8 +52,8 @@ func (a *Assignment) LayerAsBKTWithCopy(layer, nCore int) []polynomial.BookKeepi
 	subCopy := func(start, stop int) {
 		for i := start; i < stop; i++ {
 			tab := a.Values[layer][i]
-			res[i].Table = make([]fr.Element, len(tab))
-			copy(res[i].Table, tab)
+			res[i] = make([]fr.Element, len(tab))
+			copy(res[i], tab)
 		}
 	}
 

@@ -8,9 +8,7 @@ import (
 )
 
 // MultilinearByValues represents a multilinear polynomial by its values
-type MultilinearByValues struct {
-	Table []frontend.Variable
-}
+type MultilinearByValues []frontend.Variable
 
 // AllocateMultilinear returns an empty multilinear with a given size
 func AllocateMultilinear(nVars int) MultilinearByValues {
@@ -19,51 +17,51 @@ func AllocateMultilinear(nVars int) MultilinearByValues {
 }
 
 // Assign a preallocated Multilinear with the given values
-func (m *MultilinearByValues) Assign(values []interface{}) {
-	if len(values) != len(m.Table) {
-		panic(fmt.Sprintf("Inconsistent assignment expected len %v but got %v", len(m.Table), len(values)))
+func (m MultilinearByValues) Assign(values []interface{}) {
+	if len(values) != len(m) {
+		panic(fmt.Sprintf("Inconsistent assignment expected len %v but got %v", len(m), len(values)))
 	}
 	for i, c := range values {
-		m.Table[i] = c
+		m[i] = c
 	}
 }
 
 // AssignFromChunkedBKT a preallocated Multilinear with the given values
-func (m *MultilinearByValues) AssignFromChunkedBKT(values [][]fr.Element) {
+func (m MultilinearByValues) AssignFromChunkedBKT(values [][]fr.Element) {
 	nChunks := len(values)
 	for b := range values {
 		for i := range values[b] {
-			m.Table[b+i*nChunks] = values[b][i]
+			m[b+i*nChunks] = values[b][i]
 		}
 	}
 }
 
 // NewMultilinearByValues is the default constructor
 func NewMultilinearByValues(Table []frontend.Variable) MultilinearByValues {
-	return MultilinearByValues{Table: Table}
+	return Table
 }
 
 // DeepCopy returns a deepcopied value
 func (m MultilinearByValues) DeepCopy() MultilinearByValues {
-	tableDC := make([]frontend.Variable, len(m.Table))
-	copy(tableDC, m.Table)
+	tableDC := make([]frontend.Variable, len(m))
+	copy(tableDC, m)
 	return NewMultilinearByValues(tableDC)
 }
 
 // Fold partially evaluates the polynomial on one of the variable
 func (m *MultilinearByValues) Fold(cs frontend.API, x frontend.Variable) {
-	k := len(m.Table) / 2
+	k := len(*m) / 2
 	for i := 0; i < k; i++ {
-		tmpLinExp := cs.Sub(m.Table[i+k], m.Table[i])
+		tmpLinExp := cs.Sub((*m)[i+k], (*m)[i])
 		// cs.LinearExpression(
-		// 	cs.Term(m.Table[i+k], big.NewInt(1)),
-		// 	cs.Term(m.Table[i], big.NewInt(-1)),
+		// 	cs.Term(m[i+k], big.NewInt(1)),
+		// 	cs.Term(m[i], big.NewInt(-1)),
 		// )
 		tmp := cs.Mul(tmpLinExp, x)
 		// Ideally we replace this by a r1c.LinearExpression too ...
-		m.Table[i] = cs.Add(m.Table[i], tmp)
+		(*m)[i] = cs.Add((*m)[i], tmp)
 	}
-	m.Table = m.Table[:k]
+	*m = (*m)[:k]
 }
 
 // Eval the multilinear polynomial
@@ -73,7 +71,7 @@ func (m MultilinearByValues) Eval(cs frontend.API, xs []frontend.Variable) front
 		// Repeatedly fold the table
 		f.Fold(cs, x)
 	}
-	return f.Table[0]
+	return f[0]
 }
 
 // EvalMixed the multilinear polynomial
@@ -86,12 +84,12 @@ func (m MultilinearByValues) EvalMixed(
 	// The function proceeds by putting in common the evaluations over qPrime
 	// to save a maximum of space
 	nChunks := 1 << len(qL)
-	chunkSize := len(m.Table) / nChunks
+	chunkSize := len(m) / nChunks
 	intermediateTable := make([]frontend.Variable, nChunks)
 
 	// Evaluate each portion of the table on qPrime. For different values of q.
 	for i := range intermediateTable {
-		multlin := NewMultilinearByValues(m.Table[i*chunkSize : (i+1)*chunkSize])
+		multlin := NewMultilinearByValues(m[i*chunkSize : (i+1)*chunkSize])
 		intermediateTable[i] = multlin.Eval(cs, qPrime)
 	}
 	intermediatePoly := NewMultilinearByValues(intermediateTable)

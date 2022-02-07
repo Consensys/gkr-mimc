@@ -83,9 +83,9 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 
 	// Define usefull constants
 	nChunks := len(p.eq)
-	nCore = common.Min(nChunks, nCore)    // If there are more core available than cores, truncate the number of cores
-	n := nChunks * len(p.eq[0].Table)     // Number of subcircuit. Since we haven't fold on h' yet
-	g := nChunks * len(p.vL[0].Table) / n // SubCircuit size. Since we haven't fold on hR yet
+	nCore = common.Min(nChunks, nCore) // If there are more core available than cores, truncate the number of cores
+	n := nChunks * len(p.eq[0])        // Number of subcircuit. Since we haven't fold on h' yet
+	g := nChunks * len(p.vL[0]) / n    // SubCircuit size. Since we haven't fold on hR yet
 	bN := common.Log2Ceil(n)
 	bG := common.Log2Ceil(g)
 	logNChunk := common.Log2Ceil(nChunks)
@@ -153,11 +153,11 @@ func (p *MultiThreadedProver) Prove(nCore int) (proof Proof, qPrime, qL, qR, fin
 		qPrime[i-2*bG] = r
 	}
 
-	finalClaims[0] = newP.vL.Table[0]
-	finalClaims[1] = newP.vR.Table[0]
-	finalClaims[2] = newP.eq.Table[0]
+	finalClaims[0] = newP.vL[0]
+	finalClaims[1] = newP.vR[0]
+	finalClaims[2] = newP.eq[0]
 	for i, bkt := range newP.staticTables {
-		finalClaims[3+i] = bkt.Table[0]
+		finalClaims[3+i] = bkt[0]
 	}
 
 	close(evalsChan)
@@ -178,18 +178,18 @@ func ConsumeMergeProvers(ch chan indexedProver, nToMerge int) SingleThreadedProv
 
 	indexed := <-ch
 	// First off the loop to take the static tables at the same time
-	newVL[indexed.I] = indexed.P.vL.Table[0]
-	newVR[indexed.I] = indexed.P.vR.Table[0]
-	newEq[indexed.I] = indexed.P.eq.Table[0]
+	newVL[indexed.I] = indexed.P.vL[0]
+	newVR[indexed.I] = indexed.P.vR[0]
+	newEq[indexed.I] = indexed.P.eq[0]
 	// All subProvers have the same staticTables. So we can take the first one
 	staticTables := indexed.P.staticTables
 	gates := indexed.P.gates
 
 	for i := 0; i < nToMerge-1; i++ {
 		indexed = <-ch
-		newVL[indexed.I] = indexed.P.vL.Table[0]
-		newVR[indexed.I] = indexed.P.vR.Table[0]
-		newEq[indexed.I] = indexed.P.eq.Table[0]
+		newVL[indexed.I] = indexed.P.vL[0]
+		newVR[indexed.I] = indexed.P.vR[0]
+		newEq[indexed.I] = indexed.P.eq[0]
 	}
 
 	return NewSingleThreadedProver(
@@ -266,8 +266,8 @@ func (p *MultiThreadedProver) RunForChunks(
 	}
 
 	// Define usefull constants
-	n := len(subProvers[0].eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(subProvers[0].vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
+	n := len(subProvers[0].eq)     // Number of subcircuit. Since we haven't fold on h' yet
+	g := len(subProvers[0].vR) / n // SubCircuit size. Since we haven't fold on hR yet
 	bN := common.Log2Ceil(n)
 	bG := common.Log2Ceil(g)
 
