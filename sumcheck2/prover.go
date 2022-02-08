@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-	"github.com/consensys/gkr-mimc/sumcheck"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -14,16 +13,16 @@ import (
 type Proof [][]fr.Element
 
 // Prove contains the coordination logic for all workers contributing to the sumcheck proof
-func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.Gate) (proof sumcheck.Proof, challenges, finalClaims []fr.Element) {
+func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.Gate) (proof Proof, challenges, finalClaims []fr.Element) {
 
 	// Define usefull constants & initializes the instance
 	bN := len(qPrime)
 	n := 1 << bN // Number of subcircuit. Since we haven't fold on h' yet
-	_, _, deg := gate.Degrees()
-	inst := &instance{L: L, R: R, Eq: make(polynomial.BookKeepingTable, n), gate: gate, degree: deg + 1}
+	inst := makeInstance(L, R, gate)
+	inst.Eq = make(polynomial.BookKeepingTable, n)
 
 	// Initialized the results
-	proof.PolyCoeffs = make(Proof, bN)
+	proof = make(Proof, bN)
 	challenges = make([]fr.Element, bN)
 	finalClaims = make([]fr.Element, 3)
 
@@ -36,8 +35,8 @@ func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.G
 	// Run on hPrime
 	for k := 0; k < bN; k++ {
 		evals := dispatchPartialEvals(inst, callback)
-		proof.PolyCoeffs[k] = polynomial.InterpolateOnRange(evals)
-		r := common.GetChallenge(proof.PolyCoeffs[k])
+		proof[k] = polynomial.InterpolateOnRange(evals)
+		r := common.GetChallenge(proof[k])
 		dispatchFolding(inst, r, callback)
 		challenges[k] = r
 	}
@@ -75,6 +74,14 @@ func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Eleme
 
 	// Otherwise consumes happily the callback channel and return the eval
 	return consumeAccumulate(callback, nTasks)
+}
+
+// initializeInstance returns an instance with L, R, gates, and degree sets
+func makeInstance(L, R polynomial.BookKeepingTable, gate circuit.Gate) *instance {
+	_, _, deg := gate.Degrees()
+	n := len(L)
+	return &instance{L: L, R: R, Eq: make(polynomial.BookKeepingTable, n), gate: gate, degree: deg + 1}
+
 }
 
 // Calls the folding by either passing to the worker pool if this is deemed usefull
