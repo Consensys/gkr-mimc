@@ -45,41 +45,7 @@ func (c *CipherGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) fronte
 	return cs.Add(cipher, vL)
 }
 
-// EvalManyVR performs cipher evaluations of many vRs values by one vL value
-// Nothing special to do here
-func (c *CipherGate) EvalManyVR(res []fr.Element, vL *fr.Element, vRs []fr.Element) {
-	var tmp fr.Element
-	for i := 0; i < len(vRs); i++ {
-		// tmp = vR + Ark
-		tmp.Add(&vRs[i], &c.Ark)
-		// res = tmp^7
-		res[i].Square(&tmp)
-		res[i].Mul(&res[i], &tmp)
-		res[i].Square(&res[i])
-		res[i].Mul(&res[i], &tmp)
-		// Then add vL
-		res[i].Add(&res[i], vL)
-	}
-}
-
-// EvalManyVL performs an element-wise cipher of many vLs values by one vR
-// This one is optimized to only do the vL exponentiation once
-func (c *CipherGate) EvalManyVL(res, vLs []fr.Element, vR *fr.Element) {
-	// tmp = vR + Ark
-	var tmp, right fr.Element
-	tmp.Add(vR, &c.Ark)
-	// right = tmp^7
-	right.Square(&tmp)
-	right.Mul(&right, &tmp)
-	right.Square(&right)
-	right.Mul(&right, &tmp)
-
-	for i := 0; i < len(vLs); i++ {
-		res[i].Add(&right, &vLs[i])
-	}
-}
-
-// Degrees returns the degrees of the gate on hL, hR and hPrime
-func (c *CipherGate) Degrees() (degHL, degHR, degHPrime int) {
-	return 1, 7, 7
+// Degree returns the Degree of the gate on hL, hR and hPrime
+func (c *CipherGate) Degree() (degHPrime int) {
+	return 7
 }

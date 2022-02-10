@@ -13,12 +13,8 @@ type Gate interface {
 	GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable
 	// Eval returns an evaluation for a unique pair of Eval
 	Eval(res, vL, vR *fr.Element)
-	// EvalManyVL returns multiple evaluations with the same vR
-	EvalManyVL(res, vLs []fr.Element, vR *fr.Element)
-	// EvalManyVR returns multiple evaluations with the same vL
-	EvalManyVR(res []fr.Element, vL *fr.Element, vRs []fr.Element)
-	// Degrees returns the degrees of the gate relatively to HL, HR, HPrime
-	Degrees() (degHL, degHR, degHPrime int)
+	// Degree returns the degrees of the gate relatively to HL, HR, HPrime
+	Degree() (degHPrime int)
 }
 
 // EvaluateCombinator evaluate eq * \sum_i{ statics_i * gates_i(vL, vR) }

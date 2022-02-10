@@ -22,19 +22,7 @@ func (c CopyGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.
 	return vL
 }
 
-// EvalManyVR performs an element-wise copy of vL for many vRs. (ignoring the values of the vRs)
-func (c CopyGate) EvalManyVR(res []fr.Element, vL *fr.Element, vRs []fr.Element) {
-	for i := range vRs {
-		res[i].Set(vL)
-	}
-}
-
-// EvalManyVL performs an element-wise copy of many vLs values
-func (c CopyGate) EvalManyVL(res, vLs []fr.Element, vR *fr.Element) {
-	copy(res, vLs)
-}
-
-// Degrees returns the degrees of the gate on hL, hR and hPrime
-func (c CopyGate) Degrees() (degHL, degHR, degHPrime int) {
-	return 1, 0, 1
+// Degree returns the Degree of the gate on hL, hR and hPrime
+func (c CopyGate) Degree() (degHPrime int) {
+	return 1
 }

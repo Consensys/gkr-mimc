@@ -42,7 +42,7 @@ func TestFolding(t *testing.T) {
 		// Test that the Eq function agrees
 		dispatchEqTable(instance, qPrime, callback)
 		eqBis := make(polynomial.BookKeepingTable, len(L))
-		eqBis = polynomial.GetFoldedEqTable(qPrime, eqBis)
+		eqBis = polynomial.FoldedEqTable(eqBis, qPrime)
 
 		assert.Equal(t, common.FrSliceToString(eqBis), makeLargeFrSlice(1<<bn), "eq tables do not match after being prefolded")
 
@@ -76,7 +76,7 @@ func TestSumcheck(t *testing.T) {
 			assert.Equal(t, instance.degree, _instance.degree, "instance do not match")
 		}
 
-		instance.Eq = polynomial.GetFoldedEqTable(qPrime, instance.Eq)
+		instance.Eq = polynomial.FoldedEqTable(instance.Eq, qPrime)
 		claim := instance.Evaluation()
 
 		proof, challenges, fClm := Prove(L, R, qPrime, gate)

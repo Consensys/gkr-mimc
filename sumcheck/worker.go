@@ -26,7 +26,8 @@ type proverJob struct {
 	r           fr.Element
 	qPrime      []fr.Element
 	// This channel is used for both callback folding, or for returning the the partialEval
-	callback chan []fr.Element
+	callback   chan []fr.Element
+	multiplier []fr.Element
 }
 
 // Closing the jobQueue schedules the end of the pool

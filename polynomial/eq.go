@@ -31,20 +31,20 @@ func EvalEq(qPrime, nextQPrime []fr.Element) fr.Element {
 	return res
 }
 
-// GetFoldedEqTable ought to start life as a sparse bookkeepingtable
+// FoldedEqTable ought to start life as a sparse bookkeepingtable
 // depending on 2n variables and containing 2^n ones only
 // to be folded n times according to the values in qPrime.
 // The resulting table will no longer be sparse.
 // Instead we directly compute the folded array of length 2^n
 // containing the values of Eq(q1, ... , qn, *, ... , *)
 // where qPrime = [q1 ... qn].
-func GetFoldedEqTable(qPrime []fr.Element, res BookKeepingTable) (eq BookKeepingTable) {
-	return foldedEqTableWithMultiplier(res, qPrime, fr.One())
-}
-
-func foldedEqTableWithMultiplier(preallocated BookKeepingTable, qPrime []fr.Element, multiplier fr.Element) (eq BookKeepingTable) {
+func FoldedEqTable(preallocated BookKeepingTable, qPrime []fr.Element, multiplier ...fr.Element) (eq BookKeepingTable) {
 	n := len(qPrime)
-	preallocated[0] = multiplier
+
+	preallocated[0].SetOne()
+	if len(multiplier) > 0 {
+		preallocated[0] = multiplier[0]
+	}
 
 	for i, r := range qPrime {
 		for j := 0; j < (1 << i); j++ {
@@ -58,53 +58,22 @@ func foldedEqTableWithMultiplier(preallocated BookKeepingTable, qPrime []fr.Elem
 	return NewBookKeepingTable(preallocated)
 }
 
-// GetChunkedEqTable returns a prefolded eq table, in chunked form
-func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTable {
-	logNChunks := common.Log2Ceil(nChunks)
-	res := make([]BookKeepingTable, nChunks)
-	chunkSize := (1 << len(qPrime)) / nChunks
-
-	common.Parallelize(
-		nChunks,
-		func(start, stop int) {
-			// Useful preallocations
-			var tmp fr.Element
-			one := fr.One()
-			for noChunk := start; noChunk < stop; noChunk++ {
-				// allocate the result
-				res := make(BookKeepingTable, chunkSize)
-
-				// Compute r
-				r := one
-				for k := 0; k < logNChunks; k++ {
-					_rho := &qPrime[len(qPrime)-k-1]
-					if noChunk>>k&1 == 1 { // If the k-th bit of i is 1
-						r.Mul(&r, _rho)
-					} else {
-						tmp.Sub(&one, _rho)
-						r.Mul(&r, &tmp)
-					}
-				}
-
-				foldedEqTableWithMultiplier(qPrime[:len(qPrime)-logNChunks], res, r)
-			}
-		},
-		nCore,
-	)
-
-	return res
-}
-
-func ChunkOfEqTable(preallocatedEq []fr.Element, noChunk, chunkSize int, qPrime []fr.Element) {
+// Computes only a chunk of the eqTable for a given chunkSize and chunkID
+func ChunkOfEqTable(preallocatedEq []fr.Element, chunkID, chunkSize int, qPrime []fr.Element, multiplier ...fr.Element) {
 	nChunks := (1 << len(qPrime)) / chunkSize
 	logNChunks := common.Log2Ceil(nChunks)
 	one := fr.One()
 	var tmp fr.Element
 
-	r := fr.One()
+	r := one
+
+	if len(multiplier) > 0 {
+		r = multiplier[0]
+	}
+
 	for k := 0; k < logNChunks; k++ {
 		_rho := &qPrime[len(qPrime)-k-1]
-		if noChunk>>k&1 == 1 { // If the k-th bit of i is 1
+		if chunkID>>k&1 == 1 { // If the k-th bit of i is 1
 			r.Mul(&r, _rho)
 		} else {
 			tmp.Sub(&one, _rho)
@@ -112,8 +81,8 @@ func ChunkOfEqTable(preallocatedEq []fr.Element, noChunk, chunkSize int, qPrime 
 		}
 	}
 
-	foldedEqTableWithMultiplier(
-		preallocatedEq[noChunk*chunkSize:(noChunk+1)*chunkSize],
+	FoldedEqTable(
+		preallocatedEq[chunkID*chunkSize:(chunkID+1)*chunkSize],
 		qPrime[:len(qPrime)-logNChunks],
 		r,
 	)

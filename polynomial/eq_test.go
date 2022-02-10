@@ -26,7 +26,7 @@ func TestGetFoldedEqTable(t *testing.T) {
 		a := EvalEq(qPrime, hPrime)
 
 		eq := make(BookKeepingTable, 1<<bn)
-		GetFoldedEqTable(qPrime, eq)
+		FoldedEqTable(eq, qPrime)
 
 		fmt.Printf("eq = %v\n", common.FrSliceToString(eq))
 
@@ -45,7 +45,7 @@ func TestEqTableChunk(t *testing.T) {
 	}
 
 	eqBis := make(BookKeepingTable, 1<<bn)
-	GetFoldedEqTable(qPrime, eqBis)
+	FoldedEqTable(eqBis, qPrime)
 
 	for logChunkSize := 1; logChunkSize < bn; logChunkSize++ {
 

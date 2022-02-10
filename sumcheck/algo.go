@@ -22,7 +22,7 @@ func runPartialEval(job *proverJob) {
 
 func runEqTableJob(job *proverJob) {
 	// Defers the chunked method for computing the eq table
-	job.inst.computeEqTableJob(job.qPrime, job.start, job.stop)
+	job.inst.computeEqTableJob(job.qPrime, job.start, job.stop, job.multiplier...)
 	job.callback <- []fr.Element{}
 }
 
@@ -76,10 +76,10 @@ func (inst *instance) getPartialPolyChunk(start, stop int) []fr.Element {
 
 // The size of a chunk is always assumed to be 1 << 12
 // This matters because we need powers of two for this to work
-func (inst *instance) computeEqTableJob(qPrime []fr.Element, start, stop int) {
+func (inst *instance) computeEqTableJob(qPrime []fr.Element, start, stop int, multiplier ...fr.Element) {
 	preallocatedEq := inst.Eq
 	for chunkID := start; chunkID < stop; chunkID++ {
 		// Just defers to the dedicated function
-		polynomial.ChunkOfEqTable(preallocatedEq, chunkID, eqTableChunkSize, qPrime)
+		polynomial.ChunkOfEqTable(preallocatedEq, chunkID, eqTableChunkSize, qPrime, multiplier...)
 	}
 }

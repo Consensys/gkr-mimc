@@ -64,9 +64,8 @@ func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.G
 
 // initializeInstance returns an instance with L, R, gates, and degree sets
 func makeInstance(L, R polynomial.BookKeepingTable, gate circuit.Gate) *instance {
-	_, _, deg := gate.Degrees()
 	n := len(L)
-	return &instance{L: L, R: R, Eq: makeLargeFrSlice(n), gate: gate, degree: deg + 1}
+	return &instance{L: L, R: R, Eq: makeLargeFrSlice(n), gate: gate, degree: gate.Degree() + 1}
 
 }
 
@@ -127,25 +126,29 @@ func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
 }
 
 // Computes the eq table for the comming round
-func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Element) {
+func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Element, multiplier ...fr.Element) {
 	nbChunks := len(inst.Eq) / eqTableChunkSize
 
 	// No need to fix limit size of the batch as it already done
 	minTaskSize := 1
 	nbTasks := common.TryDispatch(nbChunks, minTaskSize, func(start, stop int) {
-		jobQueue <- &proverJob{
-			type_:    eqTable,
-			start:    start,
-			stop:     stop,
-			inst:     inst,
-			qPrime:   qPrime,
-			callback: callback,
+
+		job := proverJob{
+			type_:      eqTable,
+			start:      start,
+			stop:       stop,
+			inst:       inst,
+			qPrime:     qPrime,
+			callback:   callback,
+			multiplier: multiplier,
 		}
+
+		jobQueue <- &job
 	})
 
 	if nbTasks < 1 {
 		// All in one chunk
-		polynomial.GetFoldedEqTable(qPrime, inst.Eq)
+		polynomial.FoldedEqTable(inst.Eq, qPrime, multiplier[0])
 		return
 	}
 
