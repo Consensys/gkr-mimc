@@ -8,186 +8,103 @@ import (
 	"github.com/consensys/gkr-mimc/circuit/gates"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetEvals(t *testing.T) {
-	var zero, one, two, three, four, twelve, minusEight fr.Element
-	one.SetOne()
-	two.SetUint64(2)
-	three.SetUint64(3)
-	four.SetUint64(4)
-	twelve.SetUint64(12)
-	minusEight.SetUint64(8)
-	minusEight.Neg(&minusEight)
+func initializeSumcheckInstance(bN int) (L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.Gate) {
 
-	// Simulate a prefolding with q', q = 1, {}
-	v := []fr.Element{zero, one, two, three}
-	add := []fr.Element{zero, zero, one, zero}
-	eQ := []fr.Element{zero, one}
+	q := make([]fr.Element, bN)
+	for i := range q {
+		q[i].SetUint64(2)
+	}
 
-	vLTable := polynomial.NewBookKeepingTable(v)
-	vRTable := vLTable.DeepCopy()
-	eQTable := polynomial.NewBookKeepingTable(eQ)
-	addTable := polynomial.NewBookKeepingTable(add)
+	L = makeLargeFrSlice(1 << bN)
+	R = makeLargeFrSlice(1 << bN)
 
-	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{gates.AddGate{}}, []polynomial.BookKeepingTable{addTable})
+	for i := range L {
+		L[i].SetUint64(uint64(i))
+		R[i].SetUint64(uint64(i))
+	}
 
-	claim := prover.GetClaim()
-	assert.Equal(t, claim, four, "Error on get claims")
+	return polynomial.NewBookKeepingTable(L),
+		polynomial.NewBookKeepingTable(R),
+		q, gates.NewCipherGate(fr.NewElement(1632134))
+}
 
-	// Check the evaluations on hL
-	evals := prover.GetEvalsOnHL()
-	assert.Equal(t, evals[0], zero, "Error on GetEvalsOnHL")
-	assert.Equal(t, evals[1], four, "Error on GetEvalsOnHL")
-	assert.Equal(t, evals[2], twelve, "Error on GetEvalsOnHL")
-	// Fold on one
-	prover.FoldHL(one)
+func TestFolding(t *testing.T) {
+	for bn := 2; bn < 15; bn++ {
+		L, R, qPrime, gate := initializeSumcheckInstance(bn)
+		instance := makeInstance(L, R, gate)
 
-	// Check the evaluations on hR
-	evals = prover.GetEvalsOnHR()
-	assert.Equal(t, evals[0], four, "Error on GetEvalsOnHR")
-	assert.Equal(t, evals[1], zero, "Error on GetEvalsOnHR")
-	assert.Equal(t, evals[2], minusEight, "Error on GetEvalsOnHR")
-	// Fold on zero
-	prover.FoldHR(zero)
+		callback := make(chan []fr.Element, 100000)
 
-	// Check the evaluations on hPrime
-	evals = prover.GetEvalsOnHPrime()
-	assert.Equal(t, evals[0], zero, "Error on GetEvalsOnHPrime")
-	assert.Equal(t, evals[1], four, "Error on GetEvalsOnHPrime")
-	assert.Equal(t, evals[2], twelve, "Error on GetEvalsOnHPrime")
+		// Test that the Eq function agrees
+		dispatchEqTable(instance, qPrime, callback)
+		eqBis := make(polynomial.BookKeepingTable, len(L))
+		eqBis = polynomial.GetFoldedEqTable(qPrime, eqBis)
+
+		assert.Equal(t, common.FrSliceToString(eqBis), makeLargeFrSlice(1<<bn), "eq tables do not match after being prefolded")
+
+		// Test that the folding agrees
+		dispatchFolding(instance, qPrime[0], callback)
+		eqBis.Fold(qPrime[0])
+
+		assert.Equal(t, common.FrSliceToString(eqBis), makeLargeFrSlice(1<<bn), "eq tables do not match after folding")
+
+		dumpInLargePool(instance.L)
+		dumpInLargePool(instance.R)
+		dumpInLargePool(instance.Eq)
+		dumpInLargePool(eqBis)
+	}
 }
 
 func TestSumcheck(t *testing.T) {
-	var zero, one, two, three fr.Element
-	one.SetOne()
-	two.SetUint64(2)
-	three.SetUint64(3)
 
-	// Simulate a prefolding with q', q = 1, {}
-	v := []fr.Element{zero, one, two, three}
-	add := []fr.Element{zero, zero, one, zero}
-	eQ := []fr.Element{zero, one}
+	for bn := 0; bn < 15; bn++ {
+		L, R, qPrime, gate := initializeSumcheckInstance(bn)
 
-	// Creates the tables
-	vLTable := polynomial.NewBookKeepingTable(v)
-	vRTable := vLTable.DeepCopy()
-	vForEval := vLTable.DeepCopy()
-	eQTable := polynomial.NewBookKeepingTable(eQ)
-	eQForEvals := eQTable.DeepCopy()
-	addTable := polynomial.NewBookKeepingTable(add)
-	addForEval := addTable.DeepCopy()
+		instance := instance{L: L, R: R, Eq: make(polynomial.BookKeepingTable, 1<<bn), gate: gate, degree: 8}
 
-	// Check that the prover and the verifier are on-par
-	prover := NewSingleThreadedProver(vLTable, vRTable, eQTable, []circuit.Gate{gates.AddGate{}}, []polynomial.BookKeepingTable{addTable})
-	claim := prover.GetClaim()
-	proof, expectedQPrime, expectedQL, expectedQR, subClaims := prover.Prove()
-	verifier := Verifier{}
-	valid, qPrime, qL, qR, finalClaim := verifier.Verify(claim, proof, 1, 1)
-	assert.True(t, valid, "Sumcheck verification failed")
-	assert.Equal(t, expectedQPrime[0], qPrime[0], "Mismatch on qPrime")
-	assert.Equal(t, expectedQL[0], qL[0], "Mismatch on qL")
-	assert.Equal(t, expectedQR[0], qR[0], "Mismatch on qR")
+		// Test that the degree set is the right one
+		{
+			_instance := makeInstance(L, R, gate)
+			assert.Equal(t, instance.L, _instance.L, "instance do not match")
+			assert.Equal(t, instance.R, _instance.R, "instance do not match")
+			assert.Equal(t, instance.Eq, _instance.Eq, "instance do not match")
+			assert.Equal(t, instance.gate, _instance.gate, "instance do not match")
+			assert.Equal(t, instance.degree, _instance.degree, "instance do not match")
+		}
 
-	// Compares the prover's subclaims against the initial table values
-	finalVL, finalVR := vForEval.EvaluateLeftAndRight(qPrime, qL, qR)
-	finalEq := eQForEvals.Evaluate(qPrime)
-	finalAdd := addForEval.Evaluate(append(qL, qR...))
-	assert.Equal(t, finalVL, subClaims[0], "Mismatch on claims")
-	assert.Equal(t, finalVR, subClaims[1], "Mismatch on claims")
-	assert.Equal(t, finalEq, subClaims[2], "Mismatch on claims")
-	assert.Equal(t, finalAdd, subClaims[3], "Mismatch on claims")
+		instance.Eq = polynomial.GetFoldedEqTable(qPrime, instance.Eq)
+		claim := instance.Evaluation()
 
-	var actualFinalClaim fr.Element
-	gates.AddGate{}.Eval(&actualFinalClaim, &finalVL, &finalVR)
-	actualFinalClaim.Mul(&actualFinalClaim, &finalAdd)
-	actualFinalClaim.Mul(&actualFinalClaim, &finalEq)
-	assert.Equal(t, finalClaim, actualFinalClaim, "Mismatch on the final claim")
+		proof, challenges, fClm := Prove(L, R, qPrime, gate)
+		challengesV, expectedValue, err := Verify(claim, proof)
 
-}
+		assert.NoErrorf(t, err, "sumcheck was not deemed valid %v", err)
+		assert.Equal(t, challenges, challengesV, "prover's and verifier challenges do not match")
 
-func TestBenchmarkSetup(t *testing.T) {
-	prover := InitializeProverForTests(1)
-	claim := prover.GetClaim()
-	proof, _, _, _, _ := prover.Prove()
-	verifier := Verifier{}
-	valid, _, _, _, _ := verifier.Verify(claim, proof, 1, 1)
-	assert.True(t, valid, "Verifier failed")
-}
+		var expVal fr.Element
 
-func benchmarkFullSumcheckProver(b *testing.B, bN int, profiled, traced bool) {
-	b.ResetTimer()
-	for _count := 0; _count < b.N; _count++ {
-		prover := InitializeProverForTests(bN)
-		common.ProfileTrace(b, profiled, traced,
-			func() {
-				prover.Prove()
-			},
-		)
-	}
-}
-
-func benchmarkFineGrainedProver(b *testing.B, bN int, profiled, traced bool) {
-
-	var two fr.Element
-	two.SetUint64(2)
-
-	if b.N != 1 {
-		panic("Call it with N = 1")
+		gate.Eval(&expVal, &fClm[0], &fClm[1])
+		expVal.Mul(&expVal, &fClm[2])
+		assert.Equal(t, expectedValue.String(), expVal.String(), "inconsistency of the final values for the verifier")
 	}
 
-	prover := InitializeProverForTests(bN)
-
-	b.Run(fmt.Sprintf("GetEvalsOnHL-bN=%v", bN), func(b *testing.B) {
-		common.ProfileTrace(b, profiled, traced,
-			func() {
-				for i := 0; i < b.N; i++ {
-					prover.GetEvalsOnHL()
-				}
-			})
-	})
-
-	prover.FoldHL(two)
-
-	b.Run(fmt.Sprintf("GetEvalsOnHR-bN=%v", bN), func(b *testing.B) {
-		common.ProfileTrace(b, profiled, traced,
-			func() {
-				for i := 0; i < b.N; i++ {
-					prover.GetEvalsOnHR()
-				}
-			})
-	})
-
-	prover.FoldHR(two)
-
-	b.Run(fmt.Sprintf("GetEvalsOnHPrime-bN=%v", bN), func(b *testing.B) {
-		common.ProfileTrace(b, profiled, traced,
-			func() {
-				for i := 0; i < b.N; i++ {
-					prover.GetEvalsOnHPrime()
-				}
-			})
-	})
 }
 
 func BenchmarkSumcheck(b *testing.B) {
-	bNs := []int{15, 16, 17, 18, 19, 20, 21, 22}
-
-	for _, bN := range bNs {
-		b.Run(fmt.Sprintf("bN=%d", bN), func(b *testing.B) {
-			benchmarkFullSumcheckProver(b, bN, false, false)
+	bn := 22
+	b.Run(fmt.Sprintf("sumcheck-bn-%v", bn), func(b *testing.B) {
+		common.ProfileTrace(b, false, true, func() {
+			for c_ := 0; c_ < b.N; c_++ {
+				b.StopTimer()
+				L, R, qPrime, gate := initializeSumcheckInstance(bn)
+				b.StartTimer()
+				_, _, _ = Prove(L, R, qPrime, gate)
+			}
+			b.StopTimer()
 		})
-	}
-}
-
-func BenchmarkSumcheckFineGrained(b *testing.B) {
-	bNs := [1]int{24}
-
-	for _, bN := range bNs {
-		// Run the fine grained benchmark
-		benchmarkFineGrainedProver(b, bN, false, false)
-	}
+	})
 }

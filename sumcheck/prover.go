@@ -1,133 +1,169 @@
 package sumcheck
 
 import (
+	"runtime"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/polynomial"
-
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
+// Minimal size of chunks before considering parallelization for a task
+const (
+	foldingMinTaskSize     int = 1 << 10
+	partialEvalMinTaskSize int = 1 << 6
+)
+
 // Proof is the object produced by the prover
-type Proof struct {
-	PolyCoeffs [][]fr.Element
-}
+type Proof [][]fr.Element
 
-// SingleThreadedProver computes the
-type SingleThreadedProver struct {
-	// Contains the values of the previous layer
-	vL polynomial.BookKeepingTable
-	vR polynomial.BookKeepingTable
-	// Contains the static tables defining the circuit structure
-	eq           polynomial.BookKeepingTable
-	gates        []circuit.Gate
-	staticTables []polynomial.BookKeepingTable
-	// Degrees for the differents variables
-	degreeHL     int
-	degreeHR     int
-	degreeHPrime int
-}
+// Prove contains the coordination logic for all workers contributing to the sumcheck proof
+func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.Gate) (proof Proof, challenges, finalClaims []fr.Element) {
 
-// NewSingleThreadedProver constructs a new prover
-func NewSingleThreadedProver(
-	vL polynomial.BookKeepingTable,
-	vR polynomial.BookKeepingTable,
-	eq polynomial.BookKeepingTable,
-	gates []circuit.Gate,
-	staticTables []polynomial.BookKeepingTable,
-) SingleThreadedProver {
-	// Auto-computes the degree on each variables
-	degreeHL, degreeHR, degreeHPrime := 0, 0, 0
-	for _, gate := range gates {
-		dL, dR, dPrime := gate.Degrees()
-		degreeHL = common.Max(degreeHL, dL)
-		degreeHR = common.Max(degreeHR, dR)
-		degreeHPrime = common.Max(degreeHPrime, dPrime)
-	}
-	return SingleThreadedProver{
-		vL:           vL,
-		vR:           vR,
-		eq:           eq,
-		gates:        gates,
-		staticTables: staticTables,
-		degreeHL:     degreeHL + 1,
-		degreeHR:     degreeHR + 1,
-		degreeHPrime: degreeHPrime + 1,
-	}
-}
-
-// Prove runs the prover of a sumcheck
-func (p *SingleThreadedProver) Prove() (proof Proof, qPrime, qL, qR, finalClaims []fr.Element) {
-
-	// Define usefull constants
-	n := len(p.eq)     // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(p.vR) / n // SubCircuit size. Since we haven't fold on hR yet
-	bN := common.Log2Ceil(n)
-	bG := common.Log2Ceil(g)
+	// Define usefull constants & initializes the instance
+	bN := len(qPrime)
+	inst := makeInstance(L, R, gate)
 
 	// Initialized the results
-	proof.PolyCoeffs = make([][]fr.Element, bN+2*bG)
-	qPrime = make([]fr.Element, bN)
-	qL = make([]fr.Element, bG)
-	qR = make([]fr.Element, bG)
-	finalClaims = make([]fr.Element, 3+len(p.staticTables))
+	proof = make(Proof, bN)
+	challenges = make([]fr.Element, bN)
+	finalClaims = make([]fr.Element, 3)
 
-	// Run on hL
-	for i := 0; i < bG; i++ {
-		evals := p.GetEvalsOnHL()
-		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
-		r := common.GetChallenge(proof.PolyCoeffs[i])
-		p.FoldHL(r)
-		qL[i] = r
-	}
+	// 8 . runtime.NumCPU() -> To be sure, this will never clog
+	callback := make(chan []fr.Element, 8*runtime.NumCPU())
 
-	// Run on hR
-	for i := bG; i < 2*bG; i++ {
-		evals := p.GetEvalsOnHR()
-		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
-		r := common.GetChallenge(proof.PolyCoeffs[i])
-		p.FoldHR(r)
-		qR[i-bG] = r
-	}
+	// Precomputes the eq table
+	dispatchEqTable(inst, qPrime, callback)
 
 	// Run on hPrime
-	for i := 2 * bG; i < bN+2*bG; i++ {
-		evals := p.GetEvalsOnHPrime()
-		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
-		r := common.GetChallenge(proof.PolyCoeffs[i])
-		p.FoldHPrime(r)
-		qPrime[i-2*bG] = r
+	for k := 0; k < bN; k++ {
+		evals := dispatchPartialEvals(inst, callback)
+		proof[k] = polynomial.InterpolateOnRange(evals)
+		r := common.GetChallenge(proof[k])
+		dispatchFolding(inst, r, callback)
+		challenges[k] = r
 	}
 
-	finalClaims[0] = p.vL[0]
-	finalClaims[1] = p.vR[0]
-	finalClaims[2] = p.eq[0]
-	for i, bkt := range p.staticTables {
-		finalClaims[3+i] = bkt[0]
+	if len(inst.L)+len(inst.R)+len(inst.Eq) > 3 {
+		panic("did not fold all the tables")
 	}
 
-	return proof, qPrime, qL, qR, finalClaims
+	// Final claim is
+	finalClaims[0] = inst.L[0]
+	finalClaims[1] = inst.R[0]
+	finalClaims[2] = inst.Eq[0]
+
+	dumpInLargePool(inst.Eq)
+	dumpInLargePool(inst.L)
+	dumpInLargePool(inst.R)
+
+	return proof, challenges, finalClaims
+
 }
 
-// FoldHL folds on the first variable of hR
-func (p *SingleThreadedProver) FoldHL(r fr.Element) {
-	for i := range p.staticTables {
-		p.staticTables[i].Fold(r)
-	}
-	p.vL.Fold(r)
+// initializeInstance returns an instance with L, R, gates, and degree sets
+func makeInstance(L, R polynomial.BookKeepingTable, gate circuit.Gate) *instance {
+	_, _, deg := gate.Degrees()
+	n := len(L)
+	return &instance{L: L, R: R, Eq: makeLargeFrSlice(n), gate: gate, degree: deg + 1}
+
 }
 
-// FoldHR folds on the first variable of hR
-func (p *SingleThreadedProver) FoldHR(r fr.Element) {
-	for i := range p.staticTables {
-		p.staticTables[i].Fold(r)
+// Calls the partial evals by calling the worker pool if that's usefull
+// evalChan is passed for reuse purpose
+func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Element {
+	mid := len(inst.Eq) / 2
+
+	nTasks := common.TryDispatch(mid, partialEvalMinTaskSize, func(start, stop int) {
+		jobQueue <- &proverJob{
+			type_: partialEval,
+			start: start, stop: stop,
+			inst:     inst,
+			callback: callback,
+		}
+	})
+
+	// `0` means the tasks where not dispatched as it
+	// deemed unprofitable to parallelize this task
+	if nTasks < 1 {
+		return inst.getPartialPolyChunk(0, mid)
 	}
-	p.vR.Fold(r)
+
+	// Otherwise consumes happily the callback channel and return the eval
+	return consumeAccumulate(callback, nTasks)
 }
 
-// FoldHPrime folds on the first variable of Eq
-func (p *SingleThreadedProver) FoldHPrime(r fr.Element) {
-	p.vR.Fold(r)
-	p.vL.Fold(r)
-	p.eq.Fold(r)
+// Calls the folding by either passing to the worker pool if this is deemed usefull
+// or synchronously if not
+func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
+	mid := len(inst.Eq) / 2
+
+	nbTasks := common.TryDispatch(mid, foldingMinTaskSize, func(start, stop int) {
+		jobQueue <- &proverJob{
+			type_: folding,
+			start: start, stop: stop,
+			inst:     inst,
+			callback: callback,
+			r:        r,
+		}
+	})
+
+	// `0` means the tasks where not dispatched as it
+	// deemed unprofitable to parallelize this task
+	if nbTasks < 1 {
+		inst.foldChunk(r, 0, mid)
+	} else {
+		// Otherwise, wait for all callback to be done
+		for i := 0; i < nbTasks; i++ {
+			<-callback
+		}
+	}
+
+	// Finallly cut in half the tables
+	inst.Eq = inst.Eq[:mid]
+	inst.L = inst.L[:mid]
+	inst.R = inst.R[:mid]
+}
+
+// Computes the eq table for the comming round
+func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Element) {
+	nbChunks := len(inst.Eq) / eqTableChunkSize
+
+	// No need to fix limit size of the batch as it already done
+	minTaskSize := 1
+	nbTasks := common.TryDispatch(nbChunks, minTaskSize, func(start, stop int) {
+		jobQueue <- &proverJob{
+			type_:    eqTable,
+			start:    start,
+			stop:     stop,
+			inst:     inst,
+			qPrime:   qPrime,
+			callback: callback,
+		}
+	})
+
+	if nbTasks < 1 {
+		// All in one chunk
+		polynomial.GetFoldedEqTable(qPrime, inst.Eq)
+		return
+	}
+
+	// Otherwise, wait for all callback to be done
+	for i := 0; i < nbTasks; i++ {
+		<-callback
+	}
+}
+
+// ConsumeAccumulate consumes `nToConsume` elements from `ch`,
+// and return their sum Element-wise
+func consumeAccumulate(ch chan []fr.Element, nToConsume int) []fr.Element {
+	res := <-ch
+	for i := 0; i < nToConsume-1; i++ {
+		tmp := <-ch
+		for i := range res {
+			res[i].Add(&res[i], &tmp[i])
+		}
+	}
+	return res
 }

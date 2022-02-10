@@ -1,4 +1,4 @@
-package sumcheck2
+package sumcheck
 
 import (
 	"github.com/consensys/gkr-mimc/circuit"

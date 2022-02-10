@@ -1,4 +1,4 @@
-package sumcheck2
+package sumcheck
 
 import (
 	"fmt"
