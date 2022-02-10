@@ -57,6 +57,28 @@ func TestFold(t *testing.T) {
 	assert.Equal(t, eleven, bkt[1], "Mismatch on 1")
 }
 
+func TestFoldChunk(t *testing.T) {
+	// [0, 1, 2, 3]
+	bkt := make(BookKeepingTable, 4)
+	for i := 0; i < 4; i++ {
+		bkt[i].SetUint64(uint64(i))
+	}
+
+	var r fr.Element
+	r.SetUint64(uint64(5))
+
+	bktBis := append(BookKeepingTable{}, bkt...)
+
+	// Folding on 5 should yield [10, 11]
+	bkt.Fold(r)
+	// It should yield the same result
+	bktBis.FoldChunk(r, 0, 1)
+	bktBis.FoldChunk(r, 1, 2)
+	bktBis = bktBis[:2]
+
+	assert.Equal(t, bkt, bktBis)
+}
+
 func TestFuncEval(t *testing.T) {
 	// [0, 1, 2, 3]
 	table := make([]fr.Element, 4)

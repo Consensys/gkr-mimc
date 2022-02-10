@@ -9,6 +9,12 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
+// Minimal size of chunks before considering parallelization for a task
+const (
+	foldingMinTaskSize     int = 1 << 10
+	partialEvalMinTaskSize int = 1 << 6
+)
+
 // Proof is the object produced by the prover
 type Proof [][]fr.Element
 
@@ -17,9 +23,7 @@ func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.G
 
 	// Define usefull constants & initializes the instance
 	bN := len(qPrime)
-	n := 1 << bN // Number of subcircuit. Since we haven't fold on h' yet
 	inst := makeInstance(L, R, gate)
-	inst.Eq = make(polynomial.BookKeepingTable, n)
 
 	// Initialized the results
 	proof = make(Proof, bN)
@@ -41,12 +45,28 @@ func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.G
 		challenges[k] = r
 	}
 
+	if len(inst.L)+len(inst.R)+len(inst.Eq) > 3 {
+		panic("did not fold all the tables")
+	}
+
 	// Final claim is
 	finalClaims[0] = inst.L[0]
 	finalClaims[1] = inst.R[0]
 	finalClaims[2] = inst.Eq[0]
 
+	dumpInLargePool(inst.Eq)
+	dumpInLargePool(inst.L)
+	dumpInLargePool(inst.R)
+
 	return proof, challenges, finalClaims
+
+}
+
+// initializeInstance returns an instance with L, R, gates, and degree sets
+func makeInstance(L, R polynomial.BookKeepingTable, gate circuit.Gate) *instance {
+	_, _, deg := gate.Degrees()
+	n := len(L)
+	return &instance{L: L, R: R, Eq: makeLargeFrSlice(n), gate: gate, degree: deg + 1}
 
 }
 
@@ -55,9 +75,7 @@ func Prove(L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.G
 func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Element {
 	mid := len(inst.Eq) / 2
 
-	// The value `minTaskSize` is purely empirical
-	minTaskSize := 1 << 8
-	nTasks := common.TryDispatch(mid, minTaskSize, func(start, stop int) {
+	nTasks := common.TryDispatch(mid, partialEvalMinTaskSize, func(start, stop int) {
 		jobQueue <- &proverJob{
 			type_: partialEval,
 			start: start, stop: stop,
@@ -76,27 +94,18 @@ func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Eleme
 	return consumeAccumulate(callback, nTasks)
 }
 
-// initializeInstance returns an instance with L, R, gates, and degree sets
-func makeInstance(L, R polynomial.BookKeepingTable, gate circuit.Gate) *instance {
-	_, _, deg := gate.Degrees()
-	n := len(L)
-	return &instance{L: L, R: R, Eq: make(polynomial.BookKeepingTable, n), gate: gate, degree: deg + 1}
-
-}
-
 // Calls the folding by either passing to the worker pool if this is deemed usefull
 // or synchronously if not
 func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
 	mid := len(inst.Eq) / 2
 
-	// The value `minTaskSize` is purely empirical
-	minTaskSize := 1 << 8
-	nbTasks := common.TryDispatch(mid, minTaskSize, func(start, stop int) {
+	nbTasks := common.TryDispatch(mid, foldingMinTaskSize, func(start, stop int) {
 		jobQueue <- &proverJob{
 			type_: folding,
 			start: start, stop: stop,
 			inst:     inst,
 			callback: callback,
+			r:        r,
 		}
 	})
 
@@ -104,15 +113,14 @@ func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
 	// deemed unprofitable to parallelize this task
 	if nbTasks < 1 {
 		inst.foldChunk(r, 0, mid)
-		return
+	} else {
+		// Otherwise, wait for all callback to be done
+		for i := 0; i < nbTasks; i++ {
+			<-callback
+		}
 	}
 
-	// Otherwise, wait for all callback to be done
-	for i := 0; i < nbTasks; i++ {
-		<-callback
-	}
-
-	// And cut in half the tables
+	// Finallly cut in half the tables
 	inst.Eq = inst.Eq[:mid]
 	inst.L = inst.L[:mid]
 	inst.R = inst.R[:mid]
@@ -136,6 +144,7 @@ func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Ele
 	})
 
 	if nbTasks < 1 {
+		// All in one chunk
 		polynomial.GetFoldedEqTable(qPrime, inst.Eq)
 		return
 	}

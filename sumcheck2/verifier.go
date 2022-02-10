@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-func Verify(claim fr.Element, proof Proof) (valid bool, qPrime []fr.Element, finalClaim fr.Element) {
+func Verify(claim fr.Element, proof Proof) (qPrime []fr.Element, finalClaim fr.Element, err error) {
 	// Initalize the structures
 	bn := len(proof)
 	challenges := make([]fr.Element, bn)
@@ -22,17 +22,15 @@ func Verify(claim fr.Element, proof Proof) (valid bool, qPrime []fr.Element, fin
 		evalAtOne = polynomial.EvaluatePolynomial(proof[i], one)
 		actualValue.Add(&actualValue, &evalAtOne)
 
-		fmt.Printf("verifier eval at 0 + 1 = %v || expected = %v\n", actualValue.String(), expectedValue.String())
-
 		if expectedValue != actualValue {
-			return false, nil, [4]uint64{0, 0, 0, 0}
+			return nil, [4]uint64{0, 0, 0, 0}, fmt.Errorf("at round %v verifier eval at 0 + 1 = %v || expected = %v", i, actualValue.String(), expectedValue.String())
 		}
 
-		// expectedValue = P_i(r)
 		r = common.GetChallenge(proof[i])
 		challenges[i] = r
+		// expectedValue = P_i(r)
 		expectedValue = polynomial.EvaluatePolynomial(proof[i], r)
 	}
 
-	return true, challenges, expectedValue
+	return challenges, expectedValue, nil
 }

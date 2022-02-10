@@ -5,7 +5,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-const eqTableChunkSize int = 1 << 10
+// Minimal size under which we do not consider multithreading the
+const eqTableChunkSize int = 1 << 8
 
 // The perform the folding operation for all the book keeping tables of the instance
 func runFoldingJob(job *proverJob) {
@@ -20,6 +21,7 @@ func runPartialEval(job *proverJob) {
 }
 
 func runEqTableJob(job *proverJob) {
+	// Defers the chunked method for computing the eq table
 	job.inst.computeEqTableJob(job.qPrime, job.start, job.stop)
 	job.callback <- []fr.Element{}
 }

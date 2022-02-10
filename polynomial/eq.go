@@ -1,8 +1,6 @@
 package polynomial
 
 import (
-	"runtime"
-
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -41,76 +39,30 @@ func EvalEq(qPrime, nextQPrime []fr.Element) fr.Element {
 // containing the values of Eq(q1, ... , qn, *, ... , *)
 // where qPrime = [q1 ... qn].
 func GetFoldedEqTable(qPrime []fr.Element, res BookKeepingTable) (eq BookKeepingTable) {
-	nCpus := runtime.NumCPU()
-	nChunks := common.Min(nCpus*4, 1<<len(qPrime))
-	logNChunks := common.Log2Ceil(nCpus)
-	chunkSize := len(res) / nChunks
-
-	common.Parallelize(
-		nChunks,
-		func(start, stop int) {
-			// Useful preallocations
-			var tmp fr.Element
-			one := fr.One()
-			chunk := res[start*chunkSize : stop*chunkSize]
-
-			for noChunk := start; noChunk < stop; noChunk++ {
-				// Compute r
-				r := one
-				for k := 0; k < logNChunks; k++ {
-					_rho := &qPrime[len(qPrime)-k-1]
-					if noChunk>>k&1 == 1 { // If the k-th bit of i is 1
-						r.Mul(&r, _rho)
-					} else {
-						tmp.Sub(&one, _rho)
-						r.Mul(&r, &tmp)
-					}
-				}
-
-				foldedEqTableWithPrealloc(chunk, qPrime[:len(qPrime)-logNChunks], r)
-			}
-		})
-
-	return NewBookKeepingTable(res)
+	return foldedEqTableWithMultiplier(res, qPrime, fr.One())
 }
 
-func foldedEqTableWithMultiplier(qPrime []fr.Element, multiplier fr.Element) (eq BookKeepingTable) {
+func foldedEqTableWithMultiplier(preallocated BookKeepingTable, qPrime []fr.Element, multiplier fr.Element) (eq BookKeepingTable) {
 	n := len(qPrime)
-	foldedEqTable := make([]fr.Element, 1<<len(qPrime))
-	foldedEqTable[0] = multiplier
+	preallocated[0] = multiplier
 
 	for i, r := range qPrime {
 		for j := 0; j < (1 << i); j++ {
 			J := j << (n - i)
 			JNext := J + 1<<(n-1-i)
-			foldedEqTable[JNext].Mul(&r, &foldedEqTable[J])
-			foldedEqTable[J].Sub(&foldedEqTable[J], &foldedEqTable[JNext])
+			preallocated[JNext].Mul(&r, &preallocated[J])
+			preallocated[J].Sub(&preallocated[J], &preallocated[JNext])
 		}
 	}
 
-	return NewBookKeepingTable(foldedEqTable)
-}
-
-func foldedEqTableWithPrealloc(foldedEqTable []fr.Element, qPrime []fr.Element, multiplier fr.Element) (eq BookKeepingTable) {
-	n := len(qPrime)
-	foldedEqTable[0] = multiplier
-
-	for i, r := range qPrime {
-		for j := 0; j < (1 << i); j++ {
-			J := j << (n - i)
-			JNext := J + 1<<(n-1-i)
-			foldedEqTable[JNext].Mul(&r, &foldedEqTable[J])
-			foldedEqTable[J].Sub(&foldedEqTable[J], &foldedEqTable[JNext])
-		}
-	}
-
-	return NewBookKeepingTable(foldedEqTable)
+	return NewBookKeepingTable(preallocated)
 }
 
 // GetChunkedEqTable returns a prefolded eq table, in chunked form
 func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTable {
 	logNChunks := common.Log2Ceil(nChunks)
 	res := make([]BookKeepingTable, nChunks)
+	chunkSize := (1 << len(qPrime)) / nChunks
 
 	common.Parallelize(
 		nChunks,
@@ -119,6 +71,9 @@ func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTab
 			var tmp fr.Element
 			one := fr.One()
 			for noChunk := start; noChunk < stop; noChunk++ {
+				// allocate the result
+				res := make(BookKeepingTable, chunkSize)
+
 				// Compute r
 				r := one
 				for k := 0; k < logNChunks; k++ {
@@ -131,7 +86,7 @@ func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTab
 					}
 				}
 
-				foldedEqTableWithMultiplier(qPrime[:len(qPrime)-logNChunks], r)
+				foldedEqTableWithMultiplier(qPrime[:len(qPrime)-logNChunks], res, r)
 			}
 		},
 		nCore,
@@ -141,7 +96,7 @@ func GetChunkedEqTable(qPrime []fr.Element, nChunks, nCore int) []BookKeepingTab
 }
 
 func ChunkOfEqTable(preallocatedEq []fr.Element, noChunk, chunkSize int, qPrime []fr.Element) {
-	nChunks := 1 << len(qPrime)
+	nChunks := (1 << len(qPrime)) / chunkSize
 	logNChunks := common.Log2Ceil(nChunks)
 	one := fr.One()
 	var tmp fr.Element
@@ -157,7 +112,7 @@ func ChunkOfEqTable(preallocatedEq []fr.Element, noChunk, chunkSize int, qPrime 
 		}
 	}
 
-	foldedEqTableWithPrealloc(
+	foldedEqTableWithMultiplier(
 		preallocatedEq[noChunk*chunkSize:(noChunk+1)*chunkSize],
 		qPrime[:len(qPrime)-logNChunks],
 		r,
