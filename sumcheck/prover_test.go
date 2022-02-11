@@ -71,7 +71,6 @@ func TestSumcheck(t *testing.T) {
 			_instance := makeInstance(L, R, gate)
 			assert.Equal(t, instance.L, _instance.L, "instance do not match")
 			assert.Equal(t, instance.R, _instance.R, "instance do not match")
-			assert.Equal(t, instance.Eq, _instance.Eq, "instance do not match")
 			assert.Equal(t, instance.gate, _instance.gate, "instance do not match")
 			assert.Equal(t, instance.degree, _instance.degree, "instance do not match")
 		}
