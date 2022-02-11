@@ -1,4 +1,4 @@
-package polynomial
+package poly
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ func TestGetFoldedEqTable(t *testing.T) {
 
 		a := EvalEq(qPrime, hPrime)
 
-		eq := make(BookKeepingTable, 1<<bn)
+		eq := make(MultiLin, 1<<bn)
 		FoldedEqTable(eq, qPrime)
 
 		fmt.Printf("eq = %v\n", common.FrSliceToString(eq))
@@ -44,12 +44,12 @@ func TestEqTableChunk(t *testing.T) {
 		qPrime[i] = fr.NewElement(2)
 	}
 
-	eqBis := make(BookKeepingTable, 1<<bn)
+	eqBis := make(MultiLin, 1<<bn)
 	FoldedEqTable(eqBis, qPrime)
 
 	for logChunkSize := 1; logChunkSize < bn; logChunkSize++ {
 
-		eq := make(BookKeepingTable, 1<<bn)
+		eq := make(MultiLin, 1<<bn)
 
 		chunkSize := 1 << logChunkSize
 		nChunks := (1 << bn) / chunkSize

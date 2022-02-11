@@ -1,4 +1,4 @@
-package polynomial
+package poly
 
 import (
 	"github.com/consensys/gkr-mimc/common"

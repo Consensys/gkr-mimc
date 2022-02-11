@@ -1,4 +1,4 @@
-package polynomial
+package poly
 
 import (
 	"testing"
@@ -30,7 +30,7 @@ func TestLinearCombinationOfBookKeepingTables(t *testing.T) {
 	t1 := NewBookKeepingTable(table1)
 	correctLinCombDenseTable := NewBookKeepingTable(correctLinComb)
 
-	linCombDenseTable := LinearCombinationOfBookKeepingTables(t0, t1, a0, a1)
+	linCombDenseTable := LinCombMultiLin(t0, t1, a0, a1)
 
 	assert.Equal(t, correctLinCombDenseTable, linCombDenseTable, "Linear combination failed.")
 }
@@ -59,7 +59,7 @@ func TestFold(t *testing.T) {
 
 func TestFoldChunk(t *testing.T) {
 	// [0, 1, 2, 3]
-	bkt := make(BookKeepingTable, 4)
+	bkt := make(MultiLin, 4)
 	for i := 0; i < 4; i++ {
 		bkt[i].SetUint64(uint64(i))
 	}
@@ -67,7 +67,7 @@ func TestFoldChunk(t *testing.T) {
 	var r fr.Element
 	r.SetUint64(uint64(5))
 
-	bktBis := append(BookKeepingTable{}, bkt...)
+	bktBis := append(MultiLin{}, bkt...)
 
 	// Folding on 5 should yield [10, 11]
 	bkt.Fold(r)

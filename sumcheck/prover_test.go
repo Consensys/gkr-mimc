@@ -7,29 +7,29 @@ import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/circuit/gates"
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
 
-func initializeSumcheckInstance(bN int) (L, R polynomial.BookKeepingTable, qPrime []fr.Element, gate circuit.Gate) {
+func initializeSumcheckInstance(bN int) (L, R poly.MultiLin, qPrime [][]fr.Element, gate circuit.Gate) {
 
 	q := make([]fr.Element, bN)
 	for i := range q {
 		q[i].SetUint64(2)
 	}
 
-	L = makeLargeFrSlice(1 << bN)
-	R = makeLargeFrSlice(1 << bN)
+	L = poly.MakeLargeFrSlice(1 << bN)
+	R = poly.MakeLargeFrSlice(1 << bN)
 
 	for i := range L {
 		L[i].SetUint64(uint64(i))
 		R[i].SetUint64(uint64(i))
 	}
 
-	return polynomial.NewBookKeepingTable(L),
-		polynomial.NewBookKeepingTable(R),
-		q, gates.NewCipherGate(fr.NewElement(1632134))
+	return poly.NewBookKeepingTable(L),
+		poly.NewBookKeepingTable(R),
+		[][]fr.Element{q}, gates.NewCipherGate(fr.NewElement(1632134))
 }
 
 func TestFolding(t *testing.T) {
@@ -40,22 +40,22 @@ func TestFolding(t *testing.T) {
 		callback := make(chan []fr.Element, 100000)
 
 		// Test that the Eq function agrees
-		dispatchEqTable(instance, qPrime, callback)
-		eqBis := make(polynomial.BookKeepingTable, len(L))
-		eqBis = polynomial.FoldedEqTable(eqBis, qPrime)
+		dispatchEqTable(instance, qPrime[0], callback)
+		eqBis := poly.MakeLargeFrSlice(len(L))
+		eqBis = poly.FoldedEqTable(eqBis, qPrime[0])
 
-		assert.Equal(t, common.FrSliceToString(eqBis), makeLargeFrSlice(1<<bn), "eq tables do not match after being prefolded")
+		assert.Equal(t, common.FrSliceToString(eqBis), common.FrSliceToString(instance.Eq), "eq tables do not match after being prefolded")
 
 		// Test that the folding agrees
-		dispatchFolding(instance, qPrime[0], callback)
-		eqBis.Fold(qPrime[0])
+		dispatchFolding(instance, qPrime[0][0], callback)
+		eqBis.Fold(qPrime[0][0])
 
-		assert.Equal(t, common.FrSliceToString(eqBis), makeLargeFrSlice(1<<bn), "eq tables do not match after folding")
+		assert.Equal(t, common.FrSliceToString(eqBis), common.FrSliceToString(instance.Eq), "eq tables do not match after folding")
 
-		dumpInLargePool(instance.L)
-		dumpInLargePool(instance.R)
-		dumpInLargePool(instance.Eq)
-		dumpInLargePool(eqBis)
+		poly.DumpInLargePool(instance.L)
+		poly.DumpInLargePool(instance.R)
+		poly.DumpInLargePool(instance.Eq)
+		poly.DumpInLargePool(eqBis)
 	}
 }
 
@@ -64,7 +64,7 @@ func TestSumcheck(t *testing.T) {
 	for bn := 0; bn < 15; bn++ {
 		L, R, qPrime, gate := initializeSumcheckInstance(bn)
 
-		instance := instance{L: L, R: R, Eq: make(polynomial.BookKeepingTable, 1<<bn), gate: gate, degree: 8}
+		instance := instance{L: L, R: R, Eq: make(poly.MultiLin, 1<<bn), gate: gate, degree: 8}
 
 		// Test that the degree set is the right one
 		{
@@ -76,10 +76,10 @@ func TestSumcheck(t *testing.T) {
 			assert.Equal(t, instance.degree, _instance.degree, "instance do not match")
 		}
 
-		instance.Eq = polynomial.FoldedEqTable(instance.Eq, qPrime)
+		instance.Eq = poly.FoldedEqTable(instance.Eq, qPrime[0])
 		claim := instance.Evaluation()
 
-		proof, challenges, fClm := Prove(L, R, qPrime, gate)
+		proof, challenges, fClm := Prove(L, R, qPrime, []fr.Element{}, gate)
 		challengesV, expectedValue, err := Verify(claim, proof)
 
 		assert.NoErrorf(t, err, "sumcheck was not deemed valid %v", err)
@@ -102,7 +102,7 @@ func BenchmarkSumcheck(b *testing.B) {
 				b.StopTimer()
 				L, R, qPrime, gate := initializeSumcheckInstance(bn)
 				b.StartTimer()
-				_, _, _ = Prove(L, R, qPrime, gate)
+				_, _, _ = Prove(L, R, qPrime, []fr.Element{}, gate)
 			}
 			b.StopTimer()
 		})

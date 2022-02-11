@@ -1,4 +1,4 @@
-package polynomial
+package poly
 
 import (
 	"github.com/consensys/gkr-mimc/common"
@@ -38,7 +38,7 @@ func EvalEq(qPrime, nextQPrime []fr.Element) fr.Element {
 // Instead we directly compute the folded array of length 2^n
 // containing the values of Eq(q1, ... , qn, *, ... , *)
 // where qPrime = [q1 ... qn].
-func FoldedEqTable(preallocated BookKeepingTable, qPrime []fr.Element, multiplier ...fr.Element) (eq BookKeepingTable) {
+func FoldedEqTable(preallocated MultiLin, qPrime []fr.Element, multiplier ...fr.Element) (eq MultiLin) {
 	n := len(qPrime)
 
 	preallocated[0].SetOne()

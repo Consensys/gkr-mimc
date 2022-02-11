@@ -1,4 +1,4 @@
-package sumcheck
+package poly
 
 import (
 	"fmt"
@@ -19,7 +19,7 @@ var (
 	}
 )
 
-func makeLargeFrSlice(n int) []fr.Element {
+func MakeLargeFrSlice(n int) MultiLin {
 	if n > maxNForLargePool {
 		panic(fmt.Sprintf("been provided with size of %v but the maximum is %v", n, maxNForLargePool))
 	}
@@ -28,6 +28,11 @@ func makeLargeFrSlice(n int) []fr.Element {
 	return (*ptr)[:n]
 }
 
-func dumpInLargePool(arr []fr.Element) {
+func DumpInLargePool(arr []fr.Element) {
+	// Re-increase the array up to max capacity
+	if cap(arr) < maxNForLargePool {
+		// If it's capacity was somehow decreased, we reallocate
+		panic("attempted to put a small array in the large pool")
+	}
 	largeFrSlicePool.Put(&arr)
 }

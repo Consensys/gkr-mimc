@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -18,8 +18,8 @@ func Verify(claim fr.Element, proof Proof) (qPrime []fr.Element, finalClaim fr.E
 
 	for i := 0; i < bn; i++ {
 		// Check P_i(0) + P_i(1) == expected
-		actualValue = polynomial.EvaluatePolynomial(proof[i], zero)
-		evalAtOne = polynomial.EvaluatePolynomial(proof[i], one)
+		actualValue = poly.EvaluatePolynomial(proof[i], zero)
+		evalAtOne = poly.EvaluatePolynomial(proof[i], one)
 		actualValue.Add(&actualValue, &evalAtOne)
 
 		if expectedValue != actualValue {
@@ -29,7 +29,7 @@ func Verify(claim fr.Element, proof Proof) (qPrime []fr.Element, finalClaim fr.E
 		r = common.GetChallenge(proof[i])
 		challenges[i] = r
 		// expectedValue = P_i(r)
-		expectedValue = polynomial.EvaluatePolynomial(proof[i], r)
+		expectedValue = poly.EvaluatePolynomial(proof[i], r)
 	}
 
 	return challenges, expectedValue, nil

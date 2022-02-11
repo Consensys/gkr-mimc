@@ -38,12 +38,12 @@ func AllocateProof(bN, bG, degHL, degHR, degHPrime int) Proof {
 
 // Assign values for the sumcheck verifier
 func (p *Proof) Assign(proof sumcheck.Proof) {
-	if len(proof.PolyCoeffs) != len(p.HPolys) {
+	if len(proof) != len(p.HPolys) {
 		panic(
-			fmt.Sprintf("Inconsistent assignment lenght: expected %v, but got %v", len(p.HPolys), len(proof.PolyCoeffs)),
+			fmt.Sprintf("Inconsistent assignment lenght: expected %v, but got %v", len(p.HPolys), len(proof)),
 		)
 	}
-	for i, poly := range proof.PolyCoeffs {
+	for i, poly := range proof {
 		p.HPolys[i].Assign(poly)
 	}
 }

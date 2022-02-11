@@ -2,7 +2,7 @@ package sumcheck
 
 import (
 	"github.com/consensys/gkr-mimc/circuit"
-	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -10,7 +10,7 @@ import (
 // gi(X) = \sum_{Y} (eq(X, Y) Gi(ai(Y), bi(Y))
 // X is the evaluation point
 type instance struct {
-	L, R, Eq polynomial.BookKeepingTable
+	L, R, Eq poly.MultiLin
 	gate     circuit.Gate
 	// Overall degree of the sumcheck instance
 	degree int

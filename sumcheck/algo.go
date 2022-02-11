@@ -1,29 +1,42 @@
 package sumcheck
 
 import (
-	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// Minimal size under which we do not consider multithreading the
-const eqTableChunkSize int = 1 << 8
-
-// The perform the folding operation for all the book keeping tables of the instance
-func runFoldingJob(job *proverJob) {
-	job.inst.foldChunk(job.r, job.start, job.stop)
-	// We pass an empty array as a callback
-	job.callback <- []fr.Element{}
+// Returns a closure to perform a chunk of folding
+func createFoldingJob(inst *instance, callback chan []fr.Element, r fr.Element, start, stop int) func() {
+	return func() {
+		inst.foldChunk(r, start, stop)
+		// We pass an empty array as a callback
+		callback <- []fr.Element{}
+	}
 }
 
-func runPartialEval(job *proverJob) {
-	// Defers to the chunked method and write the result in the callback channel
-	job.callback <- job.inst.getPartialPolyChunk(job.start, job.stop)
+// Returns a closure to perform a chunk of partial evaluation
+func createPartialEvalJob(inst *instance, callback chan []fr.Element, start, stop int) func() {
+	return func() {
+		// Defers to the chunked method and write the result in the callback channel
+		callback <- inst.getPartialPolyChunk(start, stop)
+	}
 }
 
-func runEqTableJob(job *proverJob) {
-	// Defers the chunked method for computing the eq table
-	job.inst.computeEqTableJob(job.qPrime, job.start, job.stop, job.multiplier...)
-	job.callback <- []fr.Element{}
+// Returns a closure to perform a chunk of eqTable job
+func createEqTableJob(inst *instance, callback chan []fr.Element, qPrime []fr.Element, start, stop int, multiplier ...fr.Element) func() {
+	return func() {
+		// Defers the chunked method for computing the eq table
+		inst.computeEqTableJob(qPrime, start, stop, multiplier...)
+		callback <- []fr.Element{}
+	}
+}
+
+// Returns a closure to perform a partial summation of two bookeeping tables
+func createAdditionJob(callback chan []fr.Element, a, b poly.MultiLin, start, stop int) func() {
+	return func() {
+		addInPlace(a, b, start, stop)
+		callback <- []fr.Element{}
+	}
 }
 
 // Performs the folding on a chunk synchronously
@@ -80,6 +93,14 @@ func (inst *instance) computeEqTableJob(qPrime []fr.Element, start, stop int, mu
 	preallocatedEq := inst.Eq
 	for chunkID := start; chunkID < stop; chunkID++ {
 		// Just defers to the dedicated function
-		polynomial.ChunkOfEqTable(preallocatedEq, chunkID, eqTableChunkSize, qPrime, multiplier...)
+		poly.ChunkOfEqTable(preallocatedEq, chunkID, eqTableChunkSize, qPrime, multiplier...)
+	}
+}
+
+// Add the second table into the first one for a given chunk
+// b is unchanged
+func addInPlace(a, b poly.MultiLin, start, stop int) {
+	for i := start; i < stop; i++ {
+		a[i].Add(&a[i], &b[i])
 	}
 }
