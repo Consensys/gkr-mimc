@@ -2,7 +2,7 @@ package circuit
 
 import (
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/poly"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -46,8 +46,8 @@ func (c *Circuit) Assign(inputs [][]fr.Element, nCore int) Assignment {
 }
 
 // LayerAsBKTWithCopy creates a deep-copy of a given layer of the assignment
-func (a *Assignment) LayerAsBKTWithCopy(layer, nCore int) []polynomial.BookKeepingTable {
-	res := make([]polynomial.BookKeepingTable, len(a.Values[layer]))
+func (a *Assignment) LayerAsBKTWithCopy(layer, nCore int) []poly.MultiLin {
+	res := make([]poly.MultiLin, len(a.Values[layer]))
 
 	subCopy := func(start, stop int) {
 		for i := start; i < stop; i++ {
@@ -62,11 +62,11 @@ func (a *Assignment) LayerAsBKTWithCopy(layer, nCore int) []polynomial.BookKeepi
 }
 
 // LayerAsBKTNoCopy creates a deep-copy of a given layer of the assignment
-func (a *Assignment) LayerAsBKTNoCopy(layer int) []polynomial.BookKeepingTable {
-	res := make([]polynomial.BookKeepingTable, len(a.Values[layer]))
+func (a *Assignment) LayerAsBKTNoCopy(layer int) []poly.MultiLin {
+	res := make([]poly.MultiLin, len(a.Values[layer]))
 	// Copies the headers of the slices
 	for i, tab := range a.Values[layer] {
-		res[i] = polynomial.NewBookKeepingTable(tab)
+		res[i] = tab
 	}
 	return res
 }

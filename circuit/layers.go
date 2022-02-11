@@ -2,7 +2,6 @@ package circuit
 
 import (
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
 
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
@@ -35,39 +34,6 @@ func NewLayer(wires []Wire) Layer {
 		BGInputs:  BGInputs(wires),
 		BGOutputs: BGOutputs(wires),
 	}
-}
-
-// GetStaticTable returns the prefolded static tables
-// They are returned in the same order as l.Gates
-func (l *Layer) GetStaticTable(q []fr.Element) []polynomial.BookKeepingTable {
-	// Computes the gates to ensure we return the bookeeping tables in a deterministic order
-	gates := l.Gates
-	res := make([]polynomial.BookKeepingTable, len(gates))
-	// Usefull integer constants
-	gO, gL := (1 << (2 * l.BGInputs)), 1<<l.BGInputs
-	var one fr.Element
-	one.SetOne()
-
-	one = fr.One()
-
-	for i, gate := range l.Gates {
-		// The tab is filled with zeroes
-		tab := make([]fr.Element, (1<<l.BGOutputs)*(1<<(2*l.BGInputs)))
-		for _, w := range l.Wires {
-			if w.Gate.ID() == gate.ID() {
-				k := gO*w.O + gL*w.L + w.R
-				tab[k].Add(&tab[k], &one)
-			}
-		}
-		// Prefold the bookkeeping table before returning
-		bkt := polynomial.NewBookKeepingTable(tab)
-		for _, r := range q {
-			bkt.Fold(r)
-		}
-		res[i] = bkt
-	}
-
-	return res
 }
 
 // Evaluate returns the assignment of the next layer
