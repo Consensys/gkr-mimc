@@ -37,7 +37,7 @@ func Prove(L, R poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate
 	callback := make(chan []fr.Element, 8*runtime.NumCPU())
 
 	// Precomputes the eq table
-	makeEqTable(inst, callback, claims, qPrimes)
+	makeEqTable(inst, claims, qPrimes, callback)
 
 	// Run on hPrime
 	for k := 0; k < bN; k++ {
@@ -76,9 +76,15 @@ func makeInstance(L, R poly.MultiLin, gate circuit.Gate) *instance {
 // If there are multiple claims and evaluations points, then it returns a random linear combination's
 // coefficients of the claims and qPrime
 func makeEqTable(
-	inst *instance, callback chan []fr.Element,
+	inst *instance,
 	claims []fr.Element, qPrimes [][]fr.Element,
+	callback chan []fr.Element,
 ) (rnd fr.Element) {
+
+	if callback == nil {
+		// If no callback is provided, create one on the spot
+		callback = make(chan []fr.Element, 8*runtime.NumCPU())
+	}
 
 	if len(claims) != len(qPrimes) && len(qPrimes) > 1 {
 		panic(fmt.Sprintf("provided a multi-instance %v but only the number of claim does not match %v", len(qPrimes), len(claims)))
