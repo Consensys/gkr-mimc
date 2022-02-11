@@ -113,6 +113,8 @@ func makeEqTable(
 		multiplier.Mul(&multiplier, &initialMultiplier)
 	}
 
+	poly.DumpInLargePool(tmpInst.Eq)
+
 	// Returns the seed of the linear combination
 	return initialMultiplier
 }
@@ -190,11 +192,17 @@ func dispatchAdditions(callback chan []fr.Element, a, b poly.MultiLin) {
 	nbTasks := common.TryDispatch(len(a), addInplaceMinChunkSize, func(start, stop int) {
 		jobQueue <- createAdditionJob(callback, a, b, start, stop)
 	})
+
 	// The pool returning 0 means you need to run it monothreaded
 	if nbTasks < 1 {
 		// All in one chunk
 		addInPlace(a, b, 0, len(a))
 		return
+	}
+
+	// Otherwise, wait for all callback to be done
+	for i := 0; i < nbTasks; i++ {
+		<-callback
 	}
 }
 

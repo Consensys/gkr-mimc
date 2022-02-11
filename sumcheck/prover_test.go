@@ -27,8 +27,7 @@ func initializeCipherGateTest(bN int) (L, R poly.MultiLin, claim []fr.Element, q
 		R[i].SetUint64(uint64(i))
 	}
 
-	return poly.NewBookKeepingTable(L),
-		poly.NewBookKeepingTable(R),
+	return L, R,
 		[]fr.Element{},
 		[][]fr.Element{q}, gates.NewCipherGate(fr.NewElement(1632134))
 }
@@ -103,15 +102,16 @@ func genericTest(t *testing.T, L, R poly.MultiLin, claims []fr.Element, qs [][]f
 	claim := instance.Evaluation()
 
 	if !rnd.IsZero() {
-		eval := poly.EvaluatePolynomial(claims, rnd)
+		eval := poly.EvalUnivariate(claims, rnd)
 		assert.Equal(t, claim.String(), eval.String(), "the random linear combination did not match de claim")
 	}
 
 	proof, challenges, fClm := Prove(L, R, qs, claims, gate)
-	challengesV, expectedValue, err := Verify(claim, proof)
+	challengesV, expectedValue, recombChal, err := Verify(claims, proof)
 
 	assert.NoErrorf(t, err, "sumcheck was not deemed valid %v", err)
 	assert.Equal(t, challenges, challengesV, "prover's and verifier challenges do not match")
+	assert.Equal(t, rnd, recombChal, "recombination challenges do not match")
 
 	var expVal fr.Element
 
@@ -138,13 +138,29 @@ func TestCipherGate(t *testing.T) {
 
 }
 
-func BenchmarkSumcheck(b *testing.B) {
+func BenchmarkWithCipherGate(b *testing.B) {
 	bn := 22
 	b.Run(fmt.Sprintf("sumcheck-bn-%v", bn), func(b *testing.B) {
 		common.ProfileTrace(b, false, true, func() {
 			for c_ := 0; c_ < b.N; c_++ {
 				b.StopTimer()
 				L, R, claims, qPrime, gate := initializeCipherGateTest(bn)
+				b.StartTimer()
+				_, _, _ = Prove(L, R, qPrime, claims, gate)
+			}
+			b.StopTimer()
+		})
+	})
+}
+
+func BenchmarkMultiIdentity(b *testing.B) {
+	bn := 22
+	nInstance := 91
+	b.Run(fmt.Sprintf("sumcheck-bn-%v", bn), func(b *testing.B) {
+		common.ProfileTrace(b, false, true, func() {
+			for c_ := 0; c_ < b.N; c_++ {
+				b.StopTimer()
+				L, R, claims, qPrime, gate := initializeMultiInstance(bn, nInstance)
 				b.StartTimer()
 				_, _, _ = Prove(L, R, qPrime, claims, gate)
 			}
