@@ -42,43 +42,55 @@ func createAdditionJob(callback chan []fr.Element, a, b poly.MultiLin, start, st
 // Performs the folding on a chunk synchronously
 func (inst *instance) foldChunk(r fr.Element, start, stop int) {
 	inst.Eq.FoldChunk(r, start, stop)
-	inst.L.FoldChunk(r, start, stop)
-	inst.R.FoldChunk(r, start, stop)
+	for _, x := range inst.X {
+		x.FoldChunk(r, start, stop)
+	}
 }
 
 // Returns the partial poly only on a given portion
 func (inst *instance) getPartialPolyChunk(start, stop int) []fr.Element {
 	// Define usefull constants
 	nEvals := inst.degree + 1
+	nInputs := len(inst.X)
 	mid := len(inst.Eq) / 2
 
 	evals := make([]fr.Element, nEvals)
-	var v, dL, dR, dEq fr.Element
+	buf := make([]*fr.Element, nInputs)
+
+	var v, dEq, dX fr.Element
 
 	// Accumulates the combinator's result
-	evalL := make([]fr.Element, nEvals)
-	evalR := make([]fr.Element, nEvals)
+	evalXs := make([]fr.Element, nEvals*nInputs)
 	evalEq := make([]fr.Element, nEvals)
 
 	for x := start; x < stop; x++ {
 
-		// Computes the preEvaluations
-		evalL[0] = inst.L[x]
-		evalR[0] = inst.R[x]
+		// Preevaluate the eq table
 		evalEq[0] = inst.Eq[x]
-
-		dL.Sub(&inst.L[x+mid], &inst.L[x])
-		dR.Sub(&inst.R[x+mid], &inst.R[x])
 		dEq.Sub(&inst.Eq[x+mid], &inst.Eq[x])
 
 		for t := 1; t < nEvals; t++ {
-			evalL[t].Add(&evalL[t-1], &dL)
-			evalR[t].Add(&evalR[t-1], &dR)
 			evalEq[t].Add(&evalEq[t-1], &dEq)
 		}
 
+		// Computes the preEvaluations for the inputs tables
+		for k := range inst.X {
+			evalXs[0+k*nEvals] = inst.X[k][x]
+			dX.Sub(&inst.X[k][x+mid], &inst.X[k][x])
+
+			for t := 1; t < nEvals; t++ {
+				offset := k * nEvals
+				evalXs[t+offset].Add(&evalXs[t-1+offset], &dX)
+			}
+		}
+
 		for t := 0; t < nEvals; t++ {
-			inst.gate.Eval(&v, &evalL[t], &evalR[t])
+
+			for k := range inst.X {
+				buf[k] = &evalXs[t+k*nEvals]
+			}
+
+			inst.gate.Eval(&v, buf...)
 			v.Mul(&v, &evalEq[t])
 			evals[t].Add(&evals[t], &v)
 		}

@@ -22,27 +22,27 @@ func NewCipherGate(ark fr.Element) *CipherGate {
 func (c *CipherGate) ID() string { return fmt.Sprintf("CipherGate-%v", c.Ark.String()) }
 
 // Eval returns vL + (vR + c)^7
-func (c *CipherGate) Eval(res, vL, vR *fr.Element) {
+func (c *CipherGate) Eval(res *fr.Element, xs ...*fr.Element) {
 	// tmp = vR + Ark
 	var tmp fr.Element
-	tmp.Add(vR, &c.Ark)
+	tmp.Add(xs[1], &c.Ark)
 	// res = tmp^7
 	res.Square(&tmp)
 	res.Mul(res, &tmp)
 	res.Square(res)
 	res.Mul(res, &tmp)
 	// Then add vL
-	res.Add(res, vL)
+	res.Add(res, xs[0])
 }
 
 // GnarkEval performs the cipher operation on gnark variables
-func (c *CipherGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
-	tmp := cs.Add(vR, frontend.Variable(c.Ark))
+func (c *CipherGate) GnarkEval(cs frontend.API, xs ...frontend.Variable) frontend.Variable {
+	tmp := cs.Add(xs[1], frontend.Variable(c.Ark))
 	cipher := cs.Mul(tmp, tmp)
 	cipher = cs.Mul(cipher, tmp)
 	cipher = cs.Mul(cipher, cipher)
 	cipher = cs.Mul(cipher, tmp)
-	return cs.Add(cipher, vL)
+	return cs.Add(cipher, xs[0])
 }
 
 // Degree returns the Degree of the gate on hL, hR and hPrime

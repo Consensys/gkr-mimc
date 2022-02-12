@@ -12,14 +12,14 @@ type AddGate struct{}
 func (a AddGate) ID() string { return "AddGate" }
 
 // Eval return the result vL + vR
-func (a AddGate) Eval(res, vL, vR *fr.Element) {
-	res.Add(vL, vR)
+func (a AddGate) Eval(res *fr.Element, xs ...*fr.Element) {
+	res.Add(xs[0], xs[1])
 }
 
 // GnarkEval compute the gate on a gnark circuit
-func (a AddGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
+func (a AddGate) GnarkEval(cs frontend.API, xs ...frontend.Variable) frontend.Variable {
 	// Unoptimized, but unlikely to cause any significant performance loss
-	return cs.Add(vL, vR)
+	return cs.Add(xs[0], xs[1])
 }
 
 // Degree returns the Degree of the gate on hL, hR and hPrime

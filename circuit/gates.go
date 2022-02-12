@@ -10,21 +10,17 @@ type Gate interface {
 	// ID returns an ID that is unique for the gate
 	ID() string
 	// GnarkEval performs the same computation as Eval but on Gnark variables
-	GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable
+	GnarkEval(cs frontend.API, xs ...frontend.Variable) frontend.Variable
 	// Eval returns an evaluation for a unique pair of Eval
-	Eval(res, vL, vR *fr.Element)
+	Eval(res *fr.Element, xs ...*fr.Element)
 	// Degree returns the degrees of the gate relatively to HL, HR, HPrime
 	Degree() (degHPrime int)
 }
 
 // EvaluateCombinator evaluate eq * \sum_i{ statics_i * gates_i(vL, vR) }
-func EvaluateCombinator(vL, vR, eq *fr.Element, gates []Gate, statics []fr.Element) fr.Element {
+func EvaluateCombinator(gate Gate, eq *fr.Element, xs ...*fr.Element) fr.Element {
 	var tmp, res fr.Element
-	for i := range gates {
-		gates[i].Eval(&tmp, vL, vR)
-		tmp.Mul(&statics[i], &tmp)
-		res.Add(&res, &tmp)
-	}
+	gate.Eval(&tmp, xs...)
 	res.Mul(&res, eq)
 	return res
 }

@@ -39,6 +39,10 @@ func Verify(claims []fr.Element, proof Proof) (qPrime []fr.Element, finalClaim, 
 }
 
 func RecombineMultiClaims(claims []fr.Element) (claim, challenge fr.Element) {
+	if len(claims) < 1 {
+		// No recombination
+		return claim, fr.Element{}
+	}
 	challenge = common.GetChallenge(claims)
 	return poly.EvalUnivariate(claims, challenge), challenge
 }

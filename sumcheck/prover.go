@@ -22,16 +22,15 @@ const (
 type Proof [][]fr.Element
 
 // Prove contains the coordination logic for all workers contributing to the sumcheck proof
-func Prove(L, R poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate circuit.Gate) (proof Proof, challenges, finalClaims []fr.Element) {
+func Prove(X []poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate circuit.Gate) (proof Proof, challenges, finalClaims []fr.Element) {
 
 	// Define usefull constants & initializes the instance
 	bN := len(qPrimes[0])
-	inst := makeInstance(L, R, gate)
+	inst := makeInstance(X, gate)
 
 	// Initialized the results
 	proof = make(Proof, bN)
 	challenges = make([]fr.Element, bN)
-	finalClaims = make([]fr.Element, 3)
 
 	// 8 . runtime.NumCPU() -> To be sure, this will never clog
 	callback := make(chan []fr.Element, 8*runtime.NumCPU())
@@ -48,27 +47,24 @@ func Prove(L, R poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate
 		challenges[k] = r
 	}
 
-	if len(inst.L)+len(inst.R)+len(inst.Eq) > 3 {
-		panic("did not fold all the tables")
-	}
-
-	// Final claim is
-	finalClaims[0] = inst.L[0]
-	finalClaims[1] = inst.R[0]
-	finalClaims[2] = inst.Eq[0]
-
+	// Save the final claims on each poly and dump the polys
+	finalClaims = make([]fr.Element, 0, len(inst.X)+1)
+	finalClaims = append(finalClaims, inst.Eq[0])
 	poly.DumpInLargePool(inst.Eq)
-	poly.DumpInLargePool(inst.L)
-	poly.DumpInLargePool(inst.R)
+
+	for _, x := range inst.X {
+		finalClaims = append(finalClaims, x[0])
+		poly.DumpInLargePool(x)
+	}
 
 	return proof, challenges, finalClaims
 
 }
 
 // initializeInstance returns an instance with L, R, gates, and degree sets
-func makeInstance(L, R poly.MultiLin, gate circuit.Gate) *instance {
-	n := len(L)
-	return &instance{L: L, R: R, Eq: poly.MakeLargeFrSlice(n), gate: gate, degree: gate.Degree() + 1}
+func makeInstance(X []poly.MultiLin, gate circuit.Gate) *instance {
+	n := len(X[0])
+	return &instance{X: X, Eq: poly.MakeLargeFrSlice(n), gate: gate, degree: gate.Degree() + 1}
 
 }
 
@@ -160,8 +156,9 @@ func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
 
 	// Finallly cut in half the tables
 	inst.Eq = inst.Eq[:mid]
-	inst.L = inst.L[:mid]
-	inst.R = inst.R[:mid]
+	for i := range inst.X {
+		inst.X[i] = inst.X[i][:mid]
+	}
 }
 
 // Computes the eq table for the comming round

@@ -12,13 +12,13 @@ type MulGate struct{}
 func (m MulGate) ID() string { return "MulGate" }
 
 // Eval returns vL * vR
-func (m MulGate) Eval(res, vL, vR *fr.Element) {
-	res.Mul(vL, vR)
+func (m MulGate) Eval(res *fr.Element, xs ...*fr.Element) {
+	res.Mul(xs[0], xs[1])
 }
 
 // GnarkEval performs the gate operation on gnark variables
-func (m MulGate) GnarkEval(cs frontend.API, vL, vR frontend.Variable) frontend.Variable {
-	return cs.Mul(vL, vR)
+func (m MulGate) GnarkEval(cs frontend.API, xs ...frontend.Variable) frontend.Variable {
+	return cs.Mul(xs[0], xs[1])
 }
 
 // Degree returns the Degree of the gate on hL, hR and hPrime
