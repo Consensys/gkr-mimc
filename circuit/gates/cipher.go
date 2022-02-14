@@ -21,7 +21,7 @@ func NewCipherGate(ark fr.Element) *CipherGate {
 // ID returns the id of the cipher gate and print the ark as well
 func (c *CipherGate) ID() string { return fmt.Sprintf("CipherGate-%v", c.Ark.String()) }
 
-// Eval returns vL + (vR + c)^7, on the range of output
+// Eval returns (vR + c + vL)^7, on the range of output
 func (c *CipherGate) EvalBatch(res []fr.Element, xs ...[]fr.Element) {
 
 	ls := xs[0]
@@ -30,30 +30,28 @@ func (c *CipherGate) EvalBatch(res []fr.Element, xs ...[]fr.Element) {
 	var tmp fr.Element
 
 	for i := range res {
-		// tmp = vR + Ark
+		// tmp = vR + Ark + vL
 		tmp.Add(&rs[i], &c.Ark)
+		tmp.Add(&tmp, &ls[i])
 		// res = tmp^7
 		res[i].Square(&tmp)
 		res[i].Mul(&res[i], &tmp)
 		res[i].Square(&res[i])
 		res[i].Mul(&res[i], &tmp)
-		// Then add vL
-		res[i].Add(&res[i], &ls[i])
 	}
 }
 
-// Eval returns vL + (vR + c)^7
+// Eval returns (vL + vR + c)^7
 func (c *CipherGate) Eval(res *fr.Element, xs ...*fr.Element) {
-	// tmp = vR + Ark
+	// tmp = vR + Ark + vL
 	var tmp fr.Element
 	tmp.Add(xs[1], &c.Ark)
+	tmp.Add(&tmp, xs[0])
 	// res = tmp^7
 	res.Square(&tmp)
 	res.Mul(res, &tmp)
 	res.Square(res)
 	res.Mul(res, &tmp)
-	// Then add vL
-	res.Add(res, xs[0])
 }
 
 // GnarkEval performs the cipher operation on gnark variables

@@ -37,9 +37,10 @@ func MakeLarge(n int) MultiLin {
 
 func DumpLarge(arr []fr.Element) {
 	// Re-increase the array up to max capacity
-	if cap(arr) < maxNForLargePool {
-		// If it's capacity was somehow decreased, we reallocate
-		panic("attempted to put a small array in the large pool")
+	if cap(arr) != maxNForLargePool {
+		// If it's capacity does not match, it means it wasn't in the pool
+		// in the first place. So just ignore
+		return
 	}
 	largePool.Put(&arr)
 }
@@ -55,9 +56,10 @@ func MakeSmall(n int) MultiLin {
 
 func DumpSmall(arr []fr.Element) {
 	// Re-increase the array up to max capacity
-	if cap(arr) < maxNForSmallPool {
-		// If it's capacity was somehow decreased, we reallocate
-		panic("attempted to put a small array in the Small pool")
+	if cap(arr) != maxNForSmallPool {
+		// If it's capacity does not match, it means it wasn't in the pool
+		// in the first place. So just ignore
+		return
 	}
 	smallPool.Put(&arr)
 }

@@ -31,9 +31,9 @@ func MimcUpdateInplace(state *fr.Element, block fr.Element) {
 // and the message to hash is set as the plaintext of the cipher
 func MimcPermutationInPlace(state *fr.Element, block fr.Element) {
 	for i := 0; i < MimcRounds; i++ {
-		block.Add(&block, state)
-		block.Add(&block, &Arks[i])
-		SBoxInplace(&block)
+		state.Add(state, &block)
+		state.Add(state, &Arks[i])
+		SBoxInplace(state)
 	}
 	// Re-add the state (key) to the block and put the result in the state
 	// to update the state
