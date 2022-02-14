@@ -2,6 +2,7 @@ package sumcheck
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/consensys/gkr-mimc/circuit"
@@ -19,10 +20,10 @@ func initializeCipherGateInstance(bn int) (X []poly.MultiLin, claims []fr.Elemen
 		q[i].SetUint64(2)
 	}
 
-	gate = gates.NewCipherGate(fr.NewElement(1632134))
+	gate = gates.NewCipherGate(fr.NewElement(1))
 
-	L := poly.MakeLargeFrSlice(1 << bn)
-	R := poly.MakeLargeFrSlice(1 << bn)
+	L := poly.MakeLarge(1 << bn)
+	R := poly.MakeLarge(1 << bn)
 
 	for i := range L {
 		L[i].SetUint64(uint64(i))
@@ -33,7 +34,7 @@ func initializeCipherGateInstance(bn int) (X []poly.MultiLin, claims []fr.Elemen
 		X:      []poly.MultiLin{L, R},
 		gate:   gate,
 		degree: gate.Degree() + 1,
-		Eq:     poly.MakeLargeFrSlice(1 << bn),
+		Eq:     poly.MakeLarge(1 << bn),
 	}
 	poly.FoldedEqTable(inst_.Eq, q)
 	claim := inst_.Evaluation()
@@ -56,15 +57,15 @@ func initializeMultiInstance(bn, ninstance int) (X []poly.MultiLin, claims []fr.
 		qs[i] = q
 	}
 
-	L := poly.MakeLargeFrSlice(n)
-	R := poly.MakeLargeFrSlice(n)
+	L := poly.MakeLarge(n)
+	R := poly.MakeLarge(n)
 
 	for i := range L {
 		L[i].SetUint64(uint64(i))
 		R[i].SetUint64(uint64(i))
 	}
 
-	inst_ := instance{X: []poly.MultiLin{L, R}, gate: gate, degree: gate.Degree() + 1, Eq: poly.MakeLargeFrSlice(n)}
+	inst_ := instance{X: []poly.MultiLin{L, R}, gate: gate, degree: gate.Degree() + 1, Eq: poly.MakeLarge(n)}
 
 	claims = make([]fr.Element, ninstance)
 	for i := range claims {
@@ -84,7 +85,7 @@ func TestFolding(t *testing.T) {
 
 		// Test that the Eq function agrees
 		dispatchEqTable(instance, qPrime[0], callback)
-		eqBis := poly.MakeLargeFrSlice(len(X[0]))
+		eqBis := poly.MakeLarge(len(X[0]))
 		eqBis = poly.FoldedEqTable(eqBis, qPrime[0])
 
 		assert.Equal(t, common.FrSliceToString(eqBis), common.FrSliceToString(instance.Eq), "eq tables do not match after being prefolded")
@@ -95,10 +96,10 @@ func TestFolding(t *testing.T) {
 
 		assert.Equal(t, common.FrSliceToString(eqBis), common.FrSliceToString(instance.Eq), "eq tables do not match after folding")
 
-		poly.DumpInLargePool(X[0])
-		poly.DumpInLargePool(X[1])
-		poly.DumpInLargePool(instance.Eq)
-		poly.DumpInLargePool(eqBis)
+		poly.DumpLarge(X[0])
+		poly.DumpLarge(X[1])
+		poly.DumpLarge(instance.Eq)
+		poly.DumpLarge(eqBis)
 	}
 }
 
@@ -146,7 +147,7 @@ func TestWithMultiIdentity(t *testing.T) {
 
 func TestWithCipherGate(t *testing.T) {
 
-	for bn := 0; bn < 15; bn++ {
+	for bn := 1; bn < 15; bn++ {
 		X, claims, qs, gate := initializeCipherGateInstance(bn)
 		genericTest(t, X, claims, qs, gate)
 	}
@@ -156,7 +157,7 @@ func TestWithCipherGate(t *testing.T) {
 func BenchmarkWithCipherGate(b *testing.B) {
 	bn := 22
 	b.Run(fmt.Sprintf("sumcheck-bn-%v", bn), func(b *testing.B) {
-		common.ProfileTrace(b, false, true, func() {
+		common.ProfileTrace(b, false, false, func() {
 			for c_ := 0; c_ < b.N; c_++ {
 				b.StopTimer()
 				X, claims, qPrime, gate := initializeCipherGateInstance(bn)
@@ -178,6 +179,28 @@ func BenchmarkMultiIdentity(b *testing.B) {
 				X, claims, qPrime, gate := initializeMultiInstance(bn, nInstance)
 				b.StartTimer()
 				_, _, _ = Prove(X, qPrime, claims, gate)
+			}
+			b.StopTimer()
+		})
+	})
+}
+
+func BenchmarkPartialEvalWithCipher(b *testing.B) {
+	bn := 15
+	b.Run(fmt.Sprintf("sumcheck-bn-%v", bn), func(b *testing.B) {
+		common.ProfileTrace(b, true, false, func() {
+
+			// Prepare the benchmark
+			X, claims, qPrime, gate := initializeCipherGateInstance(bn)
+			inst := makeInstance(X, gate)
+			callback := make(chan []fr.Element, 8*runtime.NumCPU())
+			makeEqTable(inst, claims, qPrime, callback)
+
+			b.ResetTimer()
+			for c_ := 0; c_ < b.N; c_++ {
+				for _i := 0; _i < 30000; _i++ {
+					dispatchPartialEvals(inst, callback)
+				}
 			}
 			b.StopTimer()
 		})

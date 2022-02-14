@@ -50,11 +50,11 @@ func Prove(X []poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate 
 	// Save the final claims on each poly and dump the polys
 	finalClaims = make([]fr.Element, 0, len(inst.X)+1)
 	finalClaims = append(finalClaims, inst.Eq[0])
-	poly.DumpInLargePool(inst.Eq)
+	poly.DumpLarge(inst.Eq)
 
 	for _, x := range inst.X {
 		finalClaims = append(finalClaims, x[0])
-		poly.DumpInLargePool(x)
+		poly.DumpLarge(x)
 	}
 
 	return proof, challenges, finalClaims
@@ -64,7 +64,7 @@ func Prove(X []poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate 
 // initializeInstance returns an instance with L, R, gates, and degree sets
 func makeInstance(X []poly.MultiLin, gate circuit.Gate) *instance {
 	n := len(X[0])
-	return &instance{X: X, Eq: poly.MakeLargeFrSlice(n), gate: gate, degree: gate.Degree() + 1}
+	return &instance{X: X, Eq: poly.MakeLarge(n), gate: gate, degree: gate.Degree() + 1}
 
 }
 
@@ -101,7 +101,7 @@ func makeEqTable(
 	multiplier := initialMultiplier
 
 	// Initializes a dummy instance with just an eqTable
-	tmpInst := &instance{Eq: poly.MakeLargeFrSlice(1 << len(qPrimes[0]))}
+	tmpInst := &instance{Eq: poly.MakeLarge(1 << len(qPrimes[0]))}
 
 	for i := 1; i < len(qPrimes); i++ {
 		dispatchEqTable(tmpInst, qPrimes[i], callback, multiplier)
@@ -109,7 +109,7 @@ func makeEqTable(
 		multiplier.Mul(&multiplier, &initialMultiplier)
 	}
 
-	poly.DumpInLargePool(tmpInst.Eq)
+	poly.DumpLarge(tmpInst.Eq)
 
 	// Returns the seed of the linear combination
 	return initialMultiplier
