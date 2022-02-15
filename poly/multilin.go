@@ -2,7 +2,6 @@ package poly
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/consensys/gkr-mimc/common"
 
@@ -16,31 +15,16 @@ func (bkt MultiLin) String() string {
 	return fmt.Sprintf("table = %v", common.FrSliceToString(bkt))
 }
 
-// NewBookKeepingTable returns a new instance of bookkeeping table
-func NewBookKeepingTable(table []fr.Element) MultiLin {
-	return table
-}
-
-// InterleavedChunk returns a single chunk from an interleaved splitting
-func (bkt MultiLin) InterleavedChunk(on, nChunk int) MultiLin {
-	chunkSize := len(bkt) / nChunk
-	table := make([]fr.Element, chunkSize)
-	for i := 0; i < chunkSize; i++ {
-		table[i] = bkt[on+i*nChunk]
-	}
-	return NewBookKeepingTable(table)
-}
-
 // Fold folds the table on its first coordinate using the given value r
 func (bkt *MultiLin) Fold(r fr.Element) {
-	mid := bkt.middleIndex()
+	mid := len(*bkt) / 2
 	bkt.FoldChunk(r, 0, mid)
 	*bkt = (*bkt)[:mid]
 }
 
 // Folds one part of the table
 func (bkt *MultiLin) FoldChunk(r fr.Element, start, stop int) {
-	mid := bkt.middleIndex()
+	mid := len(*bkt) / 2
 	bottom, top := (*bkt)[:mid], (*bkt)[mid:]
 	for i := start; i < stop; i++ {
 		// updating bookkeeping table
@@ -51,26 +35,6 @@ func (bkt *MultiLin) FoldChunk(r fr.Element, start, stop int) {
 	}
 }
 
-// FunctionEvals evaluates implicitly over the first variable in bkt
-// E.g. if one has to interpolate, say, x |--> (x + cst)^7 with x in the bkt,
-// We return the value P(r, 0, b), and delta = P(r, 1, b) - P(r, 0, b) in an array
-// [P(r, 0, b), delta]
-func (bkt MultiLin) FunctionEvals() []fr.Element {
-	mid := bkt.middleIndex()
-	fEvals := make([]fr.Element, mid)
-	bottom, top := bkt[:mid], bkt[mid:]
-
-	for i := range bottom {
-		fEvals[i].Sub(&top[i], &bottom[i])
-	}
-
-	return fEvals
-}
-
-func (bkt MultiLin) middleIndex() int {
-	return len(bkt) / 2
-}
-
 // DeepCopy creates a deep copy of a book-keeping table.
 // Both ultilinear interpolation and sumcheck require folding an underlying
 // array, but folding changes the array. To do both one requires a deep copy
@@ -78,7 +42,7 @@ func (bkt MultiLin) middleIndex() int {
 func (bkt MultiLin) DeepCopy() MultiLin {
 	tableDeepCopy := make([]fr.Element, len(bkt))
 	copy(tableDeepCopy, bkt)
-	return NewBookKeepingTable(tableDeepCopy)
+	return tableDeepCopy
 }
 
 // Evaluate takes a dense book-keeping table, deep copies it, folds it along the
@@ -92,47 +56,6 @@ func (bkt MultiLin) Evaluate(coordinates []fr.Element) fr.Element {
 	}
 
 	return bkCopy[0]
-}
-
-// EvaluateLeftAndRight produces two evaluations of a book-keeping table V:
-// V(q,l) and V(q,r). Folding is first done along the first done for q, then two
-// copies are generated to handle the further copies.
-// Variable order: [q', q, hl, hr, h']
-func (bkt MultiLin) EvaluateLeftAndRight(hPrime, hL, hR []fr.Element) (fr.Element, fr.Element) {
-
-	bkCopyLeft := bkt.DeepCopy()
-	bkCopyRight := bkt.DeepCopy()
-
-	// Fix a bug where hPrime, hL and hR are all subSlices of the same table
-	coordinatesLeft := append([]fr.Element{}, hL...)
-	coordinatesLeft = append(coordinatesLeft, hPrime...)
-	coordinatesRight := append([]fr.Element{}, hR...)
-	coordinatesRight = append(coordinatesRight, hPrime...)
-
-	leftEval, rightEval := bkCopyLeft.Evaluate(coordinatesLeft),
-		bkCopyRight.Evaluate(coordinatesRight)
-	return leftEval, rightEval
-}
-
-// LinCombMultiLin is an alternative to
-// LinearCombinationOfBookKeepingTable
-func LinCombMultiLin(
-	prefoldedBKT0, prefoldedBKT1 MultiLin,
-	a0, a1 fr.Element,
-) MultiLin {
-
-	// CAREFUL: indices to be confirmed!
-	// In BOTH CASES ought to be: bN + uint(i)
-	// Variables: order & size:
-	// q',	q,	r,	l,	h'
-	// bN,	bG,	bG,	bG,	bN
-	for i := range prefoldedBKT1 {
-		prefoldedBKT0[i].Mul(&prefoldedBKT0[i], &a0)
-		prefoldedBKT1[i].Mul(&prefoldedBKT1[i], &a1)
-		prefoldedBKT1[i].Add(&prefoldedBKT1[i], &prefoldedBKT0[i])
-	}
-
-	return prefoldedBKT1
 }
 
 // Add two bookKeepingTable
@@ -152,66 +75,4 @@ func (bkt MultiLin) Add(left, right MultiLin) {
 	for i := 0; i < size; i++ {
 		bkt[i].Add(&left[i], &right[i])
 	}
-}
-
-// Sub two bookKeepingTable
-func (bkt MultiLin) Sub(left, right MultiLin, nCore int) {
-	size := len(left)
-	chunks := common.IntoChunkRanges(nCore, size)
-	semaphore := common.NewSemaphore(nCore)
-	var wg sync.WaitGroup
-	wg.Add(len(chunks))
-
-	// Check that left and right have the same size
-	if len(right) != size {
-		panic("Left and right do not have the right size")
-	}
-	// Reallocate the table if necessary
-	if cap(bkt) < size {
-		bkt = make([]fr.Element, size)
-	}
-	// Resize the destination table
-	bkt = bkt[:size]
-	// Then performs the addition
-	for _, chunk := range chunks {
-		semaphore.Acquire()
-		go func(chunk common.ChunkRange) {
-			for i := chunk.Begin; i < chunk.End; i++ {
-				bkt[i].Sub(&left[i], &right[i])
-			}
-			semaphore.Release()
-			wg.Done()
-		}(chunk)
-	}
-
-	wg.Wait()
-}
-
-// Mul a bookkeeping table by a constant
-func (bkt MultiLin) Mul(lambda fr.Element, x MultiLin, nCore int) {
-	size := len(x)
-	chunks := common.IntoChunkRanges(nCore, size)
-	semaphore := common.NewSemaphore(nCore)
-	var wg sync.WaitGroup
-	wg.Add(len(chunks))
-
-	// Reallocate the table if necessary
-	if cap(bkt) < size {
-		bkt = make([]fr.Element, size)
-	}
-
-	// Resize the destination table
-	bkt = bkt[:size]
-	// Then performs the addition
-	for _, chunk := range chunks {
-		semaphore.Acquire()
-		go func(chunk common.ChunkRange) {
-			for i := chunk.Begin; i < chunk.End; i++ {
-				bkt[i].Mul(&x[i], &lambda)
-			}
-			semaphore.Release()
-			wg.Done()
-		}(chunk)
-	}
-	wg.Wait()
 }

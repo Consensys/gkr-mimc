@@ -55,7 +55,7 @@ func FoldedEqTable(preallocated MultiLin, qPrime []fr.Element, multiplier ...fr.
 		}
 	}
 
-	return NewBookKeepingTable(preallocated)
+	return preallocated
 }
 
 // Computes only a chunk of the eqTable for a given chunkSize and chunkID

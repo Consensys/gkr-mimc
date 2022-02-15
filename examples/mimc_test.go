@@ -1,4 +1,4 @@
-package circuit
+package examples
 
 import (
 	"testing"
@@ -46,6 +46,18 @@ func TestMimc(t *testing.T) {
 	// An error here indicate an error in the transition functions definition
 	// The circuit should agree with
 	assert.Equal(t, finstate0.String(), outputs[0].String(), "Error on the state calculation")
+}
+
+func TestCircuitForm(t *testing.T) {
+
+	// Initialize the circuit
+	circ := Mimc()
+
+	// Test that the Out are always in increasing order
+	for l := range circ {
+		assert.IsIncreasing(t, circ[l].Out)
+	}
+
 }
 
 // func benchmarkMIMCCircuit(b *testing.B, bN, nCore, nChunks int, profiled, traced bool) {
