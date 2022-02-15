@@ -54,57 +54,57 @@ func Verify(
 
 func (proof Proof) testSumcheck(
 	c circuit.Circuit,
-	l int,
+	layer int,
 ) (err error) {
 
 	// First thing, test the sumcheck
 	nextQprime, nextClaim, recombChal, err := sumcheck.Verify(
-		proof.Claims[l],
-		proof.SumcheckProofs[l],
+		proof.Claims[layer],
+		proof.SumcheckProofs[layer],
 	)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("error at sumcheck layer %v %v - claims %v", layer, err, common.FrSliceToString(proof.Claims[layer]))
 	}
 
 	var expectedClaim fr.Element
 	// 2 is because in practice, a gate cannot have more than two inputs with our designs
 	subClaims := make([]*fr.Element, 0, 2)
 
-	for _, inpL := range c[l].In {
+	for _, inpL := range c[layer].In {
 
 		// Seach the position of `l` as an output of layer `inpL`
 		// It works because `c[inpL].Out` is guaranteed to be sorted.
-		readAt := sort.SearchInts(c[inpL].Out, l)
+		readAt := sort.SearchInts(c[inpL].Out, layer)
 
 		// Since `SearchInts` does not answer whether the `int` is contained or not
 		// but returns the position if it "were" inside. We need to test inclusion
-		if c[inpL].Out[readAt] != l {
-			panic(fmt.Sprintf("circuit misformatted, In and Out are inconsistent between layers %v and %v", l, inpL))
+		if c[inpL].Out[readAt] != layer {
+			panic(fmt.Sprintf("circuit misformatted, In and Out are inconsistent between layers %v and %v", layer, inpL))
 		}
 
 		if !reflect.DeepEqual(proof.QPrimes[inpL][readAt], nextQprime) {
-			return fmt.Errorf("mismatch for qPrimes between sumcheck and proof at layer %v", l)
+			return fmt.Errorf("mismatch for qPrimes between sumcheck and proof at layer %v", layer)
 		}
 
 		subClaims = append(subClaims, &proof.Claims[inpL][readAt])
 	}
 
 	// Run the gate to compute the expected claim
-	c[l].Gate.Eval(&expectedClaim, subClaims...)
+	c[layer].Gate.Eval(&expectedClaim, subClaims...)
 
 	// Evaluation of eq to be used for testing the consistency with the challenges
 	// Recombines the eq evaluations into a single challenge
-	tmpEvals := make([]fr.Element, len(proof.QPrimes[l]))
-	for i := range proof.QPrimes[l] {
-		tmpEvals[i] = poly.EvalEq(proof.QPrimes[l][i], nextQprime)
+	tmpEvals := make([]fr.Element, len(proof.QPrimes[layer]))
+	for i := range proof.QPrimes[layer] {
+		tmpEvals[i] = poly.EvalEq(proof.QPrimes[layer][i], nextQprime)
 	}
 	eqEval := poly.EvalUnivariate(tmpEvals, recombChal)
 
 	expectedClaim.Mul(&expectedClaim, &eqEval)
 
 	if expectedClaim != nextClaim {
-		return fmt.Errorf("the expected claim and the final claim of the sumcheck do not match for layer %v", l)
+		return fmt.Errorf("the expected claim and the final claim of the sumcheck do not match for layer %v", layer)
 	}
 
 	return nil

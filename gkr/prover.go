@@ -49,24 +49,24 @@ func Prove(c circuit.Circuit, a circuit.Assignment, qPrime []fr.Element) (proof 
 func (p *Proof) updateWithSumcheck(
 	c circuit.Circuit,
 	a circuit.Assignment,
-	l int,
+	layer int,
 ) {
 
 	// Sumcheck proof
 	sumPi, nextQPrime, finalClaims := sumcheck.Prove(
-		a.InputLayersOf(c, l),
-		p.QPrimes[l],
-		p.Claims[l],
-		c[l].Gate,
+		a.InputLayersOf(c, layer),
+		p.QPrimes[layer],
+		p.Claims[layer],
+		c[layer].Gate,
 	)
 
-	p.SumcheckProofs[l] = sumPi
+	p.SumcheckProofs[layer] = sumPi
 
 	// Then update the qPrimes and Claims for the upcoming sumchecks to use them
 	for i := 1; i < len(finalClaims); i++ {
 
 		// Index of the corresponding input layer
-		inpL := c[l].In[i-1]
+		inpL := c[layer].In[i-1]
 
 		if len(p.Claims[inpL]) < 1 {
 			// Allocates the entire vectors once, so we can write at any index later
@@ -76,12 +76,12 @@ func (p *Proof) updateWithSumcheck(
 
 		// Seach the position of `l` as an output of layer `inpL`
 		// It works because `c[inpL].Out` is guaranteed to be sorted.
-		writeAt := sort.SearchInts(c[inpL].Out, l)
+		writeAt := sort.SearchInts(c[inpL].Out, layer)
 
 		// Since `SearchInts` does not answer whether the `int` is contained or not
 		// but returns the position if it "were" inside. We need to test inclusion
-		if c[inpL].Out[writeAt] != l {
-			panic(fmt.Sprintf("circuit misformatted, In and Out are inconsistent between layers %v and %v", l, inpL))
+		if c[inpL].Out[writeAt] != layer {
+			panic(fmt.Sprintf("circuit misformatted, In and Out are inconsistent between layers %v and %v", layer, inpL))
 		}
 
 		p.Claims[inpL][writeAt] = finalClaims[i]
