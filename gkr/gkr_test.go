@@ -46,3 +46,23 @@ func TestGKR(t *testing.T) {
 	err := Verify(c, proof, []poly.MultiLin{block, initstate}, a2[93].DeepCopy(), qPrime)
 	assert.NoError(t, err)
 }
+
+func BenchmarkGkr(b *testing.B) {
+	bn := 22
+
+	var one fr.Element
+	one.SetOne()
+
+	c := examples.Mimc()
+
+	block := common.RandomFrArray(1 << bn)
+	initstate := common.RandomFrArray(1 << bn)
+	qPrime := common.RandomFrArray(bn)
+
+	a := c.Assign(block, initstate)
+
+	common.ProfileTrace(b, false, true, func() {
+		_ = Prove(c, a, qPrime)
+	})
+
+}
