@@ -37,7 +37,7 @@ func initializeCipherGateInstance(bn int) (X []poly.MultiLin, claims []fr.Elemen
 		Eq:     poly.MakeLarge(1 << bn),
 	}
 	poly.FoldedEqTable(inst_.Eq, q)
-	claim := inst_.Evaluation()
+	claim := Evaluation(gate, [][]fr.Element{q}, []fr.Element{}, L, R)
 
 	return []poly.MultiLin{L, R}, []fr.Element{claim}, [][]fr.Element{q}, gate
 }
@@ -65,12 +65,9 @@ func initializeMultiInstance(bn, ninstance int) (X []poly.MultiLin, claims []fr.
 		R[i].SetUint64(uint64(i))
 	}
 
-	inst_ := instance{X: []poly.MultiLin{L, R}, gate: gate, degree: gate.Degree() + 1, Eq: poly.MakeLarge(n)}
-
 	claims = make([]fr.Element, ninstance)
 	for i := range claims {
-		poly.FoldedEqTable(inst_.Eq, qs[i])
-		claims[i] = inst_.Evaluation()
+		claims[i] = Evaluation(gate, [][]fr.Element{qs[i]}, []fr.Element{}, L, R)
 	}
 
 	return []poly.MultiLin{L, R}, claims, qs, gate
@@ -109,7 +106,7 @@ func genericTest(t *testing.T, X []poly.MultiLin, claims []fr.Element, qs [][]fr
 
 	// Then initializes the eq table
 	rnd := makeEqTable(instance, claims, qs, nil)
-	claimTest := instance.Evaluation()
+	claimTest := Evaluation(gate, qs, claims, X...)
 
 	if !rnd.IsZero() {
 		eval := poly.EvalUnivariate(claims, rnd)

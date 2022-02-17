@@ -1,6 +1,8 @@
 package sumcheck
 
 import (
+	"runtime"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
@@ -18,18 +20,25 @@ type instance struct {
 }
 
 // Evaluate the instance of the sumcheck
-func (inst *instance) Evaluation() (res fr.Element) {
-	var tmp fr.Element
-	buf := make([]*fr.Element, len(inst.X))
+func Evaluation(gate circuit.Gate, qPrime [][]fr.Element, claims []fr.Element, x ...poly.MultiLin) (res fr.Element) {
 
-	for n := range inst.X[0] {
-		for k := range inst.X {
-			buf[k] = &inst.X[k][n]
+	callback := make(chan []fr.Element, 8*runtime.NumCPU())
+	inst_ := instance{X: x, gate: gate, degree: gate.Degree() + 1, Eq: poly.MakeLarge(1 << len(qPrime[0]))}
+	makeEqTable(&inst_, claims, qPrime, callback)
+
+	var tmp fr.Element
+	buf := make([]*fr.Element, len(x))
+
+	for n := range x[0] {
+		for k := range x {
+			buf[k] = &x[k][n]
 		}
-		inst.gate.Eval(&tmp, buf...)
-		tmp.Mul(&tmp, &inst.Eq[n])
+		gate.Eval(&tmp, buf...)
+		tmp.Mul(&tmp, &inst_.Eq[n])
 		res.Add(&res, &tmp)
 	}
+
+	poly.DumpLarge(inst_.Eq)
 
 	return res
 }
