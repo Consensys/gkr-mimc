@@ -26,8 +26,15 @@ func Prove(X []poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate 
 
 	// Define usefull constants & initializes the instance
 	bN := len(qPrimes[0])
-	inst := makeInstance(X, gate)
 
+	// Sanity-checks : all X should have length 1<<bn
+	for i, x := range X {
+		if len(x) != 1<<bN {
+			panic(fmt.Sprintf("inconsistent sizes : bn is %v but table %v has size %v", bN, i, len(x)))
+		}
+	}
+
+	inst := makeInstance(X, gate)
 	// Initialized the results
 	proof = make(Proof, bN)
 	challenges = make([]fr.Element, bN)

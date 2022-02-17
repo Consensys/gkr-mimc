@@ -45,6 +45,13 @@ func (bkt MultiLin) DeepCopy() MultiLin {
 	return tableDeepCopy
 }
 
+// DeepCopy creates a deep copy of a multi-linear table.
+func (bkt MultiLin) DeepCopyLarge() MultiLin {
+	tableDeepCopy := MakeLarge(len(bkt))
+	copy(tableDeepCopy, bkt)
+	return tableDeepCopy
+}
+
 // Evaluate takes a dense book-keeping table, deep copies it, folds it along the
 // variables on which the table depends by substituting the corresponding coordinate
 // from relevantCoordinates. After folding, bkCopy is reduced to a one item slice

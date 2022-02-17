@@ -15,7 +15,7 @@ func (c Circuit) Assign(inps ...[]fr.Element) (a Assignment) {
 
 	// Assigns the provided input layers
 	for i := 0; i < len(inps); i++ {
-		a[i] = inps[i]
+		a[i] = poly.MultiLin(inps[i]).DeepCopy()
 	}
 
 	for i := len(inps); i < len(a); i++ {
@@ -32,12 +32,17 @@ func (c Circuit) Assign(inps ...[]fr.Element) (a Assignment) {
 }
 
 // InputLayersOf returns the input layers of the layer l
-func (a Assignment) InputLayersOf(c Circuit, l int) []poly.MultiLin {
+func (a Assignment) InputsOfLayer(c Circuit, l int) []poly.MultiLin {
 	positions := c[l].In
 	res := make([]poly.MultiLin, len(positions))
 
 	for i := range res {
-		res[i] = a[positions[i]]
+		if positions[i] == l-1 {
+			// Then no need to deep-copy
+			res[i] = a[positions[i]]
+		} else {
+			res[i] = a[positions[i]].DeepCopyLarge()
+		}
 	}
 
 	return res

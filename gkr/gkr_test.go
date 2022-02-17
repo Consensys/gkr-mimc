@@ -1,6 +1,7 @@
 package gkr
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gkr-mimc/common"
@@ -24,8 +25,24 @@ func TestGKR(t *testing.T) {
 	qPrime := common.RandomFrArray(bn)
 
 	a := c.Assign(block, initstate)
+	// Gets a deep-copy of the assignment
+	a2 := c.Assign(block, initstate)
+
 	proof := Prove(c, a, qPrime)
 
-	err := Verify(c, proof, []poly.MultiLin{block, initstate}, a[93].DeepCopy(), qPrime)
+	// Check that the claims are consistents with the assignment
+	for layer := len(c) - 1; layer >= 0; layer-- {
+		for j, claim := range proof.Claims[layer] {
+			claim2 := a2[layer].Evaluate(proof.QPrimes[layer][j])
+
+			if claim2 != claim {
+				panic(fmt.Sprintf("inconsistent claim at layer %v no %v, %v != %v", layer, j, claim.String(), claim2.String()))
+			}
+
+			assert.Equal(t, claim2.String(), proof.Claims[layer][j].String())
+		}
+	}
+
+	err := Verify(c, proof, []poly.MultiLin{block, initstate}, a2[93].DeepCopy(), qPrime)
 	assert.NoError(t, err)
 }

@@ -54,7 +54,7 @@ func (p *Proof) updateWithSumcheck(
 
 	// Sumcheck proof
 	sumPi, nextQPrime, finalClaims := sumcheck.Prove(
-		a.InputLayersOf(c, layer),
+		a.InputsOfLayer(c, layer),
 		p.QPrimes[layer],
 		p.Claims[layer],
 		c[layer].Gate,
