@@ -48,7 +48,14 @@ func TestGKR(t *testing.T) {
 }
 
 func BenchmarkGkr(b *testing.B) {
-	bn := 22
+	for bn := 17; bn < 24; bn++ {
+		b.Run(fmt.Sprintf("bn-%v", bn), func(b *testing.B) {
+			benchmarkGkr(b, bn)
+		})
+	}
+}
+
+func benchmarkGkr(b *testing.B, bn int) {
 
 	var one fr.Element
 	one.SetOne()
@@ -60,6 +67,8 @@ func BenchmarkGkr(b *testing.B) {
 	qPrime := common.RandomFrArray(bn)
 
 	a := c.Assign(block, initstate)
+
+	b.ResetTimer()
 
 	common.ProfileTrace(b, false, true, func() {
 		_ = Prove(c, a, qPrime)
