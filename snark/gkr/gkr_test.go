@@ -66,7 +66,7 @@ func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
 
 func TestMimcCircuit(t *testing.T) {
 
-	bn := 2
+	bn := 10
 
 	mimcCircuit := AllocateGKRMimcTestCircuit(bn)
 
@@ -97,7 +97,7 @@ func TestMimcCircuit(t *testing.T) {
 }
 
 func BenchmarkMimcCircuit(b *testing.B) {
-	bn := 2
+	bn := 10
 
 	fmt.Printf("bN = %v\n", bn)
 
