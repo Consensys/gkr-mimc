@@ -155,7 +155,6 @@ func (proof Proof) testSumcheck(cs frontend.API, c circuit.Circuit, layer int) {
 }
 
 func (proof Proof) testInitialRound(cs frontend.API, inps []poly.MultiLin, layer int) error {
-	cs.Tag("initial round counter")
 	actual := inps[layer].Eval(cs, proof.QPrimes[layer][0])
 	cs.AssertIsEqual(actual, proof.Claims[layer][0])
 	return nil
