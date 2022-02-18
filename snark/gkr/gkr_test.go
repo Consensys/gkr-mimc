@@ -1,7 +1,9 @@
 package gkr
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
@@ -13,6 +15,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
 )
@@ -26,7 +29,7 @@ type GKRMimcTestCircuit struct {
 }
 
 func AllocateGKRMimcTestCircuit(bN int) GKRMimcTestCircuit {
-	circuit := examples.Mimc()
+	circuit := examples.MimcCircuit()
 	return GKRMimcTestCircuit{
 		Circuit:       circuit,
 		Proof:         AllocateProof(bN, circuit),
@@ -74,7 +77,7 @@ func TestMimcCircuit(t *testing.T) {
 	}
 
 	// Create witness values
-	c := examples.Mimc()
+	c := examples.MimcCircuit()
 	inputs := []polyFr.MultiLin{
 		common.RandomFrArray(1 << bn),
 		common.RandomFrArray(1 << bn),
@@ -93,68 +96,46 @@ func TestMimcCircuit(t *testing.T) {
 
 }
 
-// func BenchmarkMimcCircuit(b *testing.B) {
-// 	bN := common.GetBN()
-// 	nChunk := common.GetNChunks()
-// 	inputsChunkSize := 2 * (1 << bN) / nChunk
-// 	nCore := runtime.GOMAXPROCS(0)
+func BenchmarkMimcCircuit(b *testing.B) {
+	bn := 2
 
-// 	fmt.Printf("bN = %v, nChunk = %v, nCore = %v \n", bN, nChunk, nCore)
+	fmt.Printf("bN = %v\n", bn)
 
-// 	mimcCircuit := AllocateGKRMimcTestCircuit(bN)
-// 	// Attempt to compile the circuit
-// 	r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
+	mimcCircuit := AllocateGKRMimcTestCircuit(bn)
+	// Attempt to compile the circuit
+	r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
 
-// 	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
+	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
 
-// 	// Generate the witness values by running the prover
-// 	var witness GKRMimcTestCircuit
+	// Create witness values
+	c := examples.MimcCircuit()
+	inputs := []polyFr.MultiLin{
+		common.RandomFrArray(1 << bn),
+		common.RandomFrArray(1 << bn),
+	}
+	qPrime := common.RandomFrArray(bn)
 
-// 	// Creates the assignments values
-// 	var (
-// 		proof      gkr.Proof
-// 		assignment circuit.Assignment
-// 		outputs    [][]fr.Element
-// 	)
+	// Assignment - Benchmark
+	t := time.Now()
+	assignment := c.Assign(inputs...)
+	fmt.Printf("gkr assignment took %v ms\n", time.Since(t).Milliseconds())
 
-// 	nativeCircuit := examples.CreateMimcCircuit()
-// 	qInitialprime, _ := gkr.GetInitialQPrimeAndQ(bN, 0)
-// 	inputs := common.RandomFrDoubleSlice(nChunk, inputsChunkSize)
+	// Keeps the output for later assignment : not sure if actually needed
+	outputs := assignment[93].DeepCopyLarge()
+	t = time.Now()
+	proof := gkr.Prove(c, assignment, qPrime)
+	fmt.Printf("gkr prover took %v ms\n", time.Since(t).Milliseconds())
 
-// 	b.Run("Assignment generation for GKR Prover", func(b *testing.B) {
-// 		for i := 0; i < b.N; i++ {
-// 			assignment = nativeCircuit.Assign(inputs, nCore)
-// 			outputs = assignment.Values[91]
-// 		}
-// 	})
+	// Assigns the values
+	witness := AllocateGKRMimcTestCircuit(bn)
+	t = time.Now()
+	witness.Assign(proof, inputs, outputs, qPrime)
+	fmt.Printf("post gkr assignment took %v ms\n", time.Since(t).Milliseconds())
 
-// 	b.Run("GKR Prover", func(b *testing.B) {
-// 		b.ResetTimer()
-// 		b.StopTimer()
-// 		for i := 0; i < b.N; i++ {
-// 			prover := gkr.NewProver(nativeCircuit, assignment)
-// 			b.StartTimer()
-// 			proof = prover.Prove(nCore)
-// 			b.StopTimer()
-// 		}
-// 	})
+	pk, _ := groth16.DummySetup(r1cs)
 
-// 	// Assigns the values
-// 	b.Run("Gnark circuit assignment", func(b *testing.B) {
-// 		b.StopTimer()
-// 		for i := 0; i < b.N; i++ {
-// 			witness = AllocateGKRMimcTestCircuit(bN)
-// 			b.StartTimer()
-// 			witness.Assign(proof, inputs, outputs, qInitialprime)
-// 			b.StopTimer()
-// 		}
-// 	})
-
-// 	pk, _ := groth16.DummySetup(r1cs)
-// 	b.Run("Gnark prover", func(b *testing.B) {
-// 		for i := 0; i < b.N; i++ {
-// 			w, _ := frontend.NewWitness(&witness, ecc.BN254)
-// 			_, _ = groth16.Prove(r1cs, pk, w)
-// 		}
-// 	})
-// }
+	t = time.Now()
+	w, _ := frontend.NewWitness(&witness, ecc.BN254)
+	_, _ = groth16.Prove(r1cs, pk, w)
+	fmt.Printf("gnark prover took %v ms\n", time.Since(t).Milliseconds())
+}

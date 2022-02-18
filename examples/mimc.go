@@ -6,8 +6,8 @@ import (
 	"github.com/consensys/gkr-mimc/hash"
 )
 
-// Mimc returns the GKR MIMC proving circuit
-func Mimc() circuit.Circuit {
+// MimcCircuit returns the GKR MIMC proving circuit
+func MimcCircuit() circuit.Circuit {
 	nRounds := 91
 
 	c := make(circuit.Circuit, nRounds+3)

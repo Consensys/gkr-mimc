@@ -31,6 +31,7 @@ func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
 		if c[layer].Gate != nil {
 			proof.SumcheckProofs[layer] = sumcheck.AllocateProof(bN, c[layer].Gate)
 		}
+
 		// We might also allocate qPrime and the claim for the last layer
 		// But remember that they are passed by the user anyway, so they are
 		// guaranteed to be allocated prior to
@@ -42,8 +43,9 @@ func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
 		}
 	}
 
+	// Special case : output layers are , they have no outputs
+	// But they need one qPrime and no claims
 	proof.Claims[len(proof.Claims)-1] = []frontend.Variable{}
-
 	proof.QPrimes[len(proof.Claims)-1] = [][]frontend.Variable{make([]frontend.Variable, bN)}
 
 	return proof
@@ -88,7 +90,10 @@ func (proof *Proof) AssertValid(
 		cs.AssertIsEqual(proof.QPrimes[nLayers-1][0][k], qPrime[k])
 	}
 
-	// Pass the initial claim into the proof, because the prover does not compute it
+	// keep the old vector of claims in a variable, that we can put back in the proof
+	// the goal here, is to not modify the proof when calling `Define`
+	oldClaim := proof.Claims[nLayers-1]
+	// this re-allocates
 	proof.Claims[nLayers-1] = append(proof.Claims[nLayers-1], outputs.Eval(cs, qPrime))
 
 	for layer := nLayers - 1; layer >= 0; layer-- {
@@ -104,6 +109,9 @@ func (proof *Proof) AssertValid(
 			proof.testInitialRound(cs, inputs, layer)
 		}
 	}
+
+	// re-erase the claim. we added midway to revert the change and keep the proof invariant
+	proof.Claims[nLayers-1] = oldClaim
 
 }
 

@@ -19,7 +19,7 @@ func randomInputs(bN int) (keys, state []fr.Element) {
 func TestMimc(t *testing.T) {
 
 	// Initialize the circuit
-	mimcCircuit := Mimc()
+	mimcCircuit := MimcCircuit()
 
 	// This checks the transition functions to be consistent
 	// With the actual hash function
@@ -51,7 +51,7 @@ func TestMimc(t *testing.T) {
 func TestCircuitForm(t *testing.T) {
 
 	// Initialize the circuit
-	circ := Mimc()
+	circ := MimcCircuit()
 
 	// Test that the Out are always in increasing order
 	for l := range circ {

@@ -18,7 +18,7 @@ func TestGKR(t *testing.T) {
 	var one fr.Element
 	one.SetOne()
 
-	c := examples.Mimc()
+	c := examples.MimcCircuit()
 
 	block := common.RandomFrArray(1 << bn)
 	initstate := common.RandomFrArray(1 << bn)
@@ -60,7 +60,7 @@ func benchmarkGkr(b *testing.B, bn int) {
 	var one fr.Element
 	one.SetOne()
 
-	c := examples.Mimc()
+	c := examples.MimcCircuit()
 
 	block := common.RandomFrArray(1 << bn)
 	initstate := common.RandomFrArray(1 << bn)
