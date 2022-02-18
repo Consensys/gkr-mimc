@@ -1,78 +1,85 @@
 package sumcheck
 
-// import (
-// 	"testing"
+import (
+	"testing"
 
-// 	"github.com/consensys/gkr-mimc/sumcheck"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/poly"
+	"github.com/consensys/gkr-mimc/sumcheck"
 
-// 	"github.com/consensys/gnark-crypto/ecc"
-// 	"github.com/consensys/gnark/backend"
-// 	"github.com/consensys/gnark/frontend"
-// 	"github.com/consensys/gnark/test"
-// )
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
+)
 
-// type SumcheckCircuit struct {
-// 	InitialClaim   frontend.Variable
-// 	Proof          Proof
-// 	ExpectedQL     []frontend.Variable
-// 	ExpectedQR     []frontend.Variable
-// 	ExpectedQPrime []frontend.Variable
-// }
+type SumcheckCircuit struct {
+	InitialClaim   []frontend.Variable
+	Proof          Proof
+	ExpectedQPrime []frontend.Variable
+}
 
-// func AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime int) SumcheckCircuit {
-// 	return SumcheckCircuit{
-// 		Proof:          AllocateProof(bN, bG, degHL, degHR, degHPrime),
-// 		ExpectedQL:     make([]frontend.Variable, bG),
-// 		ExpectedQR:     make([]frontend.Variable, bG),
-// 		ExpectedQPrime: make([]frontend.Variable, bN),
-// 	}
-// }
+func AllocateSumcheckCircuit(bN, nInstance int, gate circuit.Gate) SumcheckCircuit {
+	return SumcheckCircuit{
+		Proof:          AllocateProof(bN, gate),
+		ExpectedQPrime: make([]frontend.Variable, bN),
+		InitialClaim:   make([]frontend.Variable, nInstance),
+	}
+}
 
-// func (scc *SumcheckCircuit) Define(cs frontend.API) error {
-// 	hR, hL, hPrime, _ := scc.Proof.AssertValid(cs, scc.InitialClaim, 1)
-// 	for i := range hR {
-// 		cs.AssertIsEqual(hL[i], scc.ExpectedQL[i])
-// 		cs.AssertIsEqual(hR[i], scc.ExpectedQR[i])
-// 	}
+func (scc *SumcheckCircuit) Define(cs frontend.API) error {
+	hPrime, _, _ := scc.Proof.AssertValid(cs, scc.InitialClaim)
 
-// 	for i := range hPrime {
-// 		cs.AssertIsEqual(hPrime[i], scc.ExpectedQPrime[i])
-// 	}
+	for i := range hPrime {
+		cs.AssertIsEqual(hPrime[i], scc.ExpectedQPrime[i])
+	}
 
-// 	return nil
-// }
+	return nil
+}
 
-// func TestSumcheckCircuit(t *testing.T) {
+func (scc *SumcheckCircuit) Assign(
+	proof sumcheck.Proof,
+	initialClaim []fr.Element,
+	expectedQPrime []fr.Element,
+) error {
+	scc.Proof.Assign(proof)
 
-// 	var bN, bG, degHL, degHR, degHPrime = 4, 1, 2, 8, 8
-// 	assert := test.NewAssert(t)
+	for i := range initialClaim {
+		scc.InitialClaim[i] = initialClaim[i]
+	}
 
-// 	// Attempts to compile the circuit
-// 	scc := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
+	for i := range expectedQPrime {
+		scc.ExpectedQPrime[i] = expectedQPrime[i]
+	}
 
-// 	// Runs a test sumcheck prover to get witness values
-// 	scProver := sumcheck.InitializeProverForTests(bN)
-// 	firstClaim := scProver.GetClaim()
-// 	scVer := sumcheck.Verifier{}
-// 	proof, expectedQPrime, expectedQR, expectedQL, _ := scProver.Prove()
-// 	valid, _, _, _, _ := scVer.Verify(firstClaim, proof, bN, bG)
+	return nil
+}
 
-// 	assert.True(valid, "Sumcheck verifier refused")
+func genericTest(t *testing.T, X []poly.MultiLin, claims []fr.Element, qs [][]fr.Element, gate circuit.Gate) {
+	proof, expectedQPrime, _ := sumcheck.Prove(X, qs, claims, gate)
+	circ := AllocateSumcheckCircuit(len(qs[0]), len(claims), gate)
 
-// 	witness := AllocateSumcheckCircuit(bN, bG, degHL, degHR, degHPrime)
-// 	witness.InitialClaim = firstClaim
-// 	witness.Proof.Assign(proof)
+	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circ)
+	if err != nil {
+		panic(err)
+	}
 
-// 	for i := range expectedQL {
-// 		witness.ExpectedQL[i] = expectedQL[i]
-// 		witness.ExpectedQR[i] = expectedQR[i]
+	witness := AllocateSumcheckCircuit(len(qs[0]), len(claims), gate)
+	witness.Assign(proof, claims, expectedQPrime)
 
-// 	}
+	test.IsSolved(&circ, &witness, ecc.BN254, backend.GROTH16)
 
-// 	for i := range expectedQPrime {
-// 		witness.ExpectedQPrime[i] = expectedQPrime[i]
-// 	}
+}
 
-// 	assert.SolvingSucceeded(&scc, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
-// 	assert.ProverSucceeded(&scc, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
-// }
+func TestSumcheckCircuit(t *testing.T) {
+
+	bn := 5
+	X, claims, qs, gate := sumcheck.InitializeCipherGateInstance(bn)
+	genericTest(t, X, claims, qs, gate)
+
+	ninstance := 5
+	X, claims, qs, gate = sumcheck.InitializeMultiInstance(bn, ninstance)
+	genericTest(t, X, claims, qs, gate)
+
+}

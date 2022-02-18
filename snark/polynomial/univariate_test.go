@@ -35,12 +35,12 @@ func TestUnivariate(t *testing.T) {
 	assert := test.NewAssert(t)
 
 	var witness univariateTestCircuit
-	witness.Poly.Coefficients = make([]frontend.Variable, 4)
+	witness.Poly = make([]frontend.Variable, 4)
 	// witness <---> X^3 + 2X^2 + 3X + 4
-	witness.Poly.Coefficients[0] = 4
-	witness.Poly.Coefficients[1] = 3
-	witness.Poly.Coefficients[2] = 2
-	witness.Poly.Coefficients[3] = 1
+	witness.Poly[0] = 4
+	witness.Poly[1] = 3
+	witness.Poly[2] = 2
+	witness.Poly[3] = 1
 	witness.ZnO = 14
 	witness.Expected = 194
 

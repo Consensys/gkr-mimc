@@ -14,7 +14,7 @@ func Verify(claims []fr.Element, proof Proof) (qPrime []fr.Element, finalClaim, 
 	challenges := make([]fr.Element, bn)
 
 	var expectedValue fr.Element
-	expectedValue, recombChal = RecombineMultiClaims(claims)
+	expectedValue, recombChal = recombineMultiClaims(claims)
 
 	var actualValue, r, zero, one, evalAtOne fr.Element
 	one.SetOne()
@@ -38,10 +38,10 @@ func Verify(claims []fr.Element, proof Proof) (qPrime []fr.Element, finalClaim, 
 	return challenges, expectedValue, recombChal, nil
 }
 
-func RecombineMultiClaims(claims []fr.Element) (claim, challenge fr.Element) {
+func recombineMultiClaims(claims []fr.Element) (claim, challenge fr.Element) {
 	if len(claims) < 1 {
 		// No recombination
-		return claim, fr.Element{}
+		return claims[0], fr.Element{}
 	}
 	challenge = common.GetChallenge(claims)
 	return poly.EvalUnivariate(claims, challenge), challenge
