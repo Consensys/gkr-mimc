@@ -27,7 +27,10 @@ func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
 	proof.QPrimes = make([][][]frontend.Variable, len(c))
 
 	for layer := range c {
-		proof.SumcheckProofs[layer] = sumcheck.AllocateProof(bN, c[layer].Gate)
+		// When the Gate is nil, then it's an input layer
+		if c[layer].Gate != nil {
+			proof.SumcheckProofs[layer] = sumcheck.AllocateProof(bN, c[layer].Gate)
+		}
 		// We might also allocate qPrime and the claim for the last layer
 		// But remember that they are passed by the user anyway, so they are
 		// guaranteed to be allocated prior to
@@ -38,6 +41,10 @@ func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
 			proof.QPrimes[layer][j] = make([]frontend.Variable, bN)
 		}
 	}
+
+	proof.Claims[len(proof.Claims)-1] = []frontend.Variable{}
+
+	proof.QPrimes[len(proof.Claims)-1] = [][]frontend.Variable{make([]frontend.Variable, bN)}
 
 	return proof
 }
@@ -121,7 +128,7 @@ func (proof Proof) testSumcheck(cs frontend.API, c circuit.Circuit, layer int) {
 			cs.AssertIsEqual(proof.QPrimes[inpL][readAt][k], nextQprime[k])
 		}
 
-		subClaims = append(subClaims, &proof.Claims[inpL][readAt])
+		subClaims = append(subClaims, proof.Claims[inpL][readAt])
 	}
 
 	// Run the gate to compute the expected claim
@@ -140,8 +147,6 @@ func (proof Proof) testSumcheck(cs frontend.API, c circuit.Circuit, layer int) {
 
 func (proof Proof) testInitialRound(cs frontend.API, inps []poly.MultiLin, layer int) error {
 	actual := inps[layer].Eval(cs, proof.QPrimes[layer][0])
-	if actual == proof.Claims[layer][0] {
-		return fmt.Errorf("initial round mismatch")
-	}
+	cs.AssertIsEqual(actual, proof.Claims[layer][0])
 	return nil
 }

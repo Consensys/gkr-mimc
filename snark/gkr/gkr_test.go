@@ -63,34 +63,34 @@ func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
 
 func TestMimcCircuit(t *testing.T) {
 
-	bN := 2
-	assert := test.NewAssert(t)
+	bn := 2
 
-	mimcCircuit := AllocateGKRMimcTestCircuit(bN)
+	mimcCircuit := AllocateGKRMimcTestCircuit(bn)
+
 	// Attempt to compile the circuit
-
-	// Generate the witness values by running the prover
-	var witness GKRMimcTestCircuit
-
-	// Creates the assignments values
-	nativeCircuit := examples.Mimc()
-	inputs := []polyFr.MultiLin{
-		polyFr.MultiLin(common.RandomFrArray(1 << bN)),
-		polyFr.MultiLin(common.RandomFrArray(1 << bN)),
+	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
+	if err != nil {
+		panic(err)
 	}
-	assignment := nativeCircuit.Assign(inputs...)
-	outputs := assignment[93]
-	initialQPrime := common.RandomFrArray(bN)
 
-	proof := gkr.Prove(nativeCircuit, assignment, initialQPrime)
+	// Create witness values
+	c := examples.Mimc()
+	inputs := []polyFr.MultiLin{
+		common.RandomFrArray(1 << bn),
+		common.RandomFrArray(1 << bn),
+	}
+	qPrime := common.RandomFrArray(bn)
 
-	// Assigns the values
-	witness = AllocateGKRMimcTestCircuit(bN)
-	witness.Assign(proof, inputs, outputs, initialQPrime)
+	a := c.Assign(inputs...)
+	outputs := a[93].DeepCopyLarge()
+	gkrProof := gkr.Prove(c, a, qPrime)
 
-	assert.SolvingSucceeded(&mimcCircuit, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
-	// Takes 200sec on my laptop
-	// assert.ProverSucceeded( &witness)
+	// Assigns the witness
+	witness := AllocateGKRMimcTestCircuit(bn)
+	witness.Assign(gkrProof, inputs, outputs, qPrime)
+
+	test.IsSolved(&mimcCircuit, &witness, ecc.BN254, backend.GROTH16)
+
 }
 
 // func BenchmarkMimcCircuit(b *testing.B) {
