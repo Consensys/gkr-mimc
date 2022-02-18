@@ -105,7 +105,10 @@ func BenchmarkMimcCircuit(b *testing.B) {
 	// Attempt to compile the circuit
 	r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
 
+	inte, sec, publ := r1cs.GetNbVariables()
+
 	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
+	fmt.Printf("Nb constraints = int %v sec %v pub %v\n", inte, sec, publ)
 
 	// Create witness values
 	c := examples.MimcCircuit()
