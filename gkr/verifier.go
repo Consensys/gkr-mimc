@@ -45,7 +45,9 @@ func Verify(
 	}
 
 	for layer := range inputs {
-		proof.testInitialRound(inputs, layer)
+		if err = proof.testInitialRound(inputs, layer); err != nil {
+			return err
+		}
 	}
 
 	return nil

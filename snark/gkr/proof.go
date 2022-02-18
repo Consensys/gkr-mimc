@@ -1,99 +1,147 @@
 package gkr
 
-// import (
-// 	"github.com/consensys/gkr-mimc/gkr"
-// 	"github.com/consensys/gkr-mimc/hash"
-// 	hashGadget "github.com/consensys/gkr-mimc/snark/hash"
-// 	"github.com/consensys/gkr-mimc/snark/polynomial"
-// 	"github.com/consensys/gkr-mimc/snark/sumcheck"
+import (
+	"fmt"
+	"sort"
 
-// 	"github.com/consensys/gnark/frontend"
-// )
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/gkr"
+	poly "github.com/consensys/gkr-mimc/snark/polynomial"
+	"github.com/consensys/gkr-mimc/snark/sumcheck"
 
-// const nLayers = hash.MimcRounds
+	"github.com/consensys/gnark/frontend"
+)
 
-// // Proof represents a GKR proof
-// // Only valid for the MiMC circuit
-// type Proof struct {
-// 	SumcheckProofs []sumcheck.Proof
-// 	ClaimsLeft     []frontend.Variable
-// 	ClaimsRight    []frontend.Variable
-// }
+// Proof represents a GKR proof
+// Only valid for the MiMC circuit
+type Proof struct {
+	SumcheckProofs []sumcheck.Proof
+	Claims         [][]frontend.Variable
+	QPrimes        [][][]frontend.Variable
+}
 
-// // AllocateProof allocates a new proof gadget
-// func AllocateProof(bN int, circuit Circuit) Proof {
-// 	nLayers := len(circuit.Layers)
-// 	SumcheckProofs := make([]sumcheck.Proof, nLayers)
-// 	ClaimsLeft := make([]frontend.Variable, nLayers)
-// 	ClaimsRight := make([]frontend.Variable, nLayers)
+// AllocateProof allocates a new proof gadget
+func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
+	proof.SumcheckProofs = make([]sumcheck.Proof, len(c))
+	proof.Claims = make([][]frontend.Variable, len(c))
+	proof.QPrimes = make([][][]frontend.Variable, len(c))
 
-// 	for i := range SumcheckProofs {
-// 		SumcheckProofs[i] = sumcheck.AllocateProof(bN, circuit.Layers[i].BG, circuit.Layers[i].DegHL, circuit.Layers[i].DegHR, circuit.Layers[i].DegHPrime)
-// 	}
+	for layer := range c {
+		proof.SumcheckProofs[layer] = sumcheck.AllocateProof(bN, c[layer].Gate)
+		// We might also allocate qPrime and the claim for the last layer
+		// But remember that they are passed by the user anyway, so they are
+		// guaranteed to be allocated prior to
+		proof.Claims[layer] = make([]frontend.Variable, len(c[layer].Out))
+		proof.QPrimes[layer] = make([][]frontend.Variable, len(c[layer].Out))
 
-// 	return Proof{
-// 		SumcheckProofs: SumcheckProofs,
-// 		ClaimsLeft:     ClaimsLeft,
-// 		ClaimsRight:    ClaimsRight,
-// 	}
-// }
+		for j := range proof.QPrimes[layer] {
+			proof.QPrimes[layer][j] = make([]frontend.Variable, bN)
+		}
+	}
 
-// // Assign the proof object
-// func (p *Proof) Assign(proof gkr.Proof) {
-// 	for k := range p.SumcheckProofs {
-// 		p.SumcheckProofs[k].Assign(proof.SumcheckProofs[k])
-// 		p.ClaimsLeft[k] = proof.ClaimsLeft[k]
-// 		p.ClaimsRight[k] = proof.ClaimsRight[k]
-// 	}
-// }
+	return proof
+}
 
-// // AssertValid runs the GKR verifier
-// func (p *Proof) AssertValid(
-// 	cs frontend.API,
-// 	circuit Circuit,
-// 	qInitial []frontend.Variable,
-// 	qPrimeInitial []frontend.Variable,
-// 	vInput, vOutput polynomial.MultilinearByValues,
-// ) {
+// Assign the proof object
+func (p *Proof) Assign(proof gkr.Proof) {
+	// sanity-check
+	if len(p.SumcheckProofs) != len(proof.SumcheckProofs) {
+		panic("not the same number of layers")
+	}
 
-// 	qqPrime := append(append([]frontend.Variable{}, qInitial...), qPrimeInitial...)
-// 	claim := vOutput.Eval(cs, qqPrime)
-// 	hL, hR, hPrime, expectedTotalClaim := p.SumcheckProofs[nLayers-1].AssertValid(cs, claim, circuit.Layers[nLayers-1].BG)
-// 	actualTotalClaim := circuit.Layers[nLayers-1].Combine(
-// 		cs,
-// 		qInitial, qPrimeInitial,
-// 		hL, hR, hPrime,
-// 		p.ClaimsLeft[nLayers-1], p.ClaimsRight[nLayers-1],
-// 	)
-// 	cs.AssertIsEqual(expectedTotalClaim, actualTotalClaim)
+	for layer := range proof.SumcheckProofs {
+		p.SumcheckProofs[layer].Assign(proof.SumcheckProofs[layer])
+		// We might also allocate qPrime and the claim for the last layer
+		// But remember that they are passed by the user anyway, so they are
+		// guaranteed to be allocated prior to
+		for j := range proof.Claims[layer] {
+			p.Claims[layer][j] = proof.Claims[layer][j]
+		}
 
-// 	var qL, qR, qPrime []frontend.Variable
+		for j := range proof.QPrimes[layer] {
+			for k := range proof.QPrimes[layer][j] {
+				p.QPrimes[layer][j][k] = proof.QPrimes[layer][j][k]
+			}
+		}
+	}
+}
 
-// 	for layer := nLayers - 2; layer >= 0; layer-- {
-// 		lambdaL := 1
-// 		lambdaR := hashGadget.MimcHash(cs, p.ClaimsLeft[layer+1], p.ClaimsRight[layer+1])
-// 		claim = cs.Add(p.ClaimsLeft[layer+1], cs.Mul(lambdaR, p.ClaimsRight[layer+1]))
+// AssertValid runs the GKR verifier
+func (proof *Proof) AssertValid(
+	cs frontend.API,
+	c circuit.Circuit,
+	qPrime []frontend.Variable,
+	inputs []poly.MultiLin,
+	outputs poly.MultiLin,
+) {
 
-// 		// Updates qL and qR values to initialize the next round
-// 		qL = hL
-// 		qR = hR
-// 		qPrime = hPrime
+	nLayers := len(c)
 
-// 		// Verify the sumcheck
-// 		hL, hR, hPrime, expectedTotalClaim = p.SumcheckProofs[layer].AssertValid(cs, claim, circuit.Layers[layer].BG)
-// 		actualTotalClaim = circuit.Layers[layer].CombineWithLinearComb(
-// 			cs,
-// 			qL, qR, qPrime,
-// 			hL, hR, hPrime,
-// 			lambdaL, lambdaR,
-// 			p.ClaimsLeft[layer], p.ClaimsRight[layer],
-// 		)
-// 		cs.AssertIsEqual(expectedTotalClaim, actualTotalClaim)
-// 	}
+	for k := range qPrime {
+		cs.AssertIsEqual(proof.QPrimes[nLayers-1][0][k], qPrime[k])
+	}
 
-// 	actualVL, actualVR := p.ClaimsLeft[0], p.ClaimsRight[0]
-// 	expectedVL, expectedVR := vInput.EvalMixed(cs, hL, hR, hPrime)
+	// Pass the initial claim into the proof, because the prover does not compute it
+	proof.Claims[nLayers-1] = append(proof.Claims[nLayers-1], outputs.Eval(cs, qPrime))
 
-// 	cs.AssertIsEqual(expectedVL, actualVL)
-// 	cs.AssertIsEqual(expectedVR, actualVR)
-// }
+	for layer := nLayers - 1; layer >= 0; layer-- {
+		if len(c[layer].In) < 1 {
+			// It's an input layer
+			// No, more sumcheck to verify
+			break
+		}
+
+		proof.testSumcheck(cs, c, layer)
+
+		for layer := range inputs {
+			proof.testInitialRound(cs, inputs, layer)
+		}
+	}
+
+}
+
+func (proof Proof) testSumcheck(cs frontend.API, c circuit.Circuit, layer int) {
+	// First thing, test the sumcheck
+	nextQprime, nextClaim, recombChal := proof.SumcheckProofs[layer].AssertValid(cs, proof.Claims[layer])
+	// 2 is because in practice, a gate cannot have more than two inputs with our designs
+	subClaims := make([]frontend.Variable, 0, 2)
+
+	for _, inpL := range c[layer].In {
+		// Seach the position of `l` as an output of layer `inpL`
+		// It works because `c[inpL].Out` is guaranteed to be sorted.
+		readAt := sort.SearchInts(c[inpL].Out, layer)
+
+		// Since `SearchInts` does not answer whether the `int` is contained or not
+		// but returns the position if it "were" inside. We need to test inclusion
+		if c[inpL].Out[readAt] != layer {
+			panic(fmt.Sprintf("circuit misformatted, In and Out are inconsistent between layers %v and %v", layer, inpL))
+		}
+
+		for k := range nextQprime {
+			cs.AssertIsEqual(proof.QPrimes[inpL][readAt][k], nextQprime[k])
+		}
+
+		subClaims = append(subClaims, &proof.Claims[inpL][readAt])
+	}
+
+	// Run the gate to compute the expected claim
+	expectedClaim := c[layer].Gate.GnarkEval(cs, subClaims...)
+
+	// Evaluation of eq to be used for testing the consistency with the challenges
+	// Recombines the eq evaluations into a single challenge
+	tmpEvals := make(poly.Univariate, len(proof.QPrimes[layer]))
+	for i := range proof.QPrimes[layer] {
+		tmpEvals[i] = poly.EqEval(cs, proof.QPrimes[layer][i], nextQprime)
+	}
+	eqEval := tmpEvals.Eval(cs, recombChal)
+	expectedClaim = cs.Mul(expectedClaim, eqEval)
+	cs.AssertIsEqual(expectedClaim, nextClaim)
+}
+
+func (proof Proof) testInitialRound(cs frontend.API, inps []poly.MultiLin, layer int) error {
+	actual := inps[layer].Eval(cs, proof.QPrimes[layer][0])
+	if actual == proof.Claims[layer][0] {
+		return fmt.Errorf("initial round mismatch")
+	}
+	return nil
+}

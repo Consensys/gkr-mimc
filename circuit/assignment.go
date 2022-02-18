@@ -9,13 +9,13 @@ import (
 type Assignment []poly.MultiLin
 
 // Assign computes the full assignment
-func (c Circuit) Assign(inps ...[]fr.Element) (a Assignment) {
+func (c Circuit) Assign(inps ...poly.MultiLin) (a Assignment) {
 
 	a = make(Assignment, len(c))
 
 	// Assigns the provided input layers
 	for i := 0; i < len(inps); i++ {
-		a[i] = poly.MultiLin(inps[i]).DeepCopy()
+		a[i] = inps[i].DeepCopy()
 	}
 
 	for i := len(inps); i < len(a); i++ {

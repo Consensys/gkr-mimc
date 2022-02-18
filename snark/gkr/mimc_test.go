@@ -1,90 +1,97 @@
 package gkr
 
-// import (
-// 	"fmt"
-// 	"runtime"
-// 	"testing"
+import (
+	"testing"
 
-// 	"github.com/consensys/gkr-mimc/circuit"
-// 	"github.com/consensys/gkr-mimc/common"
-// 	"github.com/consensys/gkr-mimc/examples"
-// 	"github.com/consensys/gkr-mimc/gkr"
-// 	"github.com/consensys/gkr-mimc/snark/polynomial"
+	"github.com/consensys/gkr-mimc/circuit"
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/examples"
+	"github.com/consensys/gkr-mimc/gkr"
+	polyFr "github.com/consensys/gkr-mimc/poly"
+	poly "github.com/consensys/gkr-mimc/snark/polynomial"
 
-// 	"github.com/consensys/gnark-crypto/ecc"
-// 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-// 	"github.com/consensys/gnark/backend"
-// 	"github.com/consensys/gnark/backend/groth16"
-// 	"github.com/consensys/gnark/frontend"
-// 	"github.com/consensys/gnark/test"
-// )
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
+	"github.com/consensys/gnark/backend"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
+)
 
-// type GKRMimcTestCircuit struct {
-// 	Circuit                 Circuit
-// 	Proof                   Proof
-// 	QInitial, QInitialprime []frontend.Variable
-// 	VInput, VOutput         polynomial.MultilinearByValues
-// }
+type GKRMimcTestCircuit struct {
+	Circuit       circuit.Circuit
+	Proof         Proof
+	QInitialprime []frontend.Variable
+	Inputs        []poly.MultiLin
+	Output        poly.MultiLin
+}
 
-// func AllocateGKRMimcTestCircuit(bN int) GKRMimcTestCircuit {
-// 	circuit := CreateMimcCircuit()
-// 	return GKRMimcTestCircuit{
-// 		Circuit:       circuit,
-// 		Proof:         AllocateProof(bN, circuit),
-// 		QInitial:      []frontend.Variable{},
-// 		QInitialprime: make([]frontend.Variable, bN),
-// 		VInput:        polynomial.AllocateMultilinear(bN + 1),
-// 		VOutput:       polynomial.AllocateMultilinear(bN),
-// 	}
-// }
+func AllocateGKRMimcTestCircuit(bN int) GKRMimcTestCircuit {
+	circuit := examples.Mimc()
+	return GKRMimcTestCircuit{
+		Circuit:       circuit,
+		Proof:         AllocateProof(bN, circuit),
+		QInitialprime: make([]frontend.Variable, bN),
+		Output:        poly.AllocateMultilinear(bN),
+		Inputs: []poly.MultiLin{
+			poly.AllocateMultilinear(bN),
+			poly.AllocateMultilinear(bN),
+		},
+	}
+}
 
-// func (c *GKRMimcTestCircuit) Assign(
-// 	proof gkr.Proof,
-// 	inputs [][]fr.Element,
-// 	outputs [][]fr.Element,
-// 	qInitialprime []fr.Element,
-// ) {
-// 	c.Proof.Assign(proof)
-// 	for i := range qInitialprime {
-// 		c.QInitialprime[i] = qInitialprime[i]
-// 	}
-// 	c.VInput.AssignFromChunkedBKT(inputs)
-// 	c.VOutput.AssignFromChunkedBKT(outputs)
-// }
+func (c *GKRMimcTestCircuit) Assign(
+	proof gkr.Proof,
+	inputs []polyFr.MultiLin,
+	outputs polyFr.MultiLin,
+	qInitialprime []fr.Element,
+) {
+	c.Proof.Assign(proof)
+	for i := range qInitialprime {
+		c.QInitialprime[i] = qInitialprime[i]
+	}
 
-// func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
-// 	c.Proof.AssertValid(cs, c.Circuit, c.QInitial, c.QInitialprime, c.VInput, c.VOutput)
-// 	return nil
-// }
+	for i := range inputs {
+		c.Inputs[i].Assign(inputs[i])
+	}
+	c.Output.Assign(outputs)
+}
 
-// func TestMimcCircuit(t *testing.T) {
+func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
+	c.Proof.AssertValid(cs, c.Circuit, c.QInitialprime, c.Inputs, c.Output)
+	return nil
+}
 
-// 	bN := 2
-// 	assert := test.NewAssert(t)
+func TestMimcCircuit(t *testing.T) {
 
-// 	mimcCircuit := AllocateGKRMimcTestCircuit(bN)
-// 	// Attempt to compile the circuit
+	bN := 2
+	assert := test.NewAssert(t)
 
-// 	// Generate the witness values by running the prover
-// 	var witness GKRMimcTestCircuit
+	mimcCircuit := AllocateGKRMimcTestCircuit(bN)
+	// Attempt to compile the circuit
 
-// 	// Creates the assignments values
-// 	nativeCircuit := examples.CreateMimcCircuit()
-// 	inputs := common.RandomFrDoubleSlice(1, 2*(1<<bN))
-// 	assignment := nativeCircuit.Assign(inputs, 1)
-// 	outputs := assignment.Values[91]
-// 	prover := gkr.NewProver(nativeCircuit, assignment)
-// 	proof := prover.Prove(1)
-// 	qInitialprime, _ := gkr.GetInitialQPrimeAndQ(bN, 0)
+	// Generate the witness values by running the prover
+	var witness GKRMimcTestCircuit
 
-// 	// Assigns the values
-// 	witness = AllocateGKRMimcTestCircuit(bN)
-// 	witness.Assign(proof, inputs, outputs, qInitialprime)
+	// Creates the assignments values
+	nativeCircuit := examples.Mimc()
+	inputs := []polyFr.MultiLin{
+		polyFr.MultiLin(common.RandomFrArray(1 << bN)),
+		polyFr.MultiLin(common.RandomFrArray(1 << bN)),
+	}
+	assignment := nativeCircuit.Assign(inputs...)
+	outputs := assignment[93]
+	initialQPrime := common.RandomFrArray(bN)
 
-// 	assert.SolvingSucceeded(&mimcCircuit, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
-// 	// Takes 200sec on my laptop
-// 	// assert.ProverSucceeded( &witness)
-// }
+	proof := gkr.Prove(nativeCircuit, assignment, initialQPrime)
+
+	// Assigns the values
+	witness = AllocateGKRMimcTestCircuit(bN)
+	witness.Assign(proof, inputs, outputs, initialQPrime)
+
+	assert.SolvingSucceeded(&mimcCircuit, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
+	// Takes 200sec on my laptop
+	// assert.ProverSucceeded( &witness)
+}
 
 // func BenchmarkMimcCircuit(b *testing.B) {
 // 	bN := common.GetBN()
