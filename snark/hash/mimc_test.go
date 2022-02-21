@@ -2,8 +2,6 @@ package hash
 
 import (
 	"fmt"
-	"os"
-	"strconv"
 	"testing"
 
 	"github.com/consensys/gkr-mimc/common"
@@ -74,7 +72,7 @@ func TestMimc(t *testing.T) {
 
 func BenchmarkMimc(b *testing.B) {
 
-	bN, _ := strconv.Atoi(os.Getenv("BN_GKR"))
+	bN := 10
 	fmt.Printf("Baseline Mimc7 benchmark bN = %v\n", bN)
 
 	c := Allocate(1<<bN, 1)
@@ -104,7 +102,10 @@ func BenchmarkMimc(b *testing.B) {
 	b.Run("Gnark prover", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			w, _ := frontend.NewWitness(&witness, ecc.BN254)
-			_, _ = groth16.Prove(r1cs, pk, w)
+			_, err := groth16.Prove(r1cs, pk, w)
+			if err != nil {
+				panic(err)
+			}
 		}
 	})
 

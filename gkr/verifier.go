@@ -30,17 +30,21 @@ func Verify(
 	}
 
 	// Pass the initial claim into the proof, because the prover does not compute it
+	// For a matter of immutability : the old value of the claim is saved so we can put it
+	// back in place before returning
+	oldClaim := proof.Claims[nLayers-1]
 	proof.Claims[nLayers-1] = append(proof.Claims[nLayers-1], outputs.Evaluate(qPrime))
+	defer func() { proof.Claims[nLayers-1] = oldClaim }()
 
 	for layer := nLayers - 1; layer >= 0; layer-- {
-		if len(c[layer].In) < 1 {
+		if c.IsInputLayer(layer) {
 			// It's an input layer
 			// No, more sumcheck to verify
 			break
 		}
 
 		if err := proof.testSumcheck(c, layer); err != nil {
-			return err
+			return fmt.Errorf("error at layer %v : %v", layer, err)
 		}
 	}
 
@@ -112,10 +116,17 @@ func (proof Proof) testSumcheck(
 	return nil
 }
 
+// Performs one of the GKR checks for the inputs layers
 func (proof Proof) testInitialRound(inps []poly.MultiLin, layer int) error {
-	actual := inps[layer].Evaluate(proof.QPrimes[layer][0])
-	if actual == proof.Claims[layer][0] {
-		return fmt.Errorf("initial round mismatch")
+	qPrime := proof.QPrimes[layer][0]
+	claim := proof.Claims[layer][0]
+	actual := inps[layer].Evaluate(qPrime)
+
+	if actual != claim {
+		return fmt.Errorf(
+			"input layer check failed \n\tlayer %v \n\tclaim %v \n\teval %v \n\tqPrime %v",
+			layer, claim.String(), actual.String(), common.FrSliceToString(qPrime),
+		)
 	}
 	return nil
 }

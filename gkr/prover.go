@@ -32,7 +32,7 @@ func Prove(c circuit.Circuit, a circuit.Assignment, qPrime []fr.Element) (proof 
 
 	for layer := nLayers - 1; layer >= 0; layer-- {
 
-		if len(c[layer].In) < 1 {
+		if c.IsInputLayer(layer) {
 			// It's an input layer
 			// The proof is complete
 			break

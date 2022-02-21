@@ -68,7 +68,10 @@ func genericTest(t *testing.T, X []poly.MultiLin, claims []fr.Element, qs [][]fr
 	witness := AllocateSumcheckCircuit(len(qs[0]), len(claims), gate)
 	witness.Assign(proof, claims, expectedQPrime)
 
-	test.IsSolved(&circ, &witness, ecc.BN254, backend.GROTH16)
+	err = test.IsSolved(&circ, &witness, ecc.BN254, backend.GROTH16)
+	if err != nil {
+		panic(err)
+	}
 
 }
 

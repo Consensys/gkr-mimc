@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
 	"github.com/consensys/gkr-mimc/poly"
+	"github.com/consensys/gkr-mimc/sumcheck"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
@@ -32,14 +33,32 @@ func TestGKR(t *testing.T) {
 
 	// Check that the claims are consistents with the assignment
 	for layer := len(c) - 1; layer >= 0; layer-- {
+
 		for j, claim := range proof.Claims[layer] {
 			claim2 := a2[layer].Evaluate(proof.QPrimes[layer][j])
 
 			if claim2 != claim {
 				panic(fmt.Sprintf("inconsistent claim at layer %v no %v, %v != %v", layer, j, claim.String(), claim2.String()))
 			}
+		}
+	}
 
-			assert.Equal(t, claim2.String(), proof.Claims[layer][j].String())
+	// Check that the claims are consistents with the layers evaluations
+	for layer := len(c) - 1; layer >= 0; layer-- {
+		// Skip if this is an input layer
+		if c[layer].Gate == nil {
+			break
+		}
+
+		Xs := a2.InputsOfLayer(c, layer)
+
+		for j, claim := range proof.Claims[layer] {
+			qPrime := proof.QPrimes[layer][j]
+			claim2 := sumcheck.Evaluation(c[layer].Gate, [][]fr.Element{qPrime}, []fr.Element{}, Xs...)
+
+			if claim2 != claim {
+				panic(fmt.Sprintf("inconsistent claim at layer %v no %v, %v != %v", layer, j, claim.String(), claim2.String()))
+			}
 		}
 	}
 

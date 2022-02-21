@@ -64,9 +64,9 @@ func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
 	return nil
 }
 
-func TestMimcCircuit(t *testing.T) {
+func TestGkrCircuit(t *testing.T) {
 
-	bn := 10
+	bn := 2
 
 	mimcCircuit := AllocateGKRMimcTestCircuit(bn)
 
@@ -88,11 +88,19 @@ func TestMimcCircuit(t *testing.T) {
 	outputs := a[93].DeepCopyLarge()
 	gkrProof := gkr.Prove(c, a, qPrime)
 
+	err = gkr.Verify(c, gkrProof, inputs, outputs, qPrime)
+	if err != nil {
+		panic(err)
+	}
+
 	// Assigns the witness
 	witness := AllocateGKRMimcTestCircuit(bn)
 	witness.Assign(gkrProof, inputs, outputs, qPrime)
 
-	test.IsSolved(&mimcCircuit, &witness, ecc.BN254, backend.GROTH16)
+	err = test.IsSolved(&mimcCircuit, &witness, ecc.BN254, backend.GROTH16)
+	if err != nil {
+		panic(err)
+	}
 
 }
 
@@ -139,6 +147,9 @@ func BenchmarkMimcCircuit(b *testing.B) {
 
 	t = time.Now()
 	w, _ := frontend.NewWitness(&witness, ecc.BN254)
-	_, _ = groth16.Prove(r1cs, pk, w)
+	_, err := groth16.Prove(r1cs, pk, w)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Printf("gnark prover took %v ms\n", time.Since(t).Milliseconds())
 }

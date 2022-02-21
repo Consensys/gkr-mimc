@@ -28,20 +28,14 @@ func TestMimc(t *testing.T) {
 	bN := 3
 
 	// Performs the assignment
-	block, initstate := randomInputs(bN)
-
-	a := mimcCircuit.Assign(block, initstate)
+	key, payload := randomInputs(bN)
+	a := mimcCircuit.Assign(key, payload)
 
 	outputs := a[93]
 
-	var r fr.Element
-	mimcCircuit[3].Gate.Eval(&r, &block[0], &initstate[0])
-
 	// Sees if the output is consistent with the result of calling Mimc permutation
 	// From finState decrease bu `block` to cancel the last key-addition done in `MimcPermutationUpdate`
-	finstate0 := initstate[0]
-	hash.MimcPermutationInPlace(&finstate0, block[0])
-	finstate0.Sub(&finstate0, &block[0])
+	finstate0 := hash.MimcKeyedPermutation(payload[0], key[0])
 
 	// An error here indicate an error in the transition functions definition
 	// The circuit should agree with

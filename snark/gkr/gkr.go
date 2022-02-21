@@ -60,9 +60,17 @@ func (p *Proof) Assign(proof gkr.Proof) {
 
 	for layer := range proof.SumcheckProofs {
 		p.SumcheckProofs[layer].Assign(proof.SumcheckProofs[layer])
+
+		if len(proof.Claims[layer]) != len(p.Claims[layer]) {
+			panic(fmt.Sprintf(
+				"panicked in Assign : at layer %v the gnark proof expects %v claims but the assignment contains %v",
+				layer, len(p.Claims[layer]), len(proof.Claims[layer]),
+			))
+		}
+
 		// We might also allocate qPrime and the claim for the last layer
 		// But remember that they are passed by the user anyway, so they are
-		// guaranteed to be allocated prior to
+		// guaranteed to be allocated aside from the verification runtime
 		for j := range proof.Claims[layer] {
 			p.Claims[layer][j] = proof.Claims[layer][j]
 		}

@@ -56,12 +56,12 @@ func (c *CipherGate) Eval(res *fr.Element, xs ...*fr.Element) {
 
 // GnarkEval performs the cipher operation on gnark variables
 func (c *CipherGate) GnarkEval(cs frontend.API, xs ...frontend.Variable) frontend.Variable {
-	tmp := cs.Add(xs[1], frontend.Variable(c.Ark))
+	tmp := cs.Add(xs[0], xs[1], frontend.Variable(c.Ark))
 	cipher := cs.Mul(tmp, tmp)
 	cipher = cs.Mul(cipher, tmp)
 	cipher = cs.Mul(cipher, cipher)
 	cipher = cs.Mul(cipher, tmp)
-	return cs.Add(cipher, xs[0])
+	return cipher
 }
 
 // Degree returns the Degree of the gate on hL, hR and hPrime

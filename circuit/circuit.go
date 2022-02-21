@@ -62,3 +62,18 @@ func (l *Layer) Evaluate(inputs ...[]fr.Element) []fr.Element {
 	)
 	return res
 }
+
+// IsInputLayer returns true/false if this is an input layer
+// There are multiple ways of checking a layer is an input or output
+// All of them are checked. This helps as a sanity checks :
+// it will panic if any of the checks contradict the others.
+func (c Circuit) IsInputLayer(layer int) bool {
+	hasNoInputs := len(c[layer].In) == 0
+	hasNogates := c[layer].Gate == nil
+
+	if hasNoInputs != hasNogates {
+		panic(fmt.Sprintf("layer %v has no inputs? : %v but also has no gate? : %v", layer, hasNoInputs, hasNogates))
+	}
+
+	return hasNoInputs
+}
