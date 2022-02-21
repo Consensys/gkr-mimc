@@ -105,51 +105,54 @@ func TestGkrCircuit(t *testing.T) {
 }
 
 func BenchmarkMimcCircuit(b *testing.B) {
-	bn := 10
+	// This will expand the benchmark until, a SEGFAULT happens
+	// Or there is enough memory to run 32M hashes (=> impossible)
+	for bn := 17; bn < 25; bn++ {
 
-	fmt.Printf("bN = %v\n", bn)
+		fmt.Printf("bN = %v\n", bn)
 
-	mimcCircuit := AllocateGKRMimcTestCircuit(bn)
-	// Attempt to compile the circuit
-	r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
+		mimcCircuit := AllocateGKRMimcTestCircuit(bn)
+		// Attempt to compile the circuit
+		r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
 
-	inte, sec, publ := r1cs.GetNbVariables()
+		inte, sec, publ := r1cs.GetNbVariables()
 
-	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
-	fmt.Printf("Nb constraints = int %v sec %v pub %v\n", inte, sec, publ)
+		fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
+		fmt.Printf("Nb constraints = int %v sec %v pub %v\n", inte, sec, publ)
 
-	// Create witness values
-	c := examples.MimcCircuit()
-	inputs := []polyFr.MultiLin{
-		common.RandomFrArray(1 << bn),
-		common.RandomFrArray(1 << bn),
+		// Create witness values
+		c := examples.MimcCircuit()
+		inputs := []polyFr.MultiLin{
+			common.RandomFrArray(1 << bn),
+			common.RandomFrArray(1 << bn),
+		}
+		qPrime := common.RandomFrArray(bn)
+
+		// Assignment - Benchmark
+		t := time.Now()
+		assignment := c.Assign(inputs...)
+		fmt.Printf("gkr assignment took %v ms\n", time.Since(t).Milliseconds())
+
+		// Keeps the output for later assignment : not sure if actually needed
+		outputs := assignment[93].DeepCopyLarge()
+		t = time.Now()
+		proof := gkr.Prove(c, assignment, qPrime)
+		fmt.Printf("gkr prover took %v ms\n", time.Since(t).Milliseconds())
+
+		// Assigns the values
+		witness := AllocateGKRMimcTestCircuit(bn)
+		t = time.Now()
+		witness.Assign(proof, inputs, outputs, qPrime)
+		fmt.Printf("post gkr assignment took %v ms\n", time.Since(t).Milliseconds())
+
+		pk, _ := groth16.DummySetup(r1cs)
+
+		t = time.Now()
+		w, _ := frontend.NewWitness(&witness, ecc.BN254)
+		_, err := groth16.Prove(r1cs, pk, w)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("gnark prover took %v ms\n", time.Since(t).Milliseconds())
 	}
-	qPrime := common.RandomFrArray(bn)
-
-	// Assignment - Benchmark
-	t := time.Now()
-	assignment := c.Assign(inputs...)
-	fmt.Printf("gkr assignment took %v ms\n", time.Since(t).Milliseconds())
-
-	// Keeps the output for later assignment : not sure if actually needed
-	outputs := assignment[93].DeepCopyLarge()
-	t = time.Now()
-	proof := gkr.Prove(c, assignment, qPrime)
-	fmt.Printf("gkr prover took %v ms\n", time.Since(t).Milliseconds())
-
-	// Assigns the values
-	witness := AllocateGKRMimcTestCircuit(bn)
-	t = time.Now()
-	witness.Assign(proof, inputs, outputs, qPrime)
-	fmt.Printf("post gkr assignment took %v ms\n", time.Since(t).Milliseconds())
-
-	pk, _ := groth16.DummySetup(r1cs)
-
-	t = time.Now()
-	w, _ := frontend.NewWitness(&witness, ecc.BN254)
-	_, err := groth16.Prove(r1cs, pk, w)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("gnark prover took %v ms\n", time.Since(t).Milliseconds())
 }
