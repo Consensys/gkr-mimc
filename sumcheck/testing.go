@@ -3,18 +3,15 @@ package sumcheck
 import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/circuit/gates"
+	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 func InitializeCipherGateInstance(bn int) (X []poly.MultiLin, claims []fr.Element, qPrime [][]fr.Element, gate circuit.Gate) {
 
-	q := make([]fr.Element, bn)
-	for i := range q {
-		q[i].SetUint64(2)
-	}
-
-	gate = gates.NewCipherGate(fr.NewElement(1))
+	q := common.RandomFrArray(bn)
+	gate = gates.NewCipherGate(fr.NewElement(145646))
 
 	L := poly.MakeLarge(1 << bn)
 	R := poly.MakeLarge(1 << bn)

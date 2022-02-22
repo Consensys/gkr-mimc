@@ -68,38 +68,38 @@ func TestGkrCircuit(t *testing.T) {
 
 	for bn := 0; bn < 12; bn++ {
 
-	mimcCircuit := AllocateGKRMimcTestCircuit(bn)
+		mimcCircuit := AllocateGKRMimcTestCircuit(bn)
 
-	// Attempt to compile the circuit
-	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
-	if err != nil {
-		panic(err)
-	}
+		// Attempt to compile the circuit
+		_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &mimcCircuit)
+		if err != nil {
+			panic(err)
+		}
 
-	// Create witness values
-	c := examples.MimcCircuit()
-	inputs := []polyFr.MultiLin{
-		common.RandomFrArray(1 << bn),
-		common.RandomFrArray(1 << bn),
-	}
-	qPrime := common.RandomFrArray(bn)
+		// Create witness values
+		c := examples.MimcCircuit()
+		inputs := []polyFr.MultiLin{
+			common.RandomFrArray(1 << bn),
+			common.RandomFrArray(1 << bn),
+		}
+		qPrime := common.RandomFrArray(bn)
 
-	a := c.Assign(inputs...)
-	outputs := a[93].DeepCopyLarge()
-	gkrProof := gkr.Prove(c, a, qPrime)
+		a := c.Assign(inputs...)
+		outputs := a[93].DeepCopyLarge()
+		gkrProof := gkr.Prove(c, a, qPrime)
 
-	err = gkr.Verify(c, gkrProof, inputs, outputs, qPrime)
-	if err != nil {
-		panic(err)
-	}
+		err = gkr.Verify(c, gkrProof, inputs, outputs, qPrime)
+		if err != nil {
+			panic(err)
+		}
 
-	// Assigns the witness
-	witness := AllocateGKRMimcTestCircuit(bn)
-	witness.Assign(gkrProof, inputs, outputs, qPrime)
+		// Assigns the witness
+		witness := AllocateGKRMimcTestCircuit(bn)
+		witness.Assign(gkrProof, inputs, outputs, qPrime)
 
-	err = test.IsSolved(&mimcCircuit, &witness, ecc.BN254, backend.GROTH16)
-	if err != nil {
-		panic(err)
+		err = test.IsSolved(&mimcCircuit, &witness, ecc.BN254, backend.GROTH16)
+		if err != nil {
+			panic(err)
 		}
 	}
 
