@@ -85,7 +85,7 @@ func TestGkrCircuit(t *testing.T) {
 		qPrime := common.RandomFrArray(bn)
 
 		a := c.Assign(inputs...)
-		outputs := a[93].DeepCopyLarge()
+		outputs := a[93].DeepCopy()
 		gkrProof := gkr.Prove(c, a, qPrime)
 
 		err = gkr.Verify(c, gkrProof, inputs, outputs, qPrime)
@@ -101,6 +101,8 @@ func TestGkrCircuit(t *testing.T) {
 		if err != nil {
 			panic(err)
 		}
+
+		polyFr.DumpLarge(a...)
 	}
 
 }

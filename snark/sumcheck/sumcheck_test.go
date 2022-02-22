@@ -77,12 +77,13 @@ func genericTest(t *testing.T, X []poly.MultiLin, claims []fr.Element, qs [][]fr
 
 func TestSumcheckCircuit(t *testing.T) {
 
-	bn := 5
-	X, claims, qs, gate := sumcheck.InitializeCipherGateInstance(bn)
-	genericTest(t, X, claims, qs, gate)
+	for bn := 0; bn < 15; bn++ {
+		X, claims, qs, gate := sumcheck.InitializeCipherGateInstance(bn)
+		genericTest(t, X, claims, qs, gate)
 
-	ninstance := 5
-	X, claims, qs, gate = sumcheck.InitializeMultiInstance(bn, ninstance)
-	genericTest(t, X, claims, qs, gate)
+		ninstance := 5
+		X, claims, qs, gate = sumcheck.InitializeMultiInstance(bn, ninstance)
+		genericTest(t, X, claims, qs, gate)
+	}
 
 }
