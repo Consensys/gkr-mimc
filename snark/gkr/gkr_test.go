@@ -108,9 +108,9 @@ func TestGkrCircuit(t *testing.T) {
 }
 
 func BenchmarkMimcCircuit(b *testing.B) {
-	// This will expand the benchmark until, a SEGFAULT happens
+	// This will run the benchmark until, a SIGKILL happens
 	// Or there is enough memory to run 32M hashes (=> impossible)
-	for bn := 0; bn < 25; bn++ {
+	for bn := 0; bn < 26; bn++ {
 
 		fmt.Printf("bN = %v\n", bn)
 
@@ -157,5 +157,6 @@ func BenchmarkMimcCircuit(b *testing.B) {
 			panic(err)
 		}
 		fmt.Printf("gnark prover took %v ms\n", time.Since(t).Milliseconds())
+		polyFr.DumpLarge(assignment...)
 	}
 }
