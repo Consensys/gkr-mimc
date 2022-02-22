@@ -24,13 +24,13 @@ func TestFolding(t *testing.T) {
 		eqBis := poly.MakeLarge(len(X[0]))
 		eqBis = poly.FoldedEqTable(eqBis, qPrime[0])
 
-		assert.Equal(t, common.FrSliceToString(eqBis), common.FrSliceToString(instance.Eq), "eq tables do not match after being prefolded")
+		assert.Equal(t, eqBis.String(), instance.Eq.String(), "eq tables do not match after being prefolded")
 
 		// Test that the folding agrees
 		dispatchFolding(instance, qPrime[0][0], callback)
 		eqBis.Fold(qPrime[0][0])
 
-		assert.Equal(t, common.FrSliceToString(eqBis), common.FrSliceToString(instance.Eq), "eq tables do not match after folding")
+		assert.Equal(t, eqBis.String(), instance.Eq.String(), "eq tables do not match after folding")
 
 		poly.DumpLarge(X[0])
 		poly.DumpLarge(X[1])

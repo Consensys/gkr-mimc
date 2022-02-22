@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gkr-mimc/sumcheck"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGKR(t *testing.T) {
@@ -28,6 +27,7 @@ func TestGKR(t *testing.T) {
 		a := c.Assign(block, initstate)
 		// Gets a deep-copy of the assignment
 		a2 := c.Assign(block, initstate)
+		_ = a2[0].String()
 
 		proof := Prove(c, a, qPrime)
 
@@ -38,7 +38,7 @@ func TestGKR(t *testing.T) {
 				claim2 := a2[layer].Evaluate(proof.QPrimes[layer][j])
 
 				if claim2 != claim {
-					panic(fmt.Sprintf("claim inconsistent with assignment at layer %v no %v, %v != %v", layer, j, claim.String(), claim2.String()))
+					panic(fmt.Sprintf("at bn = %v, claim inconsistent with assignment at layer %v no %v, %v != %v", bn, layer, j, claim.String(), claim2.String()))
 				}
 			}
 		}
@@ -67,11 +67,10 @@ func TestGKR(t *testing.T) {
 
 		}
 
-		err := Verify(c, proof, []poly.MultiLin{block, initstate}, a2[93], qPrime)
+		err := Verify(c, proof, []poly.MultiLin{block, initstate}, a[93], qPrime)
 		if err != nil {
-			panic(fmt.Sprintf("error at gkr verifier : %v", err))
+			panic(fmt.Sprintf("bn = %v error at gkr verifier : %v", bn, err))
 		}
-		assert.NoError(t, err)
 
 		poly.DumpLarge(a[93])
 		poly.DumpLarge(a2...)

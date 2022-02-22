@@ -6,23 +6,14 @@ import (
 	"testing"
 
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 	"github.com/stretchr/testify/assert"
 )
 
-func twos(n int) []fr.Element {
-	res := make([]fr.Element, n)
-	for i := range res {
-		res[i] = fr.NewElement(2)
-	}
-	return res
-}
-
 func TestGetFoldedEqTable(t *testing.T) {
 
-	for bn := 3; bn < 10; bn++ {
-		qPrime := twos(bn)
-		hPrime := twos(bn)
+	for bn := 0; bn < 15; bn++ {
+		qPrime := common.RandomFrArray(bn)
+		hPrime := common.RandomFrArray(bn)
 
 		a := EvalEq(qPrime, hPrime)
 
@@ -39,7 +30,6 @@ func TestEqTableChunk(t *testing.T) {
 	for bn := 0; bn < 15; bn++ {
 
 		qPrime := common.RandomFrArray(bn)
-
 		eqBis := make(MultiLin, 1<<bn)
 		FoldedEqTable(eqBis, qPrime)
 
@@ -58,12 +48,11 @@ func TestEqTableChunk(t *testing.T) {
 					fmt.Sprintf(
 						"failed at bn = %v and chunksize = %v\n%v\n%v",
 						bn, chunkSize,
-						common.FrSliceToString(eq),
-						common.FrSliceToString(eqBis),
+						eq.String(),
+						eqBis.String(),
 					),
 				)
 			}
 		}
 	}
-
 }

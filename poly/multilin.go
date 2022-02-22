@@ -12,7 +12,7 @@ import (
 type MultiLin []fr.Element
 
 func (bkt MultiLin) String() string {
-	return fmt.Sprintf("table = %v", common.FrSliceToString(bkt))
+	return fmt.Sprintf("%v", common.FrSliceToString(bkt))
 }
 
 // Fold folds the table on its first coordinate using the given value r
@@ -82,4 +82,9 @@ func (bkt MultiLin) Add(left, right MultiLin) {
 	for i := 0; i < size; i++ {
 		bkt[i].Add(&left[i], &right[i])
 	}
+}
+
+// RandomFrArray returns a random array
+func RandMultiLin(size int) MultiLin {
+	return common.RandomFrArray(size)
 }
