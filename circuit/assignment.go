@@ -15,7 +15,7 @@ func (c Circuit) Assign(inps ...poly.MultiLin) (a Assignment) {
 
 	// Assigns the provided input layers
 	for i := 0; i < len(inps); i++ {
-		a[i] = inps[i].DeepCopy()
+		a[i] = inps[i].DeepCopyLarge()
 	}
 
 	for i := len(inps); i < len(a); i++ {
@@ -37,13 +37,28 @@ func (a Assignment) InputsOfLayer(c Circuit, l int) []poly.MultiLin {
 	res := make([]poly.MultiLin, len(positions))
 
 	for i := range res {
-		if positions[i] == l-1 {
+
+		pos := positions[i]
+		// We want to know if current layer `l` is the first output of layer `pos`*
+		// Indeed, `Out` is guaranteed to be sorted in ascending order.
+		// It matters, because the result will be mutated by the sumcheck prover
+		// and we may need to use a layer's output more than once
+		isFirst := c[pos].Out[0] == l
+
+		if isFirst {
 			// Then no need to deep-copy
-			res[i] = a[positions[i]]
+			res[i] = a[pos]
 		} else {
-			res[i] = a[positions[i]].DeepCopyLarge()
+			res[i] = a[pos].DeepCopyLarge()
 		}
 	}
 
 	return res
+}
+
+// InputLayersOf returns the input layers of the layer l
+func (a Assignment) Dump() {
+	for _, p := range a {
+		poly.DumpLarge(p)
+	}
 }

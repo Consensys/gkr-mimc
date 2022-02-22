@@ -6,25 +6,11 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// PrettyStringFr returns Fr in a nice way (like showing negative numbers in an elegant way)
-func PrettyStringFr(x fr.Element) string {
-	negX := x
-	negX.Neg(&negX)
-	negXStr := negX.String()
-	xStr := x.String()
-
-	if len(negXStr) > 10 {
-		return xStr
-	}
-
-	return fmt.Sprintf("-%v", negXStr)
-}
-
 // FrSliceToString pretty prints a slice of fr.Element to ease debugging
 func FrSliceToString(slice []fr.Element) string {
 	res := "["
 	for _, x := range slice {
-		res += fmt.Sprintf("%v, ", PrettyStringFr(x))
+		res += fmt.Sprintf("%v, ", x.String())
 	}
 	res += "]"
 	return res

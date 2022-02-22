@@ -175,7 +175,7 @@ func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Ele
 	// No need to fix limit size of the batch as it already done
 	minTaskSize := 1
 	nbTasks := common.TryDispatch(nbChunks, minTaskSize, func(start, stop int) {
-		jobQueue <- createEqTableJob(inst, callback, qPrime, start, stop)
+		jobQueue <- createEqTableJob(inst, callback, qPrime, start, stop, multiplier...)
 	})
 
 	if nbTasks < 1 {

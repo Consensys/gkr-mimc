@@ -72,7 +72,7 @@ func ChunkOfEqTable(preallocatedEq []fr.Element, chunkID, chunkSize int, qPrime 
 	}
 
 	for k := 0; k < logNChunks; k++ {
-		_rho := &qPrime[len(qPrime)-k-1]
+		_rho := &qPrime[logNChunks-k-1]
 		if chunkID>>k&1 == 1 { // If the k-th bit of i is 1
 			r.Mul(&r, _rho)
 		} else {
@@ -83,7 +83,7 @@ func ChunkOfEqTable(preallocatedEq []fr.Element, chunkID, chunkSize int, qPrime 
 
 	FoldedEqTable(
 		preallocatedEq[chunkID*chunkSize:(chunkID+1)*chunkSize],
-		qPrime[:len(qPrime)-logNChunks],
+		qPrime[logNChunks:],
 		r,
 	)
 }

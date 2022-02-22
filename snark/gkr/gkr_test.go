@@ -66,7 +66,7 @@ func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
 
 func TestGkrCircuit(t *testing.T) {
 
-	bn := 2
+	for bn := 0; bn < 12; bn++ {
 
 	mimcCircuit := AllocateGKRMimcTestCircuit(bn)
 
@@ -100,6 +100,7 @@ func TestGkrCircuit(t *testing.T) {
 	err = test.IsSolved(&mimcCircuit, &witness, ecc.BN254, backend.GROTH16)
 	if err != nil {
 		panic(err)
+		}
 	}
 
 }
@@ -107,7 +108,7 @@ func TestGkrCircuit(t *testing.T) {
 func BenchmarkMimcCircuit(b *testing.B) {
 	// This will expand the benchmark until, a SEGFAULT happens
 	// Or there is enough memory to run 32M hashes (=> impossible)
-	for bn := 17; bn < 25; bn++ {
+	for bn := 0; bn < 25; bn++ {
 
 		fmt.Printf("bN = %v\n", bn)
 

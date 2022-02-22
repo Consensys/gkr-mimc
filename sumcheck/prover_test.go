@@ -49,7 +49,11 @@ func genericTest(t *testing.T, X []poly.MultiLin, claims []fr.Element, qs [][]fr
 
 	if !rnd.IsZero() {
 		eval := poly.EvalUnivariate(claims, rnd)
-		assert.Equal(t, claimTest.String(), eval.String(), "the random linear combination did not match de claim")
+
+		if eval != claimTest {
+			panic(fmt.Sprintf("the random linear combination did not match de claim %v != %v \nthe claims are %v\nrecomb chal is %v",
+				claimTest.String(), eval.String(), common.FrSliceToString(claims), rnd.String()))
+		}
 	}
 
 	proof, challenges, fClm := Prove(X, qs, claims, gate)
@@ -74,20 +78,19 @@ func genericTest(t *testing.T, X []poly.MultiLin, claims []fr.Element, qs [][]fr
 }
 
 func TestWithMultiIdentity(t *testing.T) {
-	bn, ninstance := 5, 10
-	X, claims, qs, gate := InitializeMultiInstance(bn, ninstance)
-
-	genericTest(t, X, claims, qs, gate)
-
+	for bn := 0; bn < 15; bn++ {
+		ninstance := 10
+		X, claims, qs, gate := InitializeMultiInstance(bn, ninstance)
+		genericTest(t, X, claims, qs, gate)
+	}
 }
 
 func TestWithCipherGate(t *testing.T) {
 
-	for bn := 1; bn < 15; bn++ {
+	for bn := 0; bn < 15; bn++ {
 		X, claims, qs, gate := InitializeCipherGateInstance(bn)
 		genericTest(t, X, claims, qs, gate)
 	}
-
 }
 
 func BenchmarkWithCipherGate(b *testing.B) {

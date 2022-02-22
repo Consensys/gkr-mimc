@@ -2,6 +2,7 @@ package poly
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/consensys/gkr-mimc/common"
@@ -28,42 +29,41 @@ func TestGetFoldedEqTable(t *testing.T) {
 		eq := make(MultiLin, 1<<bn)
 		FoldedEqTable(eq, qPrime)
 
-		fmt.Printf("eq = %v\n", common.FrSliceToString(eq))
-
 		b := eq.Evaluate(hPrime)
-
 		assert.Equal(t, a.String(), b.String(), "bn %v", bn)
 	}
 }
 
 func TestEqTableChunk(t *testing.T) {
 
-	bn := 4
-	qPrime := make([]fr.Element, 4)
-	for i := range qPrime {
-		qPrime[i] = fr.NewElement(2)
-	}
+	for bn := 0; bn < 15; bn++ {
 
-	eqBis := make(MultiLin, 1<<bn)
-	FoldedEqTable(eqBis, qPrime)
+		qPrime := common.RandomFrArray(bn)
 
-	for logChunkSize := 1; logChunkSize < bn; logChunkSize++ {
+		eqBis := make(MultiLin, 1<<bn)
+		FoldedEqTable(eqBis, qPrime)
 
-		eq := make(MultiLin, 1<<bn)
+		for logChunkSize := 1; logChunkSize < bn; logChunkSize++ {
 
-		chunkSize := 1 << logChunkSize
-		nChunks := (1 << bn) / chunkSize
+			eq := make(MultiLin, 1<<bn)
+			chunkSize := 1 << logChunkSize
+			nChunks := (1 << bn) / chunkSize
 
-		for chunkID := 0; chunkID < nChunks; chunkID++ {
-			ChunkOfEqTable(eq, chunkID, chunkSize, qPrime)
+			for chunkID := 0; chunkID < nChunks; chunkID++ {
+				ChunkOfEqTable(eq, chunkID, chunkSize, qPrime)
+			}
+
+			if !reflect.DeepEqual(eq, eqBis) {
+				panic(
+					fmt.Sprintf(
+						"failed at bn = %v and chunksize = %v\n%v\n%v",
+						bn, chunkSize,
+						common.FrSliceToString(eq),
+						common.FrSliceToString(eqBis),
+					),
+				)
+			}
 		}
-
-		assert.Equal(
-			t,
-			common.FrSliceToString(eqBis),
-			common.FrSliceToString(eq),
-			"failed for chunksize = %v", chunkSize,
-		)
 	}
 
 }
