@@ -72,8 +72,8 @@ func TestGKR(t *testing.T) {
 			panic(fmt.Sprintf("bn = %v error at gkr verifier : %v", bn, err))
 		}
 
-		poly.DumpLarge(a[93])
-		poly.DumpLarge(a2...)
+		cleared := poly.ClearPool()
+		fmt.Printf("cleared %v elements \n", cleared)
 	}
 }
 

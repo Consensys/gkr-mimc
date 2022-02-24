@@ -2,6 +2,7 @@ package poly
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 	"unsafe"
 
@@ -33,6 +34,27 @@ var (
 	}
 )
 
+// Clear the pool completely, shields against memory leaks
+// Eg: if we forgot to dump a polynomial at some point, this will ensure the value get dumped eventually
+// Returns how many polynomials were cleared that way
+func ClearPool() int {
+	res := 0
+	rC.Range(func(k, _ interface{}) bool {
+		switch ptr := k.(type) {
+		case *largeArr:
+			largePool.Put(ptr)
+		case *smallArr:
+			smallPool.Put(ptr)
+		default:
+			panic(fmt.Sprintf("tried to clear %v", reflect.TypeOf(ptr)))
+		}
+		res++
+		return true
+	})
+	return res
+}
+
+// Tries to find a reusable MultiLin or allocate a new one
 func MakeLarge(n int) MultiLin {
 	if n > maxNForLargePool {
 		panic(fmt.Sprintf("been provided with size of %v but the maximum is %v", n, maxNForLargePool))
@@ -43,6 +65,7 @@ func MakeLarge(n int) MultiLin {
 	return (*ptr)[:n]
 }
 
+// Dumps a set of polynomials into the pool
 func DumpLarge(arrs ...MultiLin) {
 	for _, arr := range arrs {
 		ptr := arr.ptrLarge()
@@ -57,6 +80,7 @@ func DumpLarge(arrs ...MultiLin) {
 	}
 }
 
+// Tries to find a reusable MultiLin or allocate a new one
 func MakeSmall(n int) MultiLin {
 	if n > maxNForSmallPool {
 		panic(fmt.Sprintf("want size of %v but the maximum is %v", n, maxNForSmallPool))
@@ -67,6 +91,7 @@ func MakeSmall(n int) MultiLin {
 	return (*ptr)[:n]
 }
 
+// Dumps a set of polynomials into the pool
 func DumpSmall(arrs ...MultiLin) {
 	for _, arr := range arrs {
 		ptr := arr.ptrSmall()
