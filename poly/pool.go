@@ -54,6 +54,17 @@ func ClearPool() int {
 	return res
 }
 
+// Returns the number of element in the pool
+// Does not mutate it
+func CountPool() int {
+	res := 0
+	rC.Range(func(_, _ interface{}) bool {
+		res++
+		return true
+	})
+	return res
+}
+
 // Tries to find a reusable MultiLin or allocate a new one
 func MakeLarge(n int) MultiLin {
 	if n > maxNForLargePool {
@@ -66,7 +77,9 @@ func MakeLarge(n int) MultiLin {
 }
 
 // Dumps a set of polynomials into the pool
-func DumpLarge(arrs ...MultiLin) {
+// Returns the number of deallocated large polys
+func DumpLarge(arrs ...MultiLin) int {
+	cnt := 0
 	for _, arr := range arrs {
 		ptr := arr.ptrLarge()
 		// If the rC did not registers, then
@@ -74,10 +87,12 @@ func DumpLarge(arrs ...MultiLin) {
 		// otherwise a double put and we MUST ignore
 		if _, ok := rC.Load(ptr); ok {
 			largePool.Put(ptr)
+			// And deregisters the ptr
+			rC.Delete(ptr)
+			cnt++
 		}
-		// And deregisters the ptr
-		rC.Delete(ptr)
 	}
+	return cnt
 }
 
 // Tries to find a reusable MultiLin or allocate a new one
@@ -92,7 +107,9 @@ func MakeSmall(n int) MultiLin {
 }
 
 // Dumps a set of polynomials into the pool
-func DumpSmall(arrs ...MultiLin) {
+// Returns the number of deallocated small polys
+func DumpSmall(arrs ...MultiLin) int {
+	cnt := 0
 	for _, arr := range arrs {
 		ptr := arr.ptrSmall()
 		// If the rC did not registers, then
@@ -100,10 +117,12 @@ func DumpSmall(arrs ...MultiLin) {
 		// otherwise a double put and we MUST ignore
 		if _, ok := rC.Load(ptr); ok {
 			smallPool.Put(ptr)
+			// And deregisters the ptr
+			rC.Delete(ptr)
+			cnt++
 		}
-		// And deregisters the ptr
-		rC.Delete(ptr)
 	}
+	return cnt
 }
 
 // Get the pointer from the header of the slice
