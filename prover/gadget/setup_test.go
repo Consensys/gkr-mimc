@@ -29,7 +29,7 @@ func setupTestGen(t *testing.T, fun innerSetupFunc) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(16), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit)
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)

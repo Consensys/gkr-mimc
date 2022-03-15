@@ -2,13 +2,10 @@ package hash
 
 import (
 	"fmt"
-	"os"
-	"strconv"
 	"testing"
 
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/hash"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/AlexandreBelling/gnark/backend"
 	"github.com/AlexandreBelling/gnark/backend/groth16"
@@ -56,9 +53,8 @@ func (c *TestMimcCircuit) Assign(x [][]fr.Element) {
 
 func TestMimc(t *testing.T) {
 
+	assert := test.NewAssert(t)
 	c := Allocate(5, 5)
-	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
-	assert.NoError(t, err)
 
 	// Creates a random test vector
 	x := [][]fr.Element{
@@ -71,45 +67,49 @@ func TestMimc(t *testing.T) {
 
 	witness := Allocate(5, 5)
 	witness.Assign(x)
-	assert.NoError(t, test.IsSolved(&c, &witness, ecc.BN254, backend.GROTH16))
-
+	assert.SolvingSucceeded(&c, &witness, test.WithBackends(backend.GROTH16), test.WithCurves(ecc.BN254))
 }
 
 func BenchmarkMimc(b *testing.B) {
 
-	bN, _ := strconv.Atoi(os.Getenv("BN_GKR"))
-	fmt.Printf("Baseline Mimc7 benchmark bN = %v\n", bN)
+	// This will expand the benchmark until, a SEGFAULT happens
+	// Or there is enough memory to run 32M hashes (=> impossible)
+	for bn := 10; bn < 25; bn++ {
+		fmt.Printf("Baseline Mimc7 benchmark bN = %v\n", bn)
 
-	c := Allocate(1<<bN, 1)
-	r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
+		c := Allocate(1<<bn, 1)
+		r1cs, _ := frontend.Compile(ecc.BN254, backend.GROTH16, &c)
 
-	x := make([][]fr.Element, 1<<bN)
-	for i := range x {
-		x[i] = common.RandomFrArray(1)
-	}
+		x := make([][]fr.Element, 1<<bn)
+		for i := range x {
+			x[i] = common.RandomFrArray(1)
+		}
 
-	fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
+		fmt.Printf("Nb constraints = %v\n", r1cs.GetNbConstraints())
 
-	// Generate the witness values by running the prover
-	var witness TestMimcCircuit
+		// Generate the witness values by running the prover
+		var witness TestMimcCircuit
 
-	b.Run("Gnark circuit assignment", func(b *testing.B) {
-		b.StopTimer()
-		for i := 0; i < b.N; i++ {
-			witness = Allocate(1<<bN, 1)
-			b.StartTimer()
-			witness.Assign(x)
+		b.Run("Gnark circuit assignment", func(b *testing.B) {
 			b.StopTimer()
-		}
-	})
+			for i := 0; i < b.N; i++ {
+				witness = Allocate(1<<bn, 1)
+				b.StartTimer()
+				witness.Assign(x)
+				b.StopTimer()
+			}
+		})
 
-	pk, _ := groth16.DummySetup(r1cs)
-	_w, _ := frontend.NewWitness(&witness, ecc.BN254)
-
-	b.Run("Gnark prover", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_, _ = groth16.Prove(r1cs, pk, _w)
-		}
-	})
+		pk, _ := groth16.DummySetup(r1cs)
+		b.Run("Gnark prover", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				w, _ := frontend.NewWitness(&witness, ecc.BN254)
+				_, err := groth16.Prove(r1cs, pk, w)
+				if err != nil {
+					panic(err)
+				}
+			}
+		})
+	}
 
 }

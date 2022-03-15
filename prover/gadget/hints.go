@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/gkr-mimc/common"
 	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gkr-mimc/snark/gkr"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254"
@@ -77,14 +78,11 @@ func (h *GkrProverHint) NbOutputs(_ ecc.ID, nbInput int) int {
 	// Iteratively finds the bN of the circuit from the input size
 	// Can't guarantee that g.ioStore.index contains the right values
 	bN := 0
+	gIn := circuit.InputArity()
 
 loop:
 	for {
-		gIn := circuit.InputArity()
-		gOut := circuit.OutputArity()
-		inputSize := (1<<bN)*(gIn+gOut) +
-			bN + common.Log2Ceil(gOut)
-
+		inputSize := (1<<bN)*(gIn+1) + bN
 		if inputSize == nbInput {
 			break loop
 		}
@@ -96,16 +94,15 @@ loop:
 		bN += 1
 	}
 
-	nLayers := len(circuit.Layers)
+	nLayers := len(circuit)
 
 	nbClaimLeft := nLayers  // claim left
 	nbClaimRight := nLayers // claim right
 
 	sumcheckTotalSize := 0
-	for i, layer := range circuit.Layers {
-		degHL, degHR, degHPrime := layer.Degrees()
-		bG := circuit.Layers[i].BGInputs                           // log width of the previous layer's subcircuit
-		sumcheckTotalSize += bG*(degHL+degHR+2) + bN*(degHPrime+1) // size of the sumcheck i
+	for _, layer := range circuit {
+		deg := layer.Gate.Degree() + 1
+		sumcheckTotalSize += bN * deg // size of the sumcheck i
 	}
 
 	return nbClaimLeft + nbClaimRight + sumcheckTotalSize
@@ -176,8 +173,8 @@ func (h *InitialRandomnessHint) Call(_ ecc.ID, inpss []*big.Int, oups []*big.Int
 
 	// Compute the K associated to the gkr public/private inputs
 	var KrsGkr, KrsGkrPriv bn254.G1Affine
-	KrsGkr.MultiExp(h.g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{NbTasks: h.g.gkrNCore})
-	KrsGkrPriv.MultiExp(h.g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{NbTasks: h.g.gkrNCore})
+	KrsGkr.MultiExp(h.g.r1cs.provingKey.pubKGkr, scalarsPub, ecc.MultiExpConfig{})
+	KrsGkrPriv.MultiExp(h.g.r1cs.provingKey.privKGkrSigma, scalarsPriv, ecc.MultiExpConfig{})
 	KrsGkr.Add(&KrsGkr, &KrsGkrPriv)
 
 	h.g.proof = &Proof{KrsGkrPriv: KrsGkrPriv}
@@ -197,48 +194,33 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 	bN := common.Log2Ceil(h.g.ioStore.Index())
 
 	paddedIndex := 1 << bN
-	h.g.chunkSize = common.Min(h.g.chunkSize, paddedIndex)
-
-	nInputs := paddedIndex * h.g.Circuit.InputArity()
-	nOutputs := paddedIndex * h.g.Circuit.OutputArity()
-	bGinitial := common.Log2Ceil(h.g.Circuit.OutputArity())
-
-	common.Assert(bGinitial == 0, "bGInitial must be zero for Mimc: %v", bGinitial)
 
 	inps := make([]fr.Element, len(inputsBI))
 	for i := range inps {
 		inps[i].SetBigInt(inputsBI[i])
 	}
 
-	inputs, inps := inps[:nInputs], inps[nInputs:]
+	// Passes the outputs
+	inputs := make([]poly.MultiLin, h.g.Circuit.InputArity())
+	for i := range inputs {
+		inputs[i], inps = inps[:paddedIndex], inps[paddedIndex:]
+	}
 	// The output: here is passed to force the solver to wait for all the output
-	outputs, inps := inps[:nOutputs], inps[nOutputs:]
-	qPrime, inps := inps[:bN], inps[bN:]
-	q, _ := inps[:bGinitial], inps[bGinitial:]
+	outputs, inps := inps[:paddedIndex], inps[paddedIndex:]
+	qPrime, drain := inps[:bN], inps[bN:]
 
-	inputChunkSize := h.g.chunkSize * h.g.Circuit.InputArity()
-	outputChunkSize := h.g.chunkSize * h.g.Circuit.OutputArity()
+	// Sanity check
+	common.Assert(len(drain) == 0, "The drain was expected to emptied but there remains %v elements", len(drain))
 
-	assignment := h.g.Circuit.Assign(
-		common.SliceToChunkedSlice(inputs, inputChunkSize),
-		h.g.gkrNCore,
-	)
-
-	prover := gkrNative.NewProver(h.g.Circuit, assignment)
-	gkrProof := prover.Prove(h.g.gkrNCore, qPrime, q)
+	// Runs the actual prover
+	assignment := h.g.Circuit.Assign(inputs...)
+	gkrProof := gkrNative.Prove(h.g.Circuit, assignment, qPrime)
 
 	if debug {
 		// For debug : only -> Check that the proof verifies
-		verifier := gkrNative.NewVerifier(bN, h.g.Circuit)
-		valid := verifier.Verify(gkrProof,
-			common.SliceToChunkedSlice(inputs, inputChunkSize),
-			common.SliceToChunkedSlice(outputs, outputChunkSize),
-			qPrime, q,
-		)
-		common.Assert(valid, "GKR proof was wrong - Bug in proof generation")
+		valid := gkrNative.Verify(h.g.Circuit, gkrProof, inputs, outputs, qPrime)
+		common.Assert(valid == nil, "GKR proof was wrong - Bug in proof generation - %v", valid)
 	}
-
-	h.g.gkrProof = &gkrProof
 
 	GkrProofToVec(gkrProof, oups)
 	return nil
@@ -250,7 +232,7 @@ func GkrProofToVec(proof gkrNative.Proof, resBuff []*big.Int) {
 
 	// Writes the sumcheck proofs
 	for _, layer := range proof.SumcheckProofs {
-		for _, sumcheckRound := range layer.PolyCoeffs {
+		for _, sumcheckRound := range layer {
 			for _, val := range sumcheckRound {
 				val.ToBigIntRegular(resBuff[cursor])
 				cursor += 1
@@ -259,15 +241,21 @@ func GkrProofToVec(proof gkrNative.Proof, resBuff []*big.Int) {
 	}
 
 	// Writes the claimLeft
-	for _, val := range proof.ClaimsLeft {
-		val.ToBigIntRegular(resBuff[cursor])
-		cursor += 1
+	for _, layer := range proof.Claims {
+		for _, claim := range layer {
+			claim.ToBigIntRegular(resBuff[cursor])
+			cursor += 1
+		}
 	}
 
-	// Writes the claimRight
-	for _, val := range proof.ClaimsRight {
-		val.ToBigIntRegular(resBuff[cursor])
-		cursor += 1
+	// Writes the qPrimes
+	for _, layer := range proof.QPrimes {
+		for _, qs := range layer {
+			for _, q := range qs {
+				q.ToBigIntRegular(resBuff[cursor])
+				cursor += 1
+			}
+		}
 	}
 
 	// sanity check : expect to have written entirely the vector
@@ -287,24 +275,30 @@ func (g *GkrGadget) GkrProofFromVec(vec []frontend.Variable) gkr.Proof {
 
 	// Writes the sumcheck proofs
 	for i, layer := range proof.SumcheckProofs {
-		for j, sumcheckRound := range layer.HPolys {
-			for k := range sumcheckRound.Coefficients {
-				proof.SumcheckProofs[i].HPolys[j].Coefficients[k] = vec[cursor]
+		for j, sumcheckRound := range layer {
+			for k := range sumcheckRound {
+				proof.SumcheckProofs[i][j][k] = vec[cursor]
 				cursor += 1
 			}
 		}
 	}
 
 	// Writes the claimLeft
-	for i := range proof.ClaimsLeft {
-		proof.ClaimsLeft[i] = vec[cursor]
-		cursor += 1
+	for i, layer := range proof.Claims {
+		for j := range layer {
+			proof.Claims[i][j] = vec[cursor]
+			cursor += 1
+		}
 	}
 
-	// Writes the claimRight
-	for i := range proof.ClaimsRight {
-		proof.ClaimsRight[i] = vec[cursor]
-		cursor += 1
+	// Writes the qPrimes
+	for i, layer := range proof.QPrimes {
+		for j, qs := range layer {
+			for k := range qs {
+				proof.QPrimes[i][j][k] = vec[cursor]
+				cursor += 1
+			}
+		}
 	}
 
 	// sanity check, we expect to have read the entire vector by now

@@ -49,7 +49,7 @@ func TestWithRandomCircuit(t *testing.T) {
 	n := 10
 
 	innerCircuit := AllocateRandomCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(32), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit)
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -59,7 +59,7 @@ func TestWithRandomCircuit(t *testing.T) {
 
 	innerAssignment := AllocateRandomCircuit(n)
 	pubWitness := innerAssignment.Assign()
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(32), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment)
 	assignment.Assign()
 
 	solution, err := assignment.Solve(r1cs)

@@ -50,7 +50,7 @@ func TestFullProver(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(16), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit)
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -60,7 +60,7 @@ func TestFullProver(t *testing.T) {
 
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(16), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment)
 	assignment.Assign()
 
 	solution, err := assignment.Solve(r1cs)

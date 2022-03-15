@@ -36,8 +36,8 @@ func (c *Circuit) Compile() (R1CS, error) {
 	ioStore := &c.Gadget.ioStore
 
 	// Map every Gkr variable IDs to their occurence in the ioStore
-	ioVarIDs := append(ioStore.inputsVarIds, ioStore.outputsVarIds...)
-	ioIsConstant := append(ioStore.inputsIsConstant, ioStore.outputsIsConstant...)
+	ioVarIDs := ioStore.VarIds()
+	ioIsConstant := ioStore.VarAreConstant()
 
 	for ioPosition, varId := range ioVarIDs {
 		// The wire IDs passed to gnark are

@@ -1,133 +1,224 @@
 package sumcheck
 
 import (
+	"fmt"
+	"runtime"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
-
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
+// Minimal size of chunks before considering parallelization for a task
+const (
+	foldingMinTaskSize     int = 1 << 10
+	partialEvalMinTaskSize int = 1 << 6
+	eqTableChunkSize       int = 1 << 8
+	addInplaceMinChunkSize int = 1 << 10
+)
+
 // Proof is the object produced by the prover
-type Proof struct {
-	PolyCoeffs [][]fr.Element
-}
+type Proof [][]fr.Element
 
-// SingleThreadedProver computes the
-type SingleThreadedProver struct {
-	// Contains the values of the previous layer
-	vL polynomial.BookKeepingTable
-	vR polynomial.BookKeepingTable
-	// Contains the static tables defining the circuit structure
-	eq           polynomial.BookKeepingTable
-	gates        []circuit.Gate
-	staticTables []polynomial.BookKeepingTable
-	// Degrees for the differents variables
-	degreeHL     int
-	degreeHR     int
-	degreeHPrime int
-}
+// Prove contains the coordination logic for all workers contributing to the sumcheck proof
+func Prove(X []poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate circuit.Gate) (proof Proof, challenges, finalClaims []fr.Element) {
 
-// NewSingleThreadedProver constructs a new prover
-func NewSingleThreadedProver(
-	vL polynomial.BookKeepingTable,
-	vR polynomial.BookKeepingTable,
-	eq polynomial.BookKeepingTable,
-	gates []circuit.Gate,
-	staticTables []polynomial.BookKeepingTable,
-) SingleThreadedProver {
-	// Auto-computes the degree on each variables
-	degreeHL, degreeHR, degreeHPrime := 0, 0, 0
-	for _, gate := range gates {
-		dL, dR, dPrime := gate.Degrees()
-		degreeHL = common.Max(degreeHL, dL)
-		degreeHR = common.Max(degreeHR, dR)
-		degreeHPrime = common.Max(degreeHPrime, dPrime)
+	// Define usefull constants & initializes the instance
+	bN := len(qPrimes[0])
+
+	// Sanity-checks : all X should have length 1<<bn
+	for i, x := range X {
+		if len(x) != 1<<bN {
+			panic(fmt.Sprintf("inconsistent sizes : bn is %v but table %v has size %v", bN, i, len(x)))
+		}
 	}
-	return SingleThreadedProver{
-		vL:           vL,
-		vR:           vR,
-		eq:           eq,
-		gates:        gates,
-		staticTables: staticTables,
-		degreeHL:     degreeHL + 1,
-		degreeHR:     degreeHR + 1,
-		degreeHPrime: degreeHPrime + 1,
-	}
-}
 
-// Prove runs the prover of a sumcheck
-func (p *SingleThreadedProver) Prove() (proof Proof, qPrime, qL, qR, finalClaims []fr.Element) {
-
-	// Define usefull constants
-	n := len(p.eq.Table)     // Number of subcircuit. Since we haven't fold on h' yet
-	g := len(p.vR.Table) / n // SubCircuit size. Since we haven't fold on hR yet
-	bN := common.Log2Ceil(n)
-	bG := common.Log2Ceil(g)
-
+	inst := makeInstance(X, gate)
 	// Initialized the results
-	proof.PolyCoeffs = make([][]fr.Element, bN+2*bG)
-	qPrime = make([]fr.Element, bN)
-	qL = make([]fr.Element, bG)
-	qR = make([]fr.Element, bG)
-	finalClaims = make([]fr.Element, 3+len(p.staticTables))
+	proof = make(Proof, bN)
+	challenges = make([]fr.Element, bN)
 
-	// Run on hL
-	for i := 0; i < bG; i++ {
-		evals := p.GetEvalsOnHL()
-		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
-		r := common.GetChallenge(proof.PolyCoeffs[i])
-		p.FoldHL(r)
-		qL[i] = r
-	}
+	// 8 . runtime.NumCPU() -> To be sure, this will never clog
+	callback := make(chan []fr.Element, 8*runtime.NumCPU())
 
-	// Run on hR
-	for i := bG; i < 2*bG; i++ {
-		evals := p.GetEvalsOnHR()
-		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
-		r := common.GetChallenge(proof.PolyCoeffs[i])
-		p.FoldHR(r)
-		qR[i-bG] = r
-	}
+	// Precomputes the eq table
+	makeEqTable(inst, claims, qPrimes, callback)
 
 	// Run on hPrime
-	for i := 2 * bG; i < bN+2*bG; i++ {
-		evals := p.GetEvalsOnHPrime()
-		proof.PolyCoeffs[i] = polynomial.InterpolateOnRange(evals)
-		r := common.GetChallenge(proof.PolyCoeffs[i])
-		p.FoldHPrime(r)
-		qPrime[i-2*bG] = r
+	for k := 0; k < bN; k++ {
+		evals := dispatchPartialEvals(inst, callback)
+		proof[k] = poly.InterpolateOnRange(evals)
+		r := common.GetChallenge(proof[k])
+		dispatchFolding(inst, r, callback)
+		challenges[k] = r
 	}
 
-	finalClaims[0] = p.vL.Table[0]
-	finalClaims[1] = p.vR.Table[0]
-	finalClaims[2] = p.eq.Table[0]
-	for i, bkt := range p.staticTables {
-		finalClaims[3+i] = bkt.Table[0]
+	// Save the final claims on each poly and dump the polys
+	finalClaims = make([]fr.Element, 0, len(inst.X)+1)
+	finalClaims = append(finalClaims, inst.Eq[0])
+	poly.DumpLarge(inst.Eq)
+
+	for _, x := range inst.X {
+		finalClaims = append(finalClaims, x[0])
+		poly.DumpLarge(x)
 	}
 
-	return proof, qPrime, qL, qR, finalClaims
+	return proof, challenges, finalClaims
+
 }
 
-// FoldHL folds on the first variable of hR
-func (p *SingleThreadedProver) FoldHL(r fr.Element) {
-	for i := range p.staticTables {
-		p.staticTables[i].Fold(r)
-	}
-	p.vL.Fold(r)
+// initializeInstance returns an instance with L, R, gates, and degree sets
+func makeInstance(X []poly.MultiLin, gate circuit.Gate) *instance {
+	n := len(X[0])
+	return &instance{X: X, Eq: poly.MakeLarge(n), gate: gate, degree: gate.Degree() + 1}
+
 }
 
-// FoldHR folds on the first variable of hR
-func (p *SingleThreadedProver) FoldHR(r fr.Element) {
-	for i := range p.staticTables {
-		p.staticTables[i].Fold(r)
+// creates the eq table for the current instance, with possibly many claims at different points
+// If there are multiple claims and evaluations points, then it returns a random linear combination's
+// coefficients of the claims and qPrime
+func makeEqTable(
+	inst *instance,
+	claims []fr.Element, qPrimes [][]fr.Element,
+	callback chan []fr.Element,
+) (rnd fr.Element) {
+
+	if callback == nil {
+		// If no callback is provided, create one on the spot
+		callback = make(chan []fr.Element, 8*runtime.NumCPU())
 	}
-	p.vR.Fold(r)
+
+	if len(claims) != len(qPrimes) && len(qPrimes) > 1 {
+		panic(fmt.Sprintf("provided a multi-instance %v but only the number of claim does not match %v", len(qPrimes), len(claims)))
+	}
+
+	// First generate the eq table for the first qPrime directly inside the instance
+	dispatchEqTable(inst, qPrimes[0], callback)
+
+	// Only one claim => no random linear combinations
+	if len(claims) < 1 {
+		return fr.Element{}
+	}
+
+	// Else generate a random coefficient x
+	// The random linear combination will be of the form
+	// C = a0 + a1*r + a2*r^2 + a3*r^3 which will be enough
+	initialMultiplier := common.GetChallenge(claims)
+	multiplier := initialMultiplier
+
+	// Initializes a dummy instance with just an eqTable
+	tmpInst := &instance{Eq: poly.MakeLarge(1 << len(qPrimes[0]))}
+
+	for i := 1; i < len(qPrimes); i++ {
+		dispatchEqTable(tmpInst, qPrimes[i], callback, multiplier)
+		dispatchAdditions(callback, inst.Eq, tmpInst.Eq)
+		multiplier.Mul(&multiplier, &initialMultiplier)
+	}
+
+	poly.DumpLarge(tmpInst.Eq)
+
+	// Returns the seed of the linear combination
+	return initialMultiplier
 }
 
-// FoldHPrime folds on the first variable of Eq
-func (p *SingleThreadedProver) FoldHPrime(r fr.Element) {
-	p.vR.Fold(r)
-	p.vL.Fold(r)
-	p.eq.Fold(r)
+// Calls the partial evals by calling the worker pool if that's usefull
+// evalChan is passed for reuse purpose
+func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Element {
+	mid := len(inst.Eq) / 2
+
+	nTasks := common.TryDispatch(mid, partialEvalMinTaskSize, func(start, stop int) {
+		jobQueue <- createPartialEvalJob(inst, callback, start, stop)
+	})
+
+	// `0` means the tasks where not dispatched as it
+	// deemed unprofitable to parallelize this task
+	if nTasks < 1 {
+		return inst.getPartialPolyChunk(0, mid)
+	}
+
+	// Otherwise consumes happily the callback channel and return the eval
+	return consumeAccumulate(callback, nTasks)
+}
+
+// Calls the folding by either passing to the worker pool if this is deemed usefull
+// or synchronously if not
+func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
+	mid := len(inst.Eq) / 2
+
+	nbTasks := common.TryDispatch(mid, foldingMinTaskSize, func(start, stop int) {
+		jobQueue <- createFoldingJob(inst, callback, r, start, stop)
+	})
+
+	// `0` means the tasks where not dispatched as it
+	// deemed unprofitable to parallelize this task
+	if nbTasks < 1 {
+		inst.foldChunk(r, 0, mid)
+	} else {
+		// Otherwise, wait for all callback to be done
+		for i := 0; i < nbTasks; i++ {
+			<-callback
+		}
+	}
+
+	// Finallly cut in half the tables
+	inst.Eq = inst.Eq[:mid]
+	for i := range inst.X {
+		inst.X[i] = inst.X[i][:mid]
+	}
+}
+
+// Computes the eq table for the comming round
+func dispatchEqTable(inst *instance, qPrime []fr.Element, callback chan []fr.Element, multiplier ...fr.Element) {
+	nbChunks := len(inst.Eq) / eqTableChunkSize
+
+	// No need to fix limit size of the batch as it already done
+	minTaskSize := 1
+	nbTasks := common.TryDispatch(nbChunks, minTaskSize, func(start, stop int) {
+		jobQueue <- createEqTableJob(inst, callback, qPrime, start, stop, multiplier...)
+	})
+
+	if nbTasks < 1 {
+		// All in one chunk
+		poly.FoldedEqTable(inst.Eq, qPrime, multiplier...)
+		return
+	}
+
+	// Otherwise, wait for all callback to be done
+	for i := 0; i < nbTasks; i++ {
+		<-callback
+	}
+}
+
+// Dispatch the addition of two bookkeeping table to be run in parallel
+func dispatchAdditions(callback chan []fr.Element, a, b poly.MultiLin) {
+	// Attempts running in the pool
+	nbTasks := common.TryDispatch(len(a), addInplaceMinChunkSize, func(start, stop int) {
+		jobQueue <- createAdditionJob(callback, a, b, start, stop)
+	})
+
+	// The pool returning 0 means you need to run it monothreaded
+	if nbTasks < 1 {
+		// All in one chunk
+		addInPlace(a, b, 0, len(a))
+		return
+	}
+
+	// Otherwise, wait for all callback to be done
+	for i := 0; i < nbTasks; i++ {
+		<-callback
+	}
+}
+
+// ConsumeAccumulate consumes `nToConsume` elements from `ch`,
+// and return their sum Element-wise
+func consumeAccumulate(ch chan []fr.Element, nToConsume int) []fr.Element {
+	res := <-ch
+	for i := 0; i < nToConsume-1; i++ {
+		tmp := <-ch
+		for i := range res {
+			res[i].Add(&res[i], &tmp[i])
+		}
+	}
+	return res
 }

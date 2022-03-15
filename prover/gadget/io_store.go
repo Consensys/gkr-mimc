@@ -6,22 +6,23 @@ import (
 	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/snark/polynomial"
 )
 
 const DEFAULT_IO_STORE_ALLOCATION_EPOCH int = 32
 
 // Stores the inputs and is responsible for the reordering tasks
 type IoStore struct {
-	inputs            []frontend.Variable // The variables as Gkr inputs
-	inputsVarIds      []int               // The variable IDs as Gkr outputs
-	inputsIsConstant  []bool              // True if the variable is a constant
-	outputs           []frontend.Variable // The variables as Gkr outputs
-	outputsVarIds     []int               // The ids of the variable as Gkr outputs
-	outputsIsConstant []bool              // True if the variable is a constant
+	inputs            []polynomial.MultiLin // The variables as Gkr inputs
+	inputsVarIds      [][]int               // The variable IDs as Gkr outputs
+	inputsIsConstant  [][]bool              // True if the variable is a constant
+	outputs           polynomial.MultiLin   // The variables as Gkr outputs
+	outputsVarIds     []int                 // The ids of the variable as Gkr outputs
+	outputsIsConstant []bool                // True if the variable is a constant
 	allocEpoch        int
 	index             int
 	inputArity        int
-	outputArity       int
+	// Our implementation only support an arity of 1 for the outputs
 }
 
 // Creates a new ioStore for the given circuit
@@ -32,31 +33,10 @@ func NewIoStore(circuit *circuit.Circuit, allocEpoch int) IoStore {
 	}
 
 	return IoStore{
-		inputs:      []frontend.Variable{},
-		outputs:     []frontend.Variable{},
-		allocEpoch:  allocEpoch,
-		inputArity:  circuit.InputArity(),
-		outputArity: circuit.OutputArity(),
-	}
-}
-
-// Allocates for one more hash entry
-func (io *IoStore) allocateForOneMore() {
-
-	if io.index >= io.allocEpoch {
-
-		// Double the size
-		incInputs := io.inputArity * io.index
-		io.inputs = IncreaseCapVariable(io.inputs, incInputs)
-		io.inputsVarIds = IncreaseCapInts(io.inputsVarIds, incInputs)
-		io.inputsIsConstant = IncreaseCapBools(io.inputsIsConstant, incInputs)
-
-		incOutputs := io.outputArity * io.index
-		io.outputs = IncreaseCapVariable(io.outputs, incOutputs)
-		io.outputsVarIds = IncreaseCapInts(io.outputsVarIds, incOutputs)
-		io.outputsIsConstant = IncreaseCapBools(io.outputsIsConstant, incOutputs)
-
-		io.allocEpoch *= 2
+		inputs:     make([]polynomial.MultiLin, circuit.InputArity()),
+		outputs:    polynomial.MultiLin{},
+		allocEpoch: allocEpoch,
+		inputArity: circuit.InputArity(),
 	}
 }
 
@@ -65,25 +45,13 @@ func (io *IoStore) Index() int {
 	return io.index
 }
 
-func (io *IoStore) PushVarIds(inputs, outputs []int) {
-	// Check that the dimension of the provided arrays is consistent with what was expected
-	if len(inputs) != io.inputArity || len(outputs) != io.outputArity {
-		panic(fmt.Sprintf("Expected inputs/outputs to have size %v/%v but got %v/%v",
-			io.inputArity, io.outputArity, len(inputs), len(outputs),
-		))
-	}
-
-	io.inputsVarIds = append(io.inputsVarIds, inputs...)
-	io.outputsVarIds = append(io.outputsVarIds, outputs...)
-}
-
 // Add an element in the ioStack
-func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
+func (io *IoStore) Push(cs frontend.API, inputs []frontend.Variable, output frontend.Variable) {
 
 	// Check that the dimension of the provided arrays is consistent with what was expected
-	if len(inputs) != io.inputArity || len(outputs) != io.outputArity {
-		panic(fmt.Sprintf("Expected inputs/outputs to have size %v/%v but got %v/%v",
-			io.inputArity, io.outputArity, len(inputs), len(outputs),
+	if len(inputs) != io.inputArity {
+		panic(fmt.Sprintf("Expected inputs/outputs to have size %v but got %v",
+			io.inputArity, len(inputs),
 		))
 	}
 
@@ -92,10 +60,8 @@ func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 		inputs[i] = cs.EnforceWire(inputs[i])
 	}
 
-	// And the outputs...
-	for i := range outputs {
-		outputs[i] = cs.EnforceWire(outputs[i])
-	}
+	// And the output...
+	output = cs.EnforceWire(output)
 
 	// Performs an allocation if necessary
 	io.allocateForOneMore()
@@ -104,19 +70,17 @@ func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 	for i := range inputs {
 		wire := inputs[i]
 		wireID, wireConstant := cs.WireId(wire)
-		io.inputs = append(io.inputs, wire)
-		io.inputsVarIds = append(io.inputsVarIds, wireID)
-		io.inputsIsConstant = append(io.inputsIsConstant, wireConstant)
+		io.inputs[i] = append(io.inputs[i], wire)
+		io.inputsVarIds[i] = append(io.inputsVarIds[i], wireID)
+		io.inputsIsConstant[i] = append(io.inputsIsConstant[i], wireConstant)
 	}
 
-	// Append the outputs
-	for i := range outputs {
-		wire := outputs[i]
-		wireID, wireConstant := cs.WireId(wire)
-		io.outputs = append(io.outputs, wire)
-		io.outputsVarIds = append(io.outputsVarIds, wireID)
-		io.outputsIsConstant = append(io.outputsIsConstant, wireConstant)
-	}
+	// Append the output
+	wire := output
+	wireID, wireConstant := cs.WireId(wire)
+	io.outputs = append(io.outputs, wire)
+	io.outputsVarIds = append(io.outputsVarIds, wireID)
+	io.outputsIsConstant = append(io.outputsIsConstant, wireConstant)
 
 	io.index++
 }
@@ -124,127 +88,99 @@ func (io *IoStore) Push(cs frontend.API, inputs, outputs []frontend.Variable) {
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
 func (io *IoStore) DumpForProverMultiExp() []frontend.Variable {
-	return append(io.inputs, io.outputs...)
+
+	// Allocate the result
+	resSize := io.index * (io.inputArity + 1)
+	res := make([]frontend.Variable, 0, resSize)
+
+	// Sanity checks
+	common.Assert(len(io.inputs[0]) == io.index, "mismatch between index and  %v / %v", len(io.inputs[0]), io.index)
+
+	// Filling the vector
+	for i := range io.inputs {
+		res = append(res, io.inputs[i])
+	}
+	res = append(res, io.outputs)
+
+	return res
 }
 
 // Returns the io for the prover multiexp
 // Done by concatenating the two into another array
 // The variables are returned in the form of a buffer of interfaces
 // 4 empty entry are appended to the result : they are used by the hint to figure out which
-func (io *IoStore) DumpForGkrProver(chunkSize int, qPrimeArg, qArg []frontend.Variable) []frontend.Variable {
+// res = qPrime || inputs || outputs
+func (io *IoStore) DumpForGkrProver(qPrimeArg []frontend.Variable) []frontend.Variable {
 
-	// If the chunk size if too big, mutates to 1 << len(qPrimeArg)
-	chunkSize = common.Min(chunkSize, 1<<len(qPrimeArg))
-
-	nChunks := io.Index() / chunkSize
-	nInputs, nOutputs, bN, bG := len(io.inputs), len(io.outputs), len(qPrimeArg), len(qArg)
-	resSize := nInputs + nOutputs + bN + bG
-	res := make([]frontend.Variable, resSize)
-
-	// Allocate subslices for each part of the dump
-	drain := res[:]
-	dumpedInputs, drain := drain[:nInputs], drain[nInputs:]
-	dumpedOutputs, drain := drain[:nOutputs], drain[nOutputs:]
-	qPrime, drain := drain[:bN], drain[bN:]
-	q, drain := drain[:bG], drain[bG:]
+	// Allocate the result
+	nInputs, nOutputs, bN := len(io.inputs[0])*io.inputArity, len(io.outputs), len(qPrimeArg)
+	resSize := nInputs + nOutputs + bN
+	res := make([]frontend.Variable, 0, resSize)
 
 	// Sanity checks: as we can assume to be in the Mimc case
-	common.Assert(len(q) == 0, "length of q must be 0")
-	common.Assert(len(qArg) == 0, "Length of qArg must be 0")
-	common.Assert(len(drain) == 0, "The drain should be empty")
-	common.Assert(
-		len(io.inputs) == io.index*io.inputArity,
-		"The input arity is inconsistent %v / %v", len(io.inputs), io.index*io.inputArity)
-	common.Assert(len(io.outputs) == io.index*io.outputArity,
-		"The output arity is inconsistent %v / %v", len(io.outputs), io.index*io.outputArity)
+	common.Assert(len(io.inputs[0]) == io.index, "The input arity is inconsistent %v / %v", len(io.inputs), io.index)
 	common.Assert(1<<bN == io.index, "bN is inconsistent with the index")
 
-	// Bare copy for qPrime and qArg.
-	// We can't use copy here because it's `[]interface{} <- []fr.Element`
-	for i := range qPrime {
-		qPrime[i] = qPrimeArg[i]
+	// Filling the vector
+	res = append(res, qPrimeArg)
+	for i := range io.inputs {
+		res = append(res, io.inputs[i])
 	}
-
-	for i := range q {
-		q[i] = qArg[i]
-	}
-
-	// Then assigns the inputs outputs by reordering
-	for msb := 0; msb < nChunks; msb++ {
-		for lsb := 0; lsb < chunkSize; lsb++ {
-			chunkSizeXinputArity := chunkSize * io.inputArity
-			chunkSizeXoutputArity := chunkSize * io.outputArity
-
-			// Reorder the inputs
-			for subI := 0; subI < io.inputArity; subI++ {
-				dumpIdx := lsb + subI*chunkSize + msb*chunkSizeXinputArity
-				storeIdx := subI + lsb*io.inputArity + msb*chunkSizeXinputArity
-				dumpedInputs[dumpIdx] = io.inputs[storeIdx]
-			}
-
-			// Reorder the outputs
-			for subO := 0; subO < io.outputArity; subO++ {
-				dumpIdx := lsb + subO*chunkSize + msb*chunkSizeXoutputArity
-				storeIdx := subO + lsb*io.outputArity + msb*chunkSizeXoutputArity
-				dumpedOutputs[dumpIdx] = io.outputs[storeIdx]
-			}
-		}
-	}
+	res = append(res, io.outputs)
 
 	return res
 }
 
 // Returns the gkr inputs in the correct order to be processed by the verifier
-func (io *IoStore) InputsForVerifier(chunkSize int) []frontend.Variable {
-	nChunks := io.Index() / chunkSize
-	nInputs := len(io.inputs)
-	resSize := nInputs
-	dumpedInputs := make([]frontend.Variable, resSize)
-
-	// Sanity checks: as we can assume to be in the Mimc case
-	common.Assert(len(io.inputs) == io.index*io.inputArity, "The input arity is inconsistent")
-
-	// Then assigns the inputs outputs by reordering
-	for msb := 0; msb < nChunks; msb++ {
-		for lsb := 0; lsb < chunkSize; lsb++ {
-			chunkSizeXinputArity := chunkSize * io.inputArity
-			nI := chunkSize * nChunks
-			for subI := 0; subI < io.inputArity; subI++ {
-				dumpIdx := msb + lsb*nChunks + subI*nI
-				ioIdx := subI + lsb*io.inputArity + msb*chunkSizeXinputArity
-				dumpedInputs[dumpIdx] = io.inputs[ioIdx]
-			}
-		}
-	}
-
-	return dumpedInputs
-
+func (io *IoStore) InputsForVerifier() []polynomial.MultiLin {
+	return io.inputs
 }
 
 // Returns the gkr outputs in the correct order to be processed by the verifier
-func (io *IoStore) OutputsForVerifier(chunkSize int) []frontend.Variable {
-	nChunks := io.Index() / chunkSize
-	nOutputs := len(io.outputs)
-	resSize := nOutputs
-	dumpedOutputs := make([]frontend.Variable, resSize)
+func (io *IoStore) OutputsForVerifier() polynomial.MultiLin {
+	return io.outputs
+}
 
-	// Sanity checks: as we can assume to be in the Mimc case
-	common.Assert(len(io.outputs) == io.index*io.outputArity, "The output arity is inconsistent")
-
-	// Then assigns the inputs outputs by reordering
-	for msb := 0; msb < nChunks; msb++ {
-		for lsb := 0; lsb < chunkSize; lsb++ {
-			chunkSizeXoutputArity := chunkSize * io.outputArity
-			nO := chunkSize * nChunks
-			for subO := 0; subO < io.outputArity; subO++ {
-				dumpIdx := msb + lsb*nChunks + subO*nO
-				ioIdx := subO + lsb*io.outputArity + msb*chunkSizeXoutputArity
-				dumpedOutputs[dumpIdx] = io.outputs[ioIdx]
-			}
-		}
+// Returns all the varIds in a single vec (no deduplication)
+func (io *IoStore) VarIds() []int {
+	res := make([]int, 0, io.index*(io.inputArity+1))
+	for i := range io.inputsVarIds {
+		res = append(res, io.inputsVarIds[i]...)
 	}
+	res = append(res, io.outputsVarIds...)
+	return res
+}
 
-	return dumpedOutputs
+// Returns all the `isConstant` concatenated in a single vec
+func (io *IoStore) VarAreConstant() []bool {
+	res := make([]bool, 0, io.index*(io.inputArity+1))
+	for i := range io.inputsIsConstant {
+		res = append(res, io.inputsIsConstant[i]...)
+	}
+	res = append(res, io.outputsIsConstant...)
+	return res
+}
+
+// Allocates for one more hash entry
+func (io *IoStore) allocateForOneMore() {
+
+	if io.index >= io.allocEpoch {
+
+		// Double the size
+		incInputs := io.index
+		for i := range io.inputs {
+			io.inputs[i] = IncreaseCapVariable(io.inputs[i], incInputs)
+			io.inputsVarIds[i] = IncreaseCapInts(io.inputsVarIds[i], incInputs)
+			io.inputsIsConstant[i] = IncreaseCapBools(io.inputsIsConstant[i], incInputs)
+		}
+
+		incOutputs := io.index
+		io.outputs = IncreaseCapVariable(io.outputs, incOutputs)
+		io.outputsVarIds = IncreaseCapInts(io.outputsVarIds, incOutputs)
+		io.outputsIsConstant = IncreaseCapBools(io.outputsIsConstant, incOutputs)
+
+		io.allocEpoch *= 2
+	}
 }
 
 // Increase the capacity of a slice of frontend variable

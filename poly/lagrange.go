@@ -1,4 +1,4 @@
-package polynomial
+package poly
 
 import (
 	"github.com/consensys/gkr-mimc/common"
@@ -27,8 +27,8 @@ func initLagrangePolynomials() {
 	}
 }
 
-// EvaluatePolynomial evaluates a polynomial from its coefficients
-func EvaluatePolynomial(coeffs []fr.Element, x fr.Element) fr.Element {
+// EvalUnivariate evaluates a polynomial from its coefficients
+func EvalUnivariate(coeffs []fr.Element, x fr.Element) fr.Element {
 	var result fr.Element
 	result.Set(&coeffs[len(coeffs)-1])
 	for i := len(coeffs) - 2; i >= 0; i-- {
@@ -79,7 +79,7 @@ func LagrangeCoefficient(domainSize int) [][]fr.Element {
 		// and divide each coefficent by normalizationFactor
 		var lFieldElement fr.Element
 		lFieldElement.SetUint64(uint64(l))
-		normalizationFactor := EvaluatePolynomial(accumulator, lFieldElement)
+		normalizationFactor := EvalUnivariate(accumulator, lFieldElement)
 		// Now divide all coefficients
 		normalizationFactor.Inverse(&normalizationFactor)
 		for i := range accumulator {

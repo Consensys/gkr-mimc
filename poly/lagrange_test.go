@@ -1,4 +1,4 @@
-package polynomial
+package poly
 
 import (
 	"testing"
@@ -19,7 +19,7 @@ func TestLagrangeCoefficients(t *testing.T) {
 	for i := 0; i < domain; i++ {
 		var x fr.Element
 		x.SetUint64(uint64(i))
-		y := EvaluatePolynomial(lagrangePolynomial, x)
+		y := EvalUnivariate(lagrangePolynomial, x)
 		if i == value {
 			assert.Equal(t, y, one, "Should have been one")
 		} else {

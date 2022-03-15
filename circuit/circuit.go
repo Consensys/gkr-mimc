@@ -1,82 +1,91 @@
 package circuit
 
 import (
-	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
+	"fmt"
 
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// Circuit contains all the statical informations necessary to
-// describe a GKR circuit.
-type Circuit struct {
-	Layers []Layer
+type Circuit []Layer
+
+// Variable describes a circuit variable
+type Layer struct {
+	// Variables indexes that are inputs to compute the current variable
+	// Empty, means this an input layer
+	In []int
+	// Variables indexes that are fed by the current variable
+	// Empty means this is an output layer
+	Out []int
+	// Expresses how to build the variable
+	Gate Gate
 }
 
-// Assignment gathers all the values representing the steps of
-// computations being proved by GKR
-type Assignment struct {
-	Values [][][]fr.Element
-}
-
-// NewCircuit construct a new circuit object
-func NewCircuit(
-	wiring [][]Wire,
-) Circuit {
-	layers := make([]Layer, len(wiring))
-	for i := range layers {
-		layers[i] = NewLayer(wiring[i])
-	}
-	return Circuit{
-		Layers: layers,
-	}
-}
-
-// Assign returns a complete assignment from a vector of inputs
-func (c *Circuit) Assign(inputs [][]fr.Element, nCore int) Assignment {
-	assignment := make([][][]fr.Element, len(c.Layers)+1)
-	// The first layer of assignment is equal to the inputs
-	assignment[0] = inputs
-	// We use the transition funcs to create the next layers
-	// one after the other
-	for i, layer := range c.Layers {
-		assignment[i+1] = layer.Evaluate(assignment[i], nCore)
-	}
-	return Assignment{Values: assignment}
-}
-
-// LayerAsBKTWithCopy creates a deep-copy of a given layer of the assignment
-func (a *Assignment) LayerAsBKTWithCopy(layer, nCore int) []polynomial.BookKeepingTable {
-	res := make([]polynomial.BookKeepingTable, len(a.Values[layer]))
-
-	subCopy := func(start, stop int) {
-		for i := start; i < stop; i++ {
-			tab := a.Values[layer][i]
-			res[i].Table = make([]fr.Element, len(tab))
-			copy(res[i].Table, tab)
+// BuildCircuit
+// - Computes the Out layers
+// - Ensures there is no input used more than once : multi-instances must be explicitly provided as intermediary layers
+func BuildCircuit(c Circuit) error {
+	// Computes the output layers
+	for l := range c {
+		for _, pos := range c[l].In {
+			c[pos].Out = append(c[pos].Out, l)
 		}
 	}
 
-	common.Parallelize(len(res), subCopy, nCore)
-	return res
-}
-
-// LayerAsBKTNoCopy creates a deep-copy of a given layer of the assignment
-func (a *Assignment) LayerAsBKTNoCopy(layer int) []polynomial.BookKeepingTable {
-	res := make([]polynomial.BookKeepingTable, len(a.Values[layer]))
-	// Copies the headers of the slices
-	for i, tab := range a.Values[layer] {
-		res[i] = polynomial.NewBookKeepingTable(tab)
+	// Counts the number of multi-instances
+	for l := range c {
+		if len(c[l].In) == 0 && len(c[l].Out) > 1 {
+			return fmt.Errorf("Layer %v is an input layer but has %v outputs", l, len(c[l].Out))
+		}
 	}
+
+	return nil
+}
+
+// Evaluate returns the assignment of the next layer
+// It can be multi-threaded
+func (l *Layer) Evaluate(inputs ...[]fr.Element) []fr.Element {
+	nbIterations := len(inputs[0])
+	res := poly.MakeLarge(nbIterations)
+
+	common.Parallelize(nbIterations,
+		func(start, stop int) {
+
+			inps := make([][]fr.Element, len(inputs))
+			for i := 0; i < len(inputs); i++ {
+				inps[i] = inputs[i][start:stop]
+			}
+
+			l.Gate.EvalBatch(res[start:stop], inps...)
+		},
+	)
 	return res
 }
 
-// Returns the output size of the circuit
-func (c *Circuit) OutputArity() int {
-	return 1 << c.Layers[len(c.Layers)-1].BGOutputs
+// IsInputLayer returns true/false if this is an input layer
+// There are multiple ways of checking a layer is an input or output
+// All of them are checked. This helps as a sanity checks :
+// it will panic if any of the checks contradict the others.
+func (c Circuit) IsInputLayer(layer int) bool {
+	hasNoInputs := len(c[layer].In) == 0
+	hasNogates := c[layer].Gate == nil
+
+	if hasNoInputs != hasNogates {
+		panic(fmt.Sprintf("layer %v has no inputs? : %v but also has no gate? : %v", layer, hasNoInputs, hasNogates))
+	}
+
+	return hasNoInputs
 }
 
 // Returns the input arity of the circuit
-func (c *Circuit) InputArity() int {
-	return 1 << c.Layers[len(c.Layers)-1].BGInputs
+func (c Circuit) InputArity() int {
+	count := 0
+	for layer := range c {
+		if !c.IsInputLayer(layer) {
+			break
+		}
+		count++
+	}
+	return count
 }

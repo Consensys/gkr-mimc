@@ -1,144 +1,132 @@
 package gkr
 
 import (
+	"fmt"
+	"reflect"
+	"sort"
+
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gkr-mimc/sumcheck"
-
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// Verifier contains all the data relevant for the verifier algorithm of GKR
-type Verifier struct {
-	bN      int
-	circuit circuit.Circuit
-}
-
-// NewVerifier constructs a new verifier object
-func NewVerifier(bN int, circuit circuit.Circuit) Verifier {
-	return Verifier{
-		bN:      bN,
-		circuit: circuit,
-	}
-}
-
-// Verify returns true if the GKR proof is valid
-func (v *Verifier) Verify(
+func Verify(
+	c circuit.Circuit,
 	proof Proof,
-	inputs, outputs [][]fr.Element,
-	qPrime, q []fr.Element,
-) bool {
+	inputs []poly.MultiLin,
+	outputs poly.MultiLin,
+	qPrime []fr.Element,
+) (err error) {
 
-	nLayers := len(v.circuit.Layers)
+	nLayers := len(c)
 
-	if len(qPrime) == 0 && len(q) == 0 {
-		qPrime, q = GetInitialQPrimeAndQ(v.bN, v.circuit.Layers[nLayers-1].BGOutputs)
-	}
-
-	var qL, qR []fr.Element
-
-	qqPrime := append(append([]fr.Element{}, q...), qPrime...)
-
-	claim := polynomial.EvaluateChunked(
-		polynomial.AsChunkedBookKeepingTable(outputs),
-		qqPrime,
-	)
-
-	sumcheckVerifier := sumcheck.Verifier{}
-	valid, nextQPrime, nextQL, nextQR, totalClaim := sumcheckVerifier.Verify(
-		claim,
-		proof.SumcheckProofs[nLayers-1],
-		v.bN, v.circuit.Layers[nLayers-1].BGInputs,
-	)
-
-	if !valid {
-		// The sumcheck proof is broken
-		return false
-	}
-	evalEq := polynomial.EvalEq(qPrime, nextQPrime)
-	evaluated := circuit.EvaluateCombinator(
-		&proof.ClaimsLeft[nLayers-1],
-		&proof.ClaimsRight[nLayers-1],
-		&evalEq,
-		v.circuit.Layers[nLayers-1].Gates,
-		v.evaluateStaticTables(nLayers-1, q, nextQL, nextQR),
-	)
-
-	if totalClaim != evaluated {
-		// The sumcheck claim was inconsistent with the values claimed in the proof
-		return false
-	}
-
-	for layer := nLayers - 2; layer >= 0; layer-- {
-		// Compute the random linear comb of the claims
-		var lambdaL fr.Element
-		lambdaL.SetOne()
-		lambdaR := common.GetChallenge([]fr.Element{proof.ClaimsLeft[layer+1], proof.ClaimsRight[layer+1]})
-		claim = proof.ClaimsRight[layer+1]
-		claim.Mul(&claim, &lambdaR)
-		claim.Add(&claim, &proof.ClaimsLeft[layer+1])
-
-		// Updates qL and qR values to initialize the next round
-		qL = nextQL
-		qR = nextQR
-		qPrime = nextQPrime
-
-		valid, nextQPrime, nextQL, nextQR, totalClaim = sumcheckVerifier.Verify(
-			claim, proof.SumcheckProofs[layer],
-			v.bN, v.circuit.Layers[layer].BGInputs,
+	if !reflect.DeepEqual(qPrime, proof.QPrimes[nLayers-1][0]) {
+		return fmt.Errorf("initial qPrime does not match with the proof %v %v",
+			common.FrSliceToString(qPrime),
+			common.FrSliceToString(proof.QPrimes[nLayers-1][0]),
 		)
-		if !valid {
-			// The sumcheck proof is broken
-			return false
+	}
+
+	// Pass the initial claim into the proof, because the prover does not compute it
+	// For a matter of immutability : the old value of the claim is saved so we can put it
+	// back in place before returning
+	oldClaim := proof.Claims[nLayers-1]
+	proof.Claims[nLayers-1] = append(proof.Claims[nLayers-1], outputs.Evaluate(qPrime))
+	defer func() { proof.Claims[nLayers-1] = oldClaim }()
+
+	for layer := nLayers - 1; layer >= 0; layer-- {
+		if c.IsInputLayer(layer) {
+			// It's an input layer
+			// No, more sumcheck to verify
+			break
 		}
 
-		eqEval := polynomial.EvalEq(qPrime, nextQPrime)
-		if totalClaim != circuit.EvaluateCombinator(
-			&proof.ClaimsLeft[layer],
-			&proof.ClaimsRight[layer],
-			&eqEval,
-			v.circuit.Layers[layer].Gates,
-			v.evaluateStaticTablesLinCombs(layer, qL, qR, nextQL, nextQR, lambdaL, lambdaR),
-		) {
-			// The sumcheck claim was inconsistent with the values claimed in the proof
-			return true
+		if err := proof.testSumcheck(c, layer); err != nil {
+			return fmt.Errorf("error at layer %v : %v", layer, err)
 		}
 	}
 
-	// Final check => Check consistency with the last claims
-	// on vL and vR with the values given as inputs
-	//vL, vR from inputs
-	actualVL, actualVR := polynomial.EvaluateMixedChunked(
-		polynomial.AsChunkedBookKeepingTable(inputs),
-		nextQPrime, nextQL, nextQR)
-	if actualVL != proof.ClaimsLeft[0] || actualVR != proof.ClaimsRight[0] {
-		return false
+	for layer := range inputs {
+		if err = proof.testInitialRound(inputs, layer); err != nil {
+			return err
+		}
 	}
 
-	return true
+	return nil
+
 }
 
-func (v *Verifier) evaluateStaticTables(layer int, q, nextQL, nextQR []fr.Element) []fr.Element {
-	tables := v.circuit.Layers[layer].GetStaticTable(q)
-	evals := make([]fr.Element, len(tables))
-	for i := range tables {
-		evals[i] = tables[i].Evaluate(append(nextQL, nextQR...))
+func (proof Proof) testSumcheck(
+	c circuit.Circuit,
+	layer int,
+) (err error) {
+
+	// First thing, test the sumcheck
+	nextQprime, nextClaim, recombChal, err := sumcheck.Verify(
+		proof.Claims[layer],
+		proof.SumcheckProofs[layer],
+	)
+
+	if err != nil {
+		return fmt.Errorf("error at sumcheck layer %v %v - claims %v", layer, err, common.FrSliceToString(proof.Claims[layer]))
 	}
-	return evals
+
+	var expectedClaim fr.Element
+	// 2 is because in practice, a gate cannot have more than two inputs with our designs
+	subClaims := make([]*fr.Element, 0, 2)
+
+	for _, inpL := range c[layer].In {
+
+		// Seach the position of `l` as an output of layer `inpL`
+		// It works because `c[inpL].Out` is guaranteed to be sorted.
+		readAt := sort.SearchInts(c[inpL].Out, layer)
+
+		// Since `SearchInts` does not answer whether the `int` is contained or not
+		// but returns the position if it "were" inside. We need to test inclusion
+		if c[inpL].Out[readAt] != layer {
+			panic(fmt.Sprintf("circuit misformatted, In and Out are inconsistent between layers %v and %v", layer, inpL))
+		}
+
+		if !reflect.DeepEqual(proof.QPrimes[inpL][readAt], nextQprime) {
+			return fmt.Errorf("mismatch for qPrimes between sumcheck and proof at layer %v", layer)
+		}
+
+		subClaims = append(subClaims, &proof.Claims[inpL][readAt])
+	}
+
+	// Run the gate to compute the expected claim
+	c[layer].Gate.Eval(&expectedClaim, subClaims...)
+
+	// Evaluation of eq to be used for testing the consistency with the challenges
+	// Recombines the eq evaluations into a single challenge
+	tmpEvals := make([]fr.Element, len(proof.QPrimes[layer]))
+	for i := range proof.QPrimes[layer] {
+		tmpEvals[i] = poly.EvalEq(proof.QPrimes[layer][i], nextQprime)
+	}
+	eqEval := poly.EvalUnivariate(tmpEvals, recombChal)
+
+	expectedClaim.Mul(&expectedClaim, &eqEval)
+
+	if expectedClaim != nextClaim {
+		return fmt.Errorf("the expected claim and the final claim of the sumcheck do not match for layer %v", layer)
+	}
+
+	return nil
 }
 
-func (v *Verifier) evaluateStaticTablesLinCombs(layer int, qL, qR, nextQL, nextQR []fr.Element, lambdaL, lambdaR fr.Element) []fr.Element {
-	tablesL := v.circuit.Layers[layer].GetStaticTable(qL)
-	tablesR := v.circuit.Layers[layer].GetStaticTable(qR)
-	evals := make([]fr.Element, len(tablesL))
-	for i := range tablesL {
-		left := tablesL[i].Evaluate(append(nextQL, nextQR...))
-		right := tablesR[i].Evaluate(append(nextQL, nextQR...))
-		right.Mul(&right, &lambdaR)
-		left.Mul(&left, &lambdaL)
-		left.Add(&left, &right)
-		evals[i] = left
+// Performs one of the GKR checks for the inputs layers
+func (proof Proof) testInitialRound(inps []poly.MultiLin, layer int) error {
+	qPrime := proof.QPrimes[layer][0]
+	claim := proof.Claims[layer][0]
+	actual := inps[layer].Evaluate(qPrime)
+
+	if actual != claim {
+		return fmt.Errorf(
+			"input layer check failed \n\tlayer %v \n\tclaim %v \n\teval %v \n\tqPrime %v",
+			layer, claim.String(), actual.String(), common.FrSliceToString(qPrime),
+		)
 	}
-	return evals
+	return nil
 }

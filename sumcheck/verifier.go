@@ -1,44 +1,48 @@
 package sumcheck
 
 import (
-	"github.com/consensys/gkr-mimc/common"
-	"github.com/consensys/gkr-mimc/polynomial"
+	"fmt"
 
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// Verifier holds the methods relative to the verifier algorithm
-type Verifier struct{}
-
-// Verify returns true if and only the sumcheck proof is valid
-func (v Verifier) Verify(claim fr.Element, proof Proof, bN, bG int) (result bool, qPrime, qL, qR []fr.Element, finalClaim fr.Element) {
+func Verify(claims []fr.Element, proof Proof) (qPrime []fr.Element, finalClaim, recombChal fr.Element, err error) {
 	// Initalize the structures
-	challenges := make([]fr.Element, len(proof.PolyCoeffs))
-	var expectedValue fr.Element = claim
+	bn := len(proof)
+	challenges := make([]fr.Element, bn)
+
+	var expectedValue fr.Element
+	expectedValue, recombChal = recombineMultiClaims(claims)
+
 	var actualValue, r, zero, one, evalAtOne fr.Element
 	one.SetOne()
 
-	for i := 0; i < len(proof.PolyCoeffs); i++ {
+	for i := 0; i < bn; i++ {
 		// Check P_i(0) + P_i(1) == expected
-		actualValue = polynomial.EvaluatePolynomial(proof.PolyCoeffs[i], zero)
-		evalAtOne = polynomial.EvaluatePolynomial(proof.PolyCoeffs[i], one)
+		actualValue = poly.EvalUnivariate(proof[i], zero)
+		evalAtOne = poly.EvalUnivariate(proof[i], one)
 		actualValue.Add(&actualValue, &evalAtOne)
 
 		if expectedValue != actualValue {
-			return false, nil, nil, nil, [4]uint64{0, 0, 0, 0}
+			return nil, fr.Element{}, fr.Element{}, fmt.Errorf("at round %v verifier eval at 0 + 1 = %v || expected = %v", i, actualValue.String(), expectedValue.String())
 		}
-		// expectedValue = P_i(r)
-		r = common.GetChallenge(proof.PolyCoeffs[i])
 
+		r = common.GetChallenge(proof[i])
 		challenges[i] = r
-		expectedValue = polynomial.EvaluatePolynomial(proof.PolyCoeffs[i], r)
+		// expectedValue = P_i(r)
+		expectedValue = poly.EvalUnivariate(proof[i], r)
 	}
 
-	// A deep-copy to avoid reusing the same underlying slice for all writes
-	qL = append([]fr.Element{}, challenges[:bG]...)
-	qR = append([]fr.Element{}, challenges[bG:2*bG]...)
-	qPrime = append([]fr.Element{}, challenges[2*bG:]...)
+	return challenges, expectedValue, recombChal, nil
+}
 
-	// final confrontation omitted for now
-	return true, qPrime, qL, qR, expectedValue
+func recombineMultiClaims(claims []fr.Element) (claim, challenge fr.Element) {
+	if len(claims) < 1 {
+		// No recombination
+		return claims[0], fr.Element{}
+	}
+	challenge = common.GetChallenge(claims)
+	return poly.EvalUnivariate(claims, challenge), challenge
 }

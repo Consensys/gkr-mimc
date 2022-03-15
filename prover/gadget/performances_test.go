@@ -2,7 +2,6 @@ package gadget
 
 import (
 	"fmt"
-	"runtime"
 	"testing"
 
 	"github.com/AlexandreBelling/gnark/backend"
@@ -80,7 +79,7 @@ func AssignCircuitWithGkr(n int) CircuitWithGkr {
 func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 
 	circ := AllocateCircuitWithGkr(n)
-	circuit := WrapCircuitUsingGkr(circ, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
+	circuit := WrapCircuitUsingGkr(circ)
 
 	var r1cs R1CS
 	var err error
@@ -101,7 +100,7 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	}
 
 	ass := AssignCircuitWithGkr(n)
-	assignment := WrapCircuitUsingGkr(&ass, WithMinChunkSize(chunkSize), WithNCore(runtime.NumCPU()))
+	assignment := WrapCircuitUsingGkr(&ass)
 	assignment.Assign()
 
 	b.Run(fmt.Sprintf("prover-size-%v", n), func(b *testing.B) {

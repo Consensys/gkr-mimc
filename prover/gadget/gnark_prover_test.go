@@ -15,7 +15,6 @@ import (
 
 func TestGadgetSolver(t *testing.T) {
 	n := 10
-	chunkSize := 8
 	preimages := make([]fr.Element, n)
 	hashes := make([]fr.Element, n)
 
@@ -25,7 +24,7 @@ func TestGadgetSolver(t *testing.T) {
 	}
 
 	innerCircuit := AllocateTestGadgetCircuit(n)
-	circuit := WrapCircuitUsingGkr(&innerCircuit, WithMinChunkSize(chunkSize), WithNCore(1))
+	circuit := WrapCircuitUsingGkr(&innerCircuit)
 
 	r1cs, err := circuit.Compile()
 	assert.NoError(t, err)
@@ -65,7 +64,7 @@ func TestGadgetSolver(t *testing.T) {
 
 	innerAssignment := AllocateTestGadgetCircuit(n)
 	innerAssignment.Assign(preimages, hashes)
-	assignment := WrapCircuitUsingGkr(&innerAssignment, WithMinChunkSize(chunkSize), WithNCore(1))
+	assignment := WrapCircuitUsingGkr(&innerAssignment)
 	assignment.Assign()
 
 	solution, err := assignment.Solve(r1cs)

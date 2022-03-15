@@ -6,10 +6,8 @@ import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/common"
 	"github.com/consensys/gkr-mimc/examples"
-	gkrNative "github.com/consensys/gkr-mimc/gkr"
 	"github.com/consensys/gkr-mimc/hash"
 	"github.com/consensys/gkr-mimc/snark/gkr"
-	"github.com/consensys/gkr-mimc/snark/polynomial"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
@@ -38,26 +36,21 @@ type GkrGadget struct {
 	InitialRandomness frontend.Variable `gnark:",public"`
 	ioStore           IoStore           `gnark:"-"`
 
-	Circuit   circuit.Circuit `gnark:"-"`
-	chunkSize int
-	gkrNCore  int
+	Circuit circuit.Circuit `gnark:"-"`
 
 	r1cs  *R1CS  `gnark:"-"`
 	proof *Proof `gnark:"-"`
-
-	gkrProof *gkrNative.Proof `gnark:"-"`
 }
 
 // NewGkrGadget
 func NewGkrGadget() *GkrGadget {
 	// Despite the struct having a `Circuit` field, we only allow
 	// it to work with the mimc Circuit
-	mimc := examples.CreateMimcCircuit()
+	mimc := examples.MimcCircuit()
 
 	return &GkrGadget{
-		ioStore:   NewIoStore(&mimc, 16),
-		Circuit:   mimc,
-		chunkSize: DEFAULT_CHUNK_SIZE,
+		ioStore: NewIoStore(&mimc, 16),
+		Circuit: mimc,
 	}
 }
 
@@ -71,7 +64,7 @@ func (g *GkrGadget) updateHasherWithZeroes(cs frontend.API) {
 	)
 }
 
-func (g *GkrGadget) getInitialRandomness(cs frontend.API) (initialRandomness frontend.Variable, qPrime, q []frontend.Variable) {
+func (g *GkrGadget) getInitialRandomness(cs frontend.API) (initialRandomness frontend.Variable, qPrime []frontend.Variable) {
 	// Get the initial randomness
 	ios := g.ioStore.DumpForProverMultiExp()
 	bN := common.Log2Ceil(g.ioStore.Index())
@@ -81,26 +74,20 @@ func (g *GkrGadget) getInitialRandomness(cs frontend.API) (initialRandomness fro
 	common.Assert(err == nil, "Unexpected error %v", err)
 
 	// Expands the initial randomness into q and qPrime
-	q = make([]frontend.Variable, 0)
 	qPrime = make([]frontend.Variable, bN)
-
 	tmp := initialRandomnessArr[0]
-	for i := range q {
-		q[i] = tmp
-		tmp = cs.Mul(tmp, tmp)
-	}
 
 	for i := range qPrime {
 		qPrime[i] = tmp
 		tmp = cs.Mul(tmp, tmp)
 	}
 
-	return initialRandomness, qPrime, q
+	return initialRandomness, qPrime
 }
 
 // Runs the Gkr Prover
-func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime, q []frontend.Variable) gkr.Proof {
-	proofInputs := g.ioStore.DumpForGkrProver(g.chunkSize, qPrime, q)
+func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime []frontend.Variable) gkr.Proof {
+	proofInputs := g.ioStore.DumpForGkrProver(qPrime)
 	proofVec, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
 
 	common.Assert(err == nil, "unexpected error in the gkr prover hint %v", err)
@@ -117,24 +104,14 @@ func (g *GkrGadget) Close(cs frontend.API) {
 	bN := common.Log2Ceil(g.ioStore.Index())
 	paddedLen := 1 << bN
 
-	// Shrinks the chunkSize so that it does not overflow
-	// the number of hashes (after padding)
-	g.chunkSize = common.Min(g.chunkSize, paddedLen)
-
 	// Pad the inputs in order to get a power of two length vector
 	for g.ioStore.Index() < paddedLen {
 		g.updateHasherWithZeroes(cs)
 	}
 
-	initialRandomness, qPrime, q := g.getInitialRandomness(cs)
-
-	proof := g.getGkrProof(cs, qPrime, q)
-
-	proof.AssertValid(
-		cs, g.Circuit, q, qPrime,
-		polynomial.NewMultilinearByValues(g.ioStore.InputsForVerifier(g.chunkSize)),
-		polynomial.NewMultilinearByValues(g.ioStore.OutputsForVerifier(g.chunkSize)),
-	)
+	initialRandomness, qPrime := g.getInitialRandomness(cs)
+	proof := g.getGkrProof(cs, qPrime)
+	proof.AssertValid(cs, g.Circuit, qPrime, g.ioStore.InputsForVerifier(), g.ioStore.OutputsForVerifier())
 
 	// The last thing we do is checking that the initialRandomness matches the public one
 	cs.AssertIsEqual(g.InitialRandomness, initialRandomness)

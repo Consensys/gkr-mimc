@@ -13,7 +13,7 @@ func MimcHash(cs frontend.API, stream ...frontend.Variable) frontend.Variable {
 		newM := m
 		for i := 0; i < hash.MimcRounds; i++ {
 			newM = cs.Add(newM, state)
-			newM = cs.Add(newM, frontend.Variable(hash.Arks[i]))
+			newM = cs.Add(newM, hash.Arks[i])
 			// Raise to the power 7
 			tmp := cs.Mul(newM, newM) // ^2
 			tmp = cs.Mul(newM, tmp)   // ^3

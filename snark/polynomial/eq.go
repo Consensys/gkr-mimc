@@ -10,7 +10,7 @@ func UnivariateEqEval(cs frontend.API, q, h frontend.Variable) frontend.Variable
 	res := frontend.Variable(1)
 	res = cs.Sub(res, q)
 	res = cs.Sub(res, h)
-	res = cs.Add(res, cs.Mul(frontend.Variable(2), cs.Mul(q, h)))
+	res = cs.Add(res, cs.Mul(2, cs.Mul(q, h)))
 	return res
 }
 

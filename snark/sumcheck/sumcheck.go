@@ -3,6 +3,7 @@ package sumcheck
 import (
 	"fmt"
 
+	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/snark/hash"
 	"github.com/consensys/gkr-mimc/snark/polynomial"
 	"github.com/consensys/gkr-mimc/sumcheck"
@@ -11,63 +12,52 @@ import (
 )
 
 // Proof contains the circuit data of a sumcheck run EXCEPT WHAT IS REQUIRED FOR THE FINAL CHECK.
-type Proof struct {
-	// bN           int
-	// bG           int
-	// InitialClaim frontend.Variable
-	HPolys []polynomial.Univariate
-}
+type Proof []polynomial.Univariate
 
 // AllocateProof allocates an empty sumcheck verifier
-func AllocateProof(bN, bG, degHL, degHR, degHPrime int) Proof {
-	hPolys := make([]polynomial.Univariate, bN+2*bG)
-	for i := 0; i < bG; i++ {
-		hPolys[i] = polynomial.AllocateUnivariate(degHL)
+func AllocateProof(bN int, gate circuit.Gate) Proof {
+	proof := make(Proof, bN)
+	for i := 0; i < bN; i++ {
+		proof[i] = polynomial.AllocateUnivariate(gate.Degree() + 1)
 	}
-	for i := bG; i < 2*bG; i++ {
-		hPolys[i] = polynomial.AllocateUnivariate(degHR)
-	}
-	for i := 2 * bG; i < 2*bG+bN; i++ {
-		hPolys[i] = polynomial.AllocateUnivariate(degHPrime)
-	}
-
-	return Proof{
-		HPolys: hPolys,
-	}
+	return proof
 }
 
 // Assign values for the sumcheck verifier
-func (p *Proof) Assign(proof sumcheck.Proof) {
-	if len(proof.PolyCoeffs) != len(p.HPolys) {
+func (p Proof) Assign(proof sumcheck.Proof) {
+	if len(proof) != len(p) {
 		panic(
-			fmt.Sprintf("Inconsistent assignment lenght: expected %v, but got %v", len(p.HPolys), len(proof.PolyCoeffs)),
+			fmt.Sprintf("Inconsistent assignment lenght: expected %v, but got %v", len(p), len(proof)),
 		)
 	}
-	for i, poly := range proof.PolyCoeffs {
-		p.HPolys[i].Assign(poly)
+	for i, poly := range proof {
+		p[i].Assign(poly)
 	}
 }
 
 // AssertValid verifies a sumcheck instance EXCEPT FOR THE FINAL VERIFICATION.
-func (p *Proof) AssertValid(cs frontend.API, initialClaim frontend.Variable, bG int) (
-	hL, hR, hPrime []frontend.Variable,
-	lastClaim frontend.Variable,
+func (p Proof) AssertValid(cs frontend.API, initialClaim []frontend.Variable) (
+	qPrime []frontend.Variable, finalClaim, recombChal frontend.Variable,
 ) {
 	// initialize current claim:
-	claimCurr := initialClaim
-	hs := make([]frontend.Variable, len(p.HPolys))
+	claimCurr, recombChal := recombineMultiClaims(cs, initialClaim)
+	hs := make([]frontend.Variable, len(p))
 
-	for i, poly := range p.HPolys {
-		zeroAndOne := poly.ZeroAndOne(cs)
+	for i, pol := range p {
+		zeroAndOne := pol.ZeroAndOne(cs)
 		cs.AssertIsEqual(zeroAndOne, claimCurr)
-		hs[i] = hash.MimcHash(cs, poly.Coefficients...) // Hash the polynomial
-		claimCurr = poly.Eval(cs, hs[i])                // Get new current claim
+		hs[i] = hash.MimcHash(cs, pol...) // Hash the polynomial
+		claimCurr = pol.Eval(cs, hs[i])   // Get new current claim
 	}
 
-	// A deep-copy to avoid reusing the same underlying slice for all writes
-	hL = append([]frontend.Variable{}, hs[:bG]...)
-	hR = append([]frontend.Variable{}, hs[bG:2*bG]...)
-	hPrime = append([]frontend.Variable{}, hs[2*bG:]...)
+	return hs, claimCurr, recombChal
+}
 
-	return hL, hR, hPrime, claimCurr
+func recombineMultiClaims(cs frontend.API, claims []frontend.Variable) (claim, challenge frontend.Variable) {
+	if len(claims) < 1 {
+		// No recombination
+		return claims[0], nil
+	}
+	challenge = hash.MimcHash(cs, claims...)
+	return polynomial.Univariate(claims).Eval(cs, challenge), challenge
 }
