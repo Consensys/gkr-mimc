@@ -195,8 +195,6 @@ func (h *InitialRandomnessHint) Call(_ ecc.ID, inpss []*big.Int, oups []*big.Int
 // we need to compute the GkrProof and verify
 // In order to return the fields one after the other, the function is built as a stateful iterator
 func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) error {
-	t := common.NewTimer("gkr prover hint")
-	defer t.Close()
 	bN := common.Log2Ceil(h.g.ioStore.Index())
 
 	paddedIndex := 1 << bN
@@ -220,7 +218,9 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 
 	// Runs the actual prover
 	assignment := h.g.Circuit.Assign(inputs...)
+	t := common.NewTimer("gkr prover hint")
 	gkrProof := gkrNative.Prove(h.g.Circuit, assignment, qPrime)
+	t.Close()
 
 	if debug {
 		// For debug : only -> Check that the proof verifies
