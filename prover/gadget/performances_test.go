@@ -102,7 +102,7 @@ func benchCircuitWithGkr(n int, b *testing.B) {
 	assignment.Assign()
 
 	b.Run(fmt.Sprintf("prover-size-%v", n), func(b *testing.B) {
-		common.ProfileTrace(b, true, true, func() {
+		common.ProfileTrace(b, false, false, func() {
 			// for i := 0; i < b.N; i++ {
 			_, err = Prove(&r1cs, &pk, &assignment)
 			common.Assert(err == nil, "Prover failed %v", err)

@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-const debug bool = true
+const debug bool = false
 
 type HashHint struct {
 	g *GkrGadget
@@ -223,10 +223,6 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 	gkrProof := gkrNative.Prove(h.g.Circuit, assignment, qPrime)
 
 	if debug {
-
-		fmt.Printf("output %v\n", common.FrSliceToString(outputs))
-		fmt.Printf("output %v\n", common.FrSliceToString(assignment[93]))
-
 		// For debug : only -> Check that the proof verifies
 		valid := gkrNative.Verify(h.g.Circuit, gkrProof, inputs, outputs, qPrime)
 		common.Assert(valid == nil, "GKR proof was wrong - Bug in proof generation - %v", valid)

@@ -34,7 +34,6 @@ func (c *Circuit) Define(cs frontend.API) error {
 	if err := c.InnerCircuit.Define(cs, &c.Gadget); err != nil {
 		return err
 	}
-	cs.Println("starting to call the gadget %v\n")
 	c.Gadget.Close(cs)
 	return nil
 }
