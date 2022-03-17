@@ -17,7 +17,7 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-const debug bool = false
+const debug bool = true
 
 type HashHint struct {
 	g *GkrGadget
@@ -72,40 +72,47 @@ func (h *InitialRandomnessHint) NbOutputs(_ ecc.ID, nbInput int) int {
 }
 
 // NbOutputs of the gkr prover hint
+// Returns the number of field elements to represent the
 func (h *GkrProverHint) NbOutputs(_ ecc.ID, nbInput int) int {
 	// Find the circuit
 	circuit := h.g.Circuit
+
 	// Iteratively finds the bN of the circuit from the input size
 	// Can't guarantee that g.ioStore.index contains the right values
 	bN := 0
-	gIn := circuit.InputArity()
-
-loop:
+	inputArity := circuit.InputArity()
 	for {
-		inputSize := (1<<bN)*(gIn+1) + bN
+		inputSize := (1<<bN)*(inputArity+1) + bN
 		if inputSize == nbInput {
-			break loop
+			break
 		}
 		// sanity check in case something must be wrong with the formula
 		if inputSize > nbInput {
-			panic(fmt.Sprintf("It's too big : %v > %v", inputSize, nbInput))
+			panic(fmt.Sprintf("Took over the size: %v > %v. Something wrong with the formula for the size", inputSize, nbInput))
 		}
-
+		// try with a larger bn
 		bN += 1
 	}
 
-	nLayers := len(circuit)
+	sumcheckSize := 0
+	claimsSize := 0
+	qPrimeSize := 0
 
-	nbClaimLeft := nLayers  // claim left
-	nbClaimRight := nLayers // claim right
-
-	sumcheckTotalSize := 0
 	for _, layer := range circuit {
-		deg := layer.Gate.Degree() + 1
-		sumcheckTotalSize += bN * deg // size of the sumcheck i
+		// If not an input gate, adds the sumchecks
+		if layer.Gate != nil {
+			// The degree is deg + 1 (because of the multiplication by `eq(h, q)`)
+			// So the number of coefficients is deg + 2
+			nbCoeffs := layer.Gate.Degree() + 2
+			sumcheckSize += bN * nbCoeffs // size of the sumcheck for the layer
+		}
+
+		claimsSize += len(layer.Out)
+		qPrimeSize += bN * len(layer.Out)
 	}
 
-	return nbClaimLeft + nbClaimRight + sumcheckTotalSize
+	qPrimeSize += bN // For the output layer
+	return sumcheckSize + claimsSize + qPrimeSize
 }
 
 // String of the hash hint
@@ -129,10 +136,9 @@ func (h *HashHint) Call(curve ecc.ID, inps []*big.Int, outputs []*big.Int) error
 	var state, block fr.Element
 	state.SetBigInt(inps[0])
 	block.SetBigInt(inps[1])
-	hashed := state
 
 	// Properly computes the hash
-	hash.MimcUpdateInplace(&hashed, block)
+	hashed := hash.MimcKeyedPermutation(block, state)
 	hashed.ToBigIntRegular(outputs[0])
 	h.g.ioStore.index++
 	return nil
@@ -195,19 +201,19 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 
 	paddedIndex := 1 << bN
 
-	inps := make([]fr.Element, len(inputsBI))
-	for i := range inps {
-		inps[i].SetBigInt(inputsBI[i])
+	drain := make([]fr.Element, len(inputsBI))
+	for i := range drain {
+		drain[i].SetBigInt(inputsBI[i])
 	}
 
 	// Passes the outputs
 	inputs := make([]poly.MultiLin, h.g.Circuit.InputArity())
+	qPrime, drain := drain[:bN], drain[bN:]
 	for i := range inputs {
-		inputs[i], inps = inps[:paddedIndex], inps[paddedIndex:]
+		inputs[i], drain = drain[:paddedIndex], drain[paddedIndex:]
 	}
 	// The output: here is passed to force the solver to wait for all the output
-	outputs, inps := inps[:paddedIndex], inps[paddedIndex:]
-	qPrime, drain := inps[:bN], inps[bN:]
+	outputs, drain := drain[:paddedIndex], drain[paddedIndex:]
 
 	// Sanity check
 	common.Assert(len(drain) == 0, "The drain was expected to emptied but there remains %v elements", len(drain))
@@ -217,6 +223,10 @@ func (h *GkrProverHint) Call(_ ecc.ID, inputsBI []*big.Int, oups []*big.Int) err
 	gkrProof := gkrNative.Prove(h.g.Circuit, assignment, qPrime)
 
 	if debug {
+
+		fmt.Printf("output %v\n", common.FrSliceToString(outputs))
+		fmt.Printf("output %v\n", common.FrSliceToString(assignment[93]))
+
 		// For debug : only -> Check that the proof verifies
 		valid := gkrNative.Verify(h.g.Circuit, gkrProof, inputs, outputs, qPrime)
 		common.Assert(valid == nil, "GKR proof was wrong - Bug in proof generation - %v", valid)

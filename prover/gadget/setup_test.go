@@ -46,7 +46,7 @@ func setupTestGen(t *testing.T, fun innerSetupFunc) {
 	pk, vk := PreInitializePublicParams(initialPk, initialVk)
 	SubSlicesPublicParams(&r1cs, &pk, &vk)
 
-	assert.Equal(t, pk.privKGkrSigma[0].String(), pk.pk.G1.K[21].String(), "Misalignement")
+	assert.Equal(t, pk.privKGkrSigma[0].String(), pk.pk.G1.K[20].String(), "Misalignement")
 
 	{ // Tests that the subslicing works as intended
 		var krsSplitted, krs0 bn254.G1Affine

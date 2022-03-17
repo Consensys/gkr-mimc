@@ -1,6 +1,7 @@
 package gadget
 
 import (
+	"fmt"
 	"math/big"
 
 	grothBack "github.com/AlexandreBelling/gnark/backend/groth16"
@@ -114,6 +115,11 @@ func SubSlicesPublicParams(r1cs *R1CS, pk *ProvingKey, vk *VerifyingKey) {
 	privKNotGkr := subSlice(pk.pk.G1.K, r1cs.privNotGkrVarID, -vk.vk.NbPublicWitness()-1)
 	pubKNotGkr := append([]bn254.G1Affine{vk.vk.G1.K[0]}, subSlice(vk.vk.G1.K, r1cs.pubNotGkrVarID, 0)...)
 	pubKGkr := subSlice(vk.vk.G1.K, r1cs.pubGkrVarID, 0)
+
+	fmt.Printf("r1cs.privGkrVarID = %v \n", r1cs.privGkrVarID)
+	fmt.Printf("r1cs.privNotGkrVarID = %v \n", r1cs.privNotGkrVarID[:20])
+	fmt.Printf("r1cs.pubNotGkrVarID = %v \n", r1cs.pubNotGkrVarID)
+	fmt.Printf("r1cs.pubGkrVarID = %v \n", r1cs.pubGkrVarID)
 
 	// Passes the subslices arrays
 	pk.privKGkrSigma = privGkrSigma

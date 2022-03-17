@@ -60,7 +60,7 @@ func (g *GkrGadget) updateHasherWithZeroes(cs frontend.API) {
 	g.ioStore.Push(
 		cs,
 		[]frontend.Variable{frontend.Variable(0), frontend.Variable(0)},
-		[]frontend.Variable{&hashOfZeroes},
+		hashOfZeroes,
 	)
 }
 
@@ -87,6 +87,7 @@ func (g *GkrGadget) getInitialRandomness(cs frontend.API) (initialRandomness fro
 
 // Runs the Gkr Prover
 func (g *GkrGadget) getGkrProof(cs frontend.API, qPrime []frontend.Variable) gkr.Proof {
+
 	proofInputs := g.ioStore.DumpForGkrProver(qPrime)
 	proofVec, err := cs.NewHint(g.GkrProverHint(), proofInputs...)
 

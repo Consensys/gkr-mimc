@@ -35,7 +35,6 @@ func TestMimc(t *testing.T) {
 	outputs := a[93]
 
 	// Sees if the output is consistent with the result of calling Mimc permutation
-	// From finState decrease bu `block` to cancel the last key-addition done in `MimcPermutationUpdate`
 	finstate0 := hash.MimcKeyedPermutation(payload[0], key[0])
 
 	// An error here indicates a mismatch between the circuit and the mimc permutation

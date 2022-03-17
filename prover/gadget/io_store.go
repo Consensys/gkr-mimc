@@ -28,15 +28,15 @@ type IoStore struct {
 // Creates a new ioStore for the given circuit
 func NewIoStore(circuit *circuit.Circuit, allocEpoch int) IoStore {
 
-	if allocEpoch == 0 {
-		panic("cannot accept allocEpoch = 0")
-	}
+	inputArity := circuit.InputArity()
 
 	return IoStore{
-		inputs:     make([]polynomial.MultiLin, circuit.InputArity()),
-		outputs:    polynomial.MultiLin{},
-		allocEpoch: allocEpoch,
-		inputArity: circuit.InputArity(),
+		inputs:           make([]polynomial.MultiLin, circuit.InputArity()),
+		inputsVarIds:     make([][]int, inputArity),
+		inputsIsConstant: make([][]bool, inputArity),
+		outputs:          polynomial.MultiLin{},
+		allocEpoch:       allocEpoch,
+		inputArity:       circuit.InputArity(),
 	}
 }
 
@@ -65,6 +65,9 @@ func (io *IoStore) Push(cs frontend.API, inputs []frontend.Variable, output fron
 
 	// Performs an allocation if necessary
 	io.allocateForOneMore()
+
+	common.Assert(len(inputs) == 2, "Expected 2 inputs, got %v", len(inputs))
+	common.Assert(len(io.inputs) == 2, "There should be 2 inputs, but got %v", len(io.inputs))
 
 	// Append the inputs
 	for i := range inputs {
@@ -98,9 +101,10 @@ func (io *IoStore) DumpForProverMultiExp() []frontend.Variable {
 
 	// Filling the vector
 	for i := range io.inputs {
-		res = append(res, io.inputs[i])
+		res = append(res, io.inputs[i]...)
 	}
-	res = append(res, io.outputs)
+
+	res = append(res, io.outputs...)
 
 	return res
 }
@@ -122,11 +126,11 @@ func (io *IoStore) DumpForGkrProver(qPrimeArg []frontend.Variable) []frontend.Va
 	common.Assert(1<<bN == io.index, "bN is inconsistent with the index")
 
 	// Filling the vector
-	res = append(res, qPrimeArg)
+	res = append(res, qPrimeArg...)
 	for i := range io.inputs {
-		res = append(res, io.inputs[i])
+		res = append(res, io.inputs[i]...)
 	}
-	res = append(res, io.outputs)
+	res = append(res, io.outputs...)
 
 	return res
 }
