@@ -8,16 +8,16 @@ import (
 	"github.com/AlexandreBelling/gnark/backend/groth16"
 	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gkr-mimc/snark/hash"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	for size := 17; size < 23; size++ {
+	for size := 1; size < 5; size++ {
 		n := 1 << size
-		chunkSize := n / 256
-		benchCircuitWithGkr(n, chunkSize, b)
+		benchCircuitWithGkr(n, b)
 	}
 
 	for size := 13; size < 18; size++ {
@@ -76,7 +76,9 @@ func AssignCircuitWithGkr(n int) CircuitWithGkr {
 	return res
 }
 
-func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
+func benchCircuitWithGkr(n int, b *testing.B) {
+
+	defer poly.ClearPool()
 
 	circ := AllocateCircuitWithGkr(n)
 	circuit := WrapCircuitUsingGkr(circ)
@@ -84,14 +86,10 @@ func benchCircuitWithGkr(n int, chunkSize int, b *testing.B) {
 	var r1cs R1CS
 	var err error
 
-	b.Run(fmt.Sprintf("compiler-size-%v", n), func(b *testing.B) {
-		common.ProfileTrace(b, false, false, func() {
-			r1cs, err = circuit.Compile()
-			if err != nil {
-				panic(fmt.Sprintf("Could not compile = %v", err))
-			}
-		})
-	})
+	r1cs, err = circuit.Compile()
+	if err != nil {
+		panic(fmt.Sprintf("Could not compile = %v", err))
+	}
 
 	pk, _, err := DummySetup(&r1cs)
 
