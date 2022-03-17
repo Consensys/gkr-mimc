@@ -15,7 +15,7 @@ import (
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	for size := 1; size < 5; size++ {
+	for size := 13; size < 23; size++ {
 		n := 1 << size
 		benchCircuitWithGkr(n, b)
 	}
