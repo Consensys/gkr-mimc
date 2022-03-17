@@ -52,32 +52,3 @@ func TestCircuitForm(t *testing.T) {
 	}
 
 }
-
-// func benchmarkMIMCCircuit(b *testing.B, bN, nCore, nChunks int, profiled, traced bool) {
-// 	b.ResetTimer()
-// 	for i := 0; i < b.N; i++ {
-// 		b.StopTimer()
-// 		// Initialize the circuit
-// 		mimcCircuit := CreateMimcCircuit()
-// 		// Performs the assignment
-// 		inputs := randomInputs(bN)
-// 		assignment := mimcCircuit.Assign(inputs, 1)
-// 		// Finally checks the entire GKR protocol
-// 		prover := gkr.NewProver(mimcCircuit, assignment)
-
-// 		common.ProfileTrace(b, profiled, traced, func() {
-// 			_mimcProof = prover.Prove(nCore)
-// 		})
-// 	}
-// }
-
-// func BenchmarkMimcGKRProver(b *testing.B) {
-// 	nChunks := common.GetNChunks()
-// 	bN := common.GetBN()
-// 	nCore := runtime.GOMAXPROCS(0)
-// 	profiled := common.GetProfiled()
-// 	traced := common.GetTraced()
-// 	b.Run(fmt.Sprintf("bN=%d-nCore", bN), func(b *testing.B) {
-// 		benchmarkMIMCCircuit(b, bN, nCore, nChunks, profiled, traced)
-// 	})
-// }
