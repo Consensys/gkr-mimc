@@ -15,12 +15,12 @@ import (
 )
 
 func BenchmarkCircuitWithGKR(b *testing.B) {
-	for size := 13; size < 23; size++ {
+	for size := 18; size < 25; size++ {
 		n := 1 << size
 		benchCircuitWithGkr(n, b)
 	}
 
-	for size := 13; size < 18; size++ {
+	for size := 13; size < 19; size++ {
 		n := 1 << size
 		benchCircuitBaseline(n, b)
 	}
@@ -102,7 +102,7 @@ func benchCircuitWithGkr(n int, b *testing.B) {
 	assignment.Assign()
 
 	b.Run(fmt.Sprintf("prover-size-%v", n), func(b *testing.B) {
-		common.ProfileTrace(b, false, false, func() {
+		common.ProfileTrace(b, true, false, func() {
 			// for i := 0; i < b.N; i++ {
 			_, err = Prove(&r1cs, &pk, &assignment)
 			common.Assert(err == nil, "Prover failed %v", err)
