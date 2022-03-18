@@ -3,8 +3,13 @@ module github.com/consensys/gkr-mimc
 go 1.16
 
 require (
-	github.com/consensys/gnark v0.6.3-0.20220202191103-e53477950739
+	github.com/AlexandreBelling/gnark v0.5.1
 	github.com/consensys/gnark-crypto v0.6.1-0.20220110145513-493bb1c180d9
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/pkg/profile v1.5.0
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
+	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 )
+
+replace github.com/AlexandreBelling/gnark v0.5.1 => ./pkg/gnark

@@ -3,7 +3,7 @@ package hash
 import (
 	"github.com/consensys/gkr-mimc/hash"
 
-	"github.com/consensys/gnark/frontend"
+	"github.com/AlexandreBelling/gnark/frontend"
 )
 
 // MimcHash returns the result of the hashing function

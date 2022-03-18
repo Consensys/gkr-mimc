@@ -1,242 +1,107 @@
 package gkr
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/consensys/gkr-mimc/circuit"
-	"github.com/consensys/gkr-mimc/circuit/gates"
 	"github.com/consensys/gkr-mimc/common"
-
+	"github.com/consensys/gkr-mimc/examples"
+	"github.com/consensys/gkr-mimc/poly"
+	"github.com/consensys/gkr-mimc/sumcheck"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/stretchr/testify/assert"
 )
 
-// We test for the following circuit
-//
-//	  a + b + (a×b)	  (a+b) × a × b				  c + d + (c×d)	  (c+d) × c × d
-//	________|_______________|_________			________|_______________|_________
-// 	|	_________		_________	 |		 	|	_________		_________	 |
-//	|	|		|		|		|	 |			|	|		|		|		|	 |
-//	|	|	+	|		|	×	|	 |			|	|	+	|		|	×	|	 |
-//	|	|_______|		|_______|	 |			|	|_______|		|_______|	 |
-//	|________________________________|			|________________________________|
-//			|				|							|				|
-//		  a + b			  a × b						  c + d			  c × d
-//	________|_______________|_________			________|_______________|_________
-// 	|	_________		_________	 |		 	|	_________		_________	 |
-//	|	|		|		|		|	 |			|	|		|		|		|	 |
-//	|	|	+	|		|	×	|	 |			|	|	+	|		|	×	|	 |
-//	|	|_______|		|_______|	 |			|	|_______|		|_______|	 |
-//	|________________________________|			|________________________________|
-//			|				|							|				|
-//			a				b							c				d
-//
-// Note: bN = bG = 1.
-
-// Testcase:
-//
-//	        5	            6				           19				84
-//	________|_______________|_________			________|_______________|_________
-// 	|	_________		_________	 |		 	|	_________		_________	 |
-//	|	|		|		|		|	 |			|	|		|		|		|	 |
-//	|	|	+	|		|	×	|	 |			|	|	+	|		|	×	|	 |
-//	|	|_______|		|_______|	 |			|	|_______|		|_______|	 |
-//	|________________________________|			|________________________________|
-//			|				|							|				|
-//		    3			    2						    7			   12
-//	________|_______________|_________			________|_______________|_________
-// 	|	_________		_________	 |		 	|	_________		_________	 |
-//	|	|		|		|		|	 |			|	|		|		|		|	 |
-//	|	|	+	|		|	×	|	 |			|	|	+	|		|	×	|	 |
-//	|	|_______|		|_______|	 |			|	|_______|		|_______|	 |
-//	|________________________________|			|________________________________|
-//			|				|							|				|
-//			1				2							3				4
-
-func TestMultiBGs(t *testing.T) {
-	var one fr.Element
-	one.SetOne()
-
-	c := circuit.NewCircuit(
-		[][]circuit.Wire{
-			// Layer 0
-			{
-				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
-				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
-			},
-			// Layer 1
-			{
-				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
-			},
-		},
-	)
-
-	inputs := [][]fr.Element{
-		{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-		{common.Uint64ToFr(3), common.Uint64ToFr(4)},
-	}
-
-	a := c.Assign(inputs, 2)
-	inputsV := append([][]fr.Element{}, inputs...)
-	outputsV := a.Values[2]
-
-	p := NewProver(c, a)
-	proof := p.Prove(1)
-	v := NewVerifier(1, c)
-	validity := v.Verify(proof, inputsV, outputsV)
-
-	assert.Equal(
-		t,
-		validity,
-		true,
-		"Proof invalid.",
-	)
-
-	actualValues := [][][]fr.Element{
-		{
-			{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-			{common.Uint64ToFr(3), common.Uint64ToFr(4)},
-		},
-		{
-			{common.Uint64ToFr(3), common.Uint64ToFr(2)},
-			{common.Uint64ToFr(7), common.Uint64ToFr(12)},
-		},
-		{
-			{common.Uint64ToFr(5)},
-			{common.Uint64ToFr(19)},
-		},
-	}
-
-	assert.Equal(
-		t,
-		a.Values,
-		actualValues,
-		"Assignment invalid.",
-	)
-}
-
 func TestGKR(t *testing.T) {
-	var one fr.Element
-	one.SetOne()
 
-	c := circuit.NewCircuit(
-		[][]circuit.Wire{
-			// Layer 0
-			{
-				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
-				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
-			},
-			// Layer 1
-			{
-				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
-				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
-			},
-		},
-	)
+	for bn := 0; bn < 12; bn++ {
 
-	inputs := [][]fr.Element{
-		{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-		{common.Uint64ToFr(3), common.Uint64ToFr(4)},
+		var one fr.Element
+		one.SetOne()
+
+		c := examples.MimcCircuit()
+
+		block := common.RandomFrArray(1 << bn)
+		initstate := common.RandomFrArray(1 << bn)
+		qPrime := common.RandomFrArray(bn)
+
+		a := c.Assign(block, initstate)
+		// Gets a deep-copy of the assignment
+		a2 := c.Assign(block, initstate)
+		_ = a2[0].String()
+
+		proof := Prove(c, a, qPrime)
+
+		// Check that the claims are consistents with the assignment
+		for layer := len(c) - 1; layer >= 0; layer-- {
+
+			for j, claim := range proof.Claims[layer] {
+				claim2 := a2[layer].Evaluate(proof.QPrimes[layer][j])
+
+				if claim2 != claim {
+					panic(fmt.Sprintf("at bn = %v, claim inconsistent with assignment at layer %v no %v, %v != %v", bn, layer, j, claim.String(), claim2.String()))
+				}
+			}
+		}
+
+		// Check that the claims are consistents with the layers evaluations
+		for layer := len(c) - 1; layer >= 0; layer-- {
+			// Skip if this is an input layer
+			if c[layer].Gate == nil {
+				break
+			}
+
+			Xs := a2.InputsOfLayer(c, layer)
+
+			for j, claim := range proof.Claims[layer] {
+				qPrime := proof.QPrimes[layer][j]
+				claim2 := sumcheck.Evaluation(c[layer].Gate, [][]fr.Element{qPrime}, []fr.Element{}, Xs...)
+
+				if claim2 != claim {
+					panic(fmt.Sprintf("inconsistent claim at layer %v no %v, %v != %v", layer, j, claim.String(), claim2.String()))
+				}
+			}
+
+			for _, X := range Xs {
+				poly.DumpLarge(X)
+			}
+
+		}
+
+		err := Verify(c, proof, []poly.MultiLin{block, initstate}, a[93], qPrime)
+		if err != nil {
+			panic(fmt.Sprintf("bn = %v error at gkr verifier : %v", bn, err))
+		}
+
+		cleared := poly.ClearPool()
+		fmt.Printf("cleared %v elements \n", cleared)
 	}
-
-	a := c.Assign(inputs, 2)
-
-	expectedValues := [][][]fr.Element{
-		{
-			{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-			{common.Uint64ToFr(3), common.Uint64ToFr(4)},
-		},
-		{
-			{common.Uint64ToFr(3), common.Uint64ToFr(2)},
-			{common.Uint64ToFr(7), common.Uint64ToFr(12)},
-		},
-		{
-			{common.Uint64ToFr(5), common.Uint64ToFr(6)},
-			{common.Uint64ToFr(19), common.Uint64ToFr(84)},
-		},
-	}
-
-	assert.Equal(
-		t,
-		expectedValues,
-		a.Values,
-		"Assignment invalid.",
-	)
-
-	outputs := a.Values[2]
-
-	p := NewProver(c, a)
-	proof := p.Prove(1)
-	v := NewVerifier(1, c)
-	validity := v.Verify(proof, inputs, outputs)
-
-	assert.Equal(
-		t,
-		validity,
-		true,
-		"Proof invalid.",
-	)
 }
 
-func TestMoreCoresThanChunks(t *testing.T) {
+func BenchmarkGkr(b *testing.B) {
+	for bn := 17; bn < 24; bn++ {
+		b.Run(fmt.Sprintf("bn-%v", bn), func(b *testing.B) {
+			benchmarkGkr(b, bn)
+		})
+	}
+}
+
+func benchmarkGkr(b *testing.B, bn int) {
+
 	var one fr.Element
 	one.SetOne()
 
-	c := circuit.NewCircuit(
-		[][]circuit.Wire{
-			// Layer 0
-			{
-				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
-				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
-			},
-			// Layer 1
-			{
-				{L: 0, R: 1, O: 0, Gate: gates.AddGate{}},
-				{L: 0, R: 1, O: 1, Gate: gates.MulGate{}},
-			},
-		},
-	)
+	c := examples.MimcCircuit()
 
-	inputs := [][]fr.Element{
-		{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-		{common.Uint64ToFr(3), common.Uint64ToFr(4)},
-	}
+	block := common.RandomFrArray(1 << bn)
+	initstate := common.RandomFrArray(1 << bn)
+	qPrime := common.RandomFrArray(bn)
 
-	a := c.Assign(inputs, 2)
+	a := c.Assign(block, initstate)
 
-	expectedValues := [][][]fr.Element{
-		{
-			{common.Uint64ToFr(1), common.Uint64ToFr(2)},
-			{common.Uint64ToFr(3), common.Uint64ToFr(4)},
-		},
-		{
-			{common.Uint64ToFr(3), common.Uint64ToFr(2)},
-			{common.Uint64ToFr(7), common.Uint64ToFr(12)},
-		},
-		{
-			{common.Uint64ToFr(5), common.Uint64ToFr(6)},
-			{common.Uint64ToFr(19), common.Uint64ToFr(84)},
-		},
-	}
+	b.ResetTimer()
 
-	assert.Equal(
-		t,
-		expectedValues,
-		a.Values,
-		"Assignment invalid.",
-	)
+	common.ProfileTrace(b, false, true, func() {
+		_ = Prove(c, a, qPrime)
+	})
 
-	outputs := a.Values[2]
-
-	p := NewProver(c, a)
-	proof := p.Prove(4)
-	v := NewVerifier(1, c)
-	validity := v.Verify(proof, inputs, outputs)
-
-	assert.Equal(
-		t,
-		validity,
-		true,
-		"Proof invalid.",
-	)
 }

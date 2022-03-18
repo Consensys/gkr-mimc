@@ -1,0 +1,3 @@
+[submodule "gnark"]
+	path = pkg/gnark
+	url = https://github.com/AlexandreBelling/gnark.git

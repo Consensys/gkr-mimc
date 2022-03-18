@@ -3,82 +3,63 @@ package sumcheck
 import (
 	"github.com/consensys/gkr-mimc/circuit"
 	"github.com/consensys/gkr-mimc/circuit/gates"
-	"github.com/consensys/gkr-mimc/polynomial"
-
+	"github.com/consensys/gkr-mimc/common"
+	"github.com/consensys/gkr-mimc/poly"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// InitializeMultiThreadedProver creates a test prover that is multithreaded
-// and holds the same values as the single threaded prover
-func InitializeMultiThreadedProver(bN, nChunks int) MultiThreadedProver {
-	var zero, one, two fr.Element
-	one.SetOne()
-	two.SetUint64(2)
+func InitializeCipherGateInstance(bn int) (X []poly.MultiLin, claims []fr.Element, qPrime [][]fr.Element, gate circuit.Gate) {
 
-	// Fold for q', q = [2, 2, 2 ,2 ...] 2
-	// cipher: q = 0, qL = 1, qR = 0
-	// copy: q = 1, qL = 1, qR = 0
-	qPrime := make([]fr.Element, bN)
-	for i := range qPrime {
-		qPrime[i] = two
+	q := common.RandomFrArray(bn)
+	gate = gates.NewCipherGate(fr.NewElement(145646))
+
+	L := poly.MakeLarge(1 << bn)
+	R := poly.MakeLarge(1 << bn)
+
+	for i := range L {
+		L[i].SetUint64(uint64(i))
+		R[i].SetUint64(uint64(i))
 	}
 
-	eq := polynomial.GetChunkedEqTable(qPrime, nChunks, 1)
-	cipher := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, one, zero, zero, zero, zero, zero})
-	copy := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, zero, zero, zero, zero, one, zero})
-	cipher.Fold(two)
-	copy.Fold(two)
-
-	vL := make([]polynomial.BookKeepingTable, nChunks)
-	vR := make([]polynomial.BookKeepingTable, nChunks)
-	for k := range vL {
-		// Initialize the values of V
-		v := make([]fr.Element, (1<<(bN+1))/nChunks)
-		for i := range v {
-			v[i].SetUint64(uint64(k + nChunks*i))
-		}
-		vL[k] = polynomial.NewBookKeepingTable(v)
-		vR[k] = vL[k].DeepCopy()
+	inst_ := instance{
+		X:      []poly.MultiLin{L, R},
+		gate:   gate,
+		degree: gate.Degree() + 1,
+		Eq:     poly.MakeLarge(1 << bn),
 	}
+	poly.FoldedEqTable(inst_.Eq, q)
+	claim := Evaluation(gate, [][]fr.Element{q}, []fr.Element{}, L, R)
 
-	return NewMultiThreadedProver(
-		vL, vR, eq,
-		[]circuit.Gate{gates.CopyGate{}, &gates.CipherGate{Ark: two}},
-		[]polynomial.BookKeepingTable{copy, cipher},
-	)
+	return []poly.MultiLin{L, R}, []fr.Element{claim}, [][]fr.Element{q}, gate
 }
 
-// InitializeProverForTests creates a test prover
-func InitializeProverForTests(bN int) SingleThreadedProver {
+func InitializeMultiInstance(bn, ninstance int) (X []poly.MultiLin, claims []fr.Element, qPrime [][]fr.Element, gate circuit.Gate) {
 
-	var zero, one, two fr.Element
-	one.SetOne()
-	two.SetUint64(2)
+	n := 1 << bn
+	gate = gates.IdentityGate{}
 
-	// Fold for q', q = [2, 2, 2 ,2 ...] 2
-	// cipher: q = 0, qL = 1, qR = 0
-	// copy: q = 1, qL = 1, qR = 0
-	qPrime := make([]fr.Element, bN)
-	for i := range qPrime {
-		qPrime[i] = two
+	// Create the qs
+	qs := make([][]fr.Element, ninstance)
+	for i := range qs {
+		q := make([]fr.Element, bn)
+		for j := range q {
+			q[j].SetUint64(uint64(i*j + i))
+		}
+		qs[i] = q
 	}
-	eq := polynomial.GetFoldedEqTable(qPrime)
-	cipher := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, one, zero, zero, zero, zero, zero})
-	copy := polynomial.NewBookKeepingTable([]fr.Element{zero, zero, zero, zero, zero, zero, one, zero})
-	cipher.Fold(two)
-	copy.Fold(two)
 
-	// Initialize the values of V
-	v := make([]fr.Element, 1<<(bN+1))
-	for i := range v {
-		v[i].SetUint64(uint64(i))
+	L := poly.MakeLarge(n)
+	R := poly.MakeLarge(n)
+
+	for i := range L {
+		L[i].SetUint64(uint64(i))
+		R[i].SetUint64(uint64(i))
 	}
-	vL := polynomial.NewBookKeepingTable(v)
-	vR := vL.DeepCopy()
 
-	return NewSingleThreadedProver(
-		vL, vR, eq,
-		[]circuit.Gate{gates.CopyGate{}, &gates.CipherGate{Ark: two}},
-		[]polynomial.BookKeepingTable{copy, cipher},
-	)
+	claims = make([]fr.Element, ninstance)
+	for i := range claims {
+		claims[i] = Evaluation(gate, [][]fr.Element{qs[i]}, []fr.Element{}, L, R)
+	}
+
+	return []poly.MultiLin{L, R}, claims, qs, gate
 }

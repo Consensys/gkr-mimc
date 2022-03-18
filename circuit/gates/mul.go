@@ -1,8 +1,8 @@
 package gates
 
 import (
+	"github.com/AlexandreBelling/gnark/frontend"
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
-	"github.com/consensys/gnark/frontend"
 )
 
 // MulGate performs a multiplication

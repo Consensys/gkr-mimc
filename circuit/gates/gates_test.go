@@ -9,61 +9,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAdd(t *testing.T) {
-	testGate(t, AddGate{})
-}
+func genericTest(t *testing.T, gate circuit.Gate) {
 
-func TestMul(t *testing.T) {
-	testGate(t, MulGate{})
-}
+	size := 10
 
-func TestCipher(t *testing.T) {
-	var ark fr.Element
-	ark.SetRandom()
-	testGate(t, NewCipherGate(ark))
-}
+	l := common.RandomFrArray(size)
+	r := common.RandomFrArray(size)
 
-func TestCopy(t *testing.T) {
-	testGate(t, CopyGate{})
-}
+	resA := make([]fr.Element, size)
+	resB := make([]fr.Element, size)
 
-// Generic test case for all gates
-func testGate(t *testing.T, gate circuit.Gate) {
+	gate.EvalBatch(resA, l, r)
 
-	size := 16
-	vRs := common.RandomFrArray(size)
-	vLs := common.RandomFrArray(size)
-
-	for i := range vRs {
-		evalManyVL := make([]fr.Element, size)
-		gate.EvalManyVL(evalManyVL, vLs, &vRs[i])
-
-		for j := range vLs {
-			var eval fr.Element
-			gate.Eval(&eval, &vLs[j], &vRs[i])
-
-			assert.Equal(
-				t, eval.String(), evalManyVL[j].String(),
-				"Failed at L=%v R=%v vL=%v vR=%v",
-				j, i, vLs[j].String(), vRs[i].String(),
-			)
-		}
+	for i := range resB {
+		gate.Eval(&resB[i], &l[i], &r[i])
 	}
 
-	for i := range vLs {
-		evalManyVR := make([]fr.Element, size)
-		gate.EvalManyVR(evalManyVR, &vLs[i], vRs)
+	assert.Equal(t, resA, resB)
+}
 
-		for j := range vRs {
-			var eval fr.Element
-			gate.Eval(&eval, &vLs[i], &vRs[j])
-
-			assert.Equal(
-				t, eval.String(), evalManyVR[j].String(),
-				"Failed at L=%v R=%v vL=%v vR=%v",
-				j, i, vLs[i].String(), vRs[j].String(),
-			)
-		}
+func TestGates(t *testing.T) {
+	gates := []circuit.Gate{
+		IdentityGate{},
+		NewCipherGate(fr.NewElement(25)),
 	}
 
+	for _, gate := range gates {
+		genericTest(t, gate)
+	}
 }
