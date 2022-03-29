@@ -31,7 +31,7 @@ func EvalEq(qPrime, nextQPrime []fr.Element) fr.Element {
 	return res
 }
 
-// FoldedEqTable ought to start life as a sparse bookkeepingtable
+// FoldedEqTable ought to start life as a sparse bookkeeping table
 // depending on 2n variables and containing 2^n ones only
 // to be folded n times according to the values in qPrime.
 // The resulting table will no longer be sparse.

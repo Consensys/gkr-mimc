@@ -54,7 +54,7 @@ func ClearPool() int {
 	return res
 }
 
-// Returns the number of element in the pool
+// CountPool returns the number of element in the pool
 // Does not mutate it
 func CountPool() int {
 	res := 0

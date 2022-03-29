@@ -36,7 +36,7 @@ func BuildCircuit(c Circuit) error {
 	// Counts the number of multi-instances
 	for l := range c {
 		if len(c[l].In) == 0 && len(c[l].Out) > 1 {
-			return fmt.Errorf("Layer %v is an input layer but has %v outputs", l, len(c[l].Out))
+			return fmt.Errorf("layer %v is an input layer but has %v outputs", l, len(c[l].Out))
 		}
 	}
 

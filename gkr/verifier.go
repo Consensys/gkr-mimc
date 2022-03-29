@@ -63,7 +63,7 @@ func (proof Proof) testSumcheck(
 	layer int,
 ) (err error) {
 
-	// First thing, test the sumcheck
+	// First thing, test the sum-check
 	nextQprime, nextClaim, recombChal, err := sumcheck.Verify(
 		proof.Claims[layer],
 		proof.SumcheckProofs[layer],

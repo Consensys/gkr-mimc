@@ -34,7 +34,7 @@ func createEqTableJob(inst *instance, callback chan []fr.Element, qPrime []fr.El
 	}
 }
 
-// Returns a closure to perform a partial summation of two bookeeping tables
+// Returns a closure to perform a partial summation of two bookkeeping tables
 func createAdditionJob(callback chan []fr.Element, a, b poly.MultiLin, start, stop int) func() {
 	return func() {
 		addInPlace(a, b, start, stop)
@@ -53,7 +53,7 @@ func (inst *instance) foldChunk(r fr.Element, start, stop int) {
 // Returns the partial poly only on a given portion
 func (inst *instance) getPartialPolyChunk(start, stop int) []fr.Element {
 
-	// Define usefull constants
+	// Define useful constants
 	nEvals := inst.degree + 1
 	nInputs := len(inst.X)
 	mid := len(inst.Eq) / 2
