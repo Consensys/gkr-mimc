@@ -15,21 +15,21 @@ import (
 // Proof represents a GKR proof
 // Only valid for the MiMC circuit
 type Proof struct {
-	SumcheckProofs []sumcheck.Proof
+	SumCheckProofs []sumcheck.Proof
 	Claims         [][]frontend.Variable
 	QPrimes        [][][]frontend.Variable
 }
 
 // AllocateProof allocates a new proof gadget
 func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
-	proof.SumcheckProofs = make([]sumcheck.Proof, len(c))
+	proof.SumCheckProofs = make([]sumcheck.Proof, len(c))
 	proof.Claims = make([][]frontend.Variable, len(c))
 	proof.QPrimes = make([][][]frontend.Variable, len(c))
 
 	for layer := range c {
 		// When the Gate is nil, then it's an input layer
 		if c[layer].Gate != nil {
-			proof.SumcheckProofs[layer] = sumcheck.AllocateProof(bN, c[layer].Gate)
+			proof.SumCheckProofs[layer] = sumcheck.AllocateProof(bN, c[layer].Gate)
 		}
 
 		// We might also allocate qPrime and the claim for the last layer
@@ -52,32 +52,32 @@ func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
 }
 
 // Assign the proof object
-func (p *Proof) Assign(proof gkr.Proof) {
+func (proof *Proof) Assign(input gkr.Proof) {
 	// sanity-check
-	if len(p.SumcheckProofs) != len(proof.SumcheckProofs) {
+	if len(proof.SumCheckProofs) != len(input.SumcheckProofs) {
 		panic("not the same number of layers")
 	}
 
-	for layer := range proof.SumcheckProofs {
-		p.SumcheckProofs[layer].Assign(proof.SumcheckProofs[layer])
+	for layer := range input.SumcheckProofs {
+		proof.SumCheckProofs[layer].Assign(input.SumcheckProofs[layer])
 
-		if len(proof.Claims[layer]) != len(p.Claims[layer]) {
+		if len(input.Claims[layer]) != len(proof.Claims[layer]) {
 			panic(fmt.Sprintf(
-				"panicked in Assign : at layer %v the gnark proof expects %v claims but the assignment contains %v",
-				layer, len(p.Claims[layer]), len(proof.Claims[layer]),
+				"panicked in Assign : at layer %v the gnark input expects %v claims but the assignment contains %v",
+				layer, len(proof.Claims[layer]), len(input.Claims[layer]),
 			))
 		}
 
 		// We might also allocate qPrime and the claim for the last layer
 		// But remember that they are passed by the user anyway, so they are
 		// guaranteed to be allocated aside from the verification runtime
-		for j := range proof.Claims[layer] {
-			p.Claims[layer][j] = proof.Claims[layer][j]
+		for j := range input.Claims[layer] {
+			proof.Claims[layer][j] = input.Claims[layer][j]
 		}
 
-		for j := range proof.QPrimes[layer] {
-			for k := range proof.QPrimes[layer][j] {
-				p.QPrimes[layer][j][k] = proof.QPrimes[layer][j][k]
+		for j := range input.QPrimes[layer] {
+			for k := range input.QPrimes[layer][j] {
+				proof.QPrimes[layer][j][k] = input.QPrimes[layer][j][k]
 			}
 		}
 	}
@@ -111,12 +111,15 @@ func (proof *Proof) AssertValid(
 			break
 		}
 
-		proof.testSumcheck(cs, c, layer)
+		proof.testSumCheck(cs, c, layer)
 
 	}
 
 	for layer := range inputs {
-		proof.testInitialRound(cs, inputs, layer)
+		err := proof.testInitialRound(cs, inputs, layer)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// re-erase the claim. we added midway to revert the change and keep the proof invariant
@@ -124,9 +127,9 @@ func (proof *Proof) AssertValid(
 
 }
 
-func (proof Proof) testSumcheck(cs frontend.API, c circuit.Circuit, layer int) {
+func (proof Proof) testSumCheck(cs frontend.API, c circuit.Circuit, layer int) {
 	// First thing, test the sumcheck
-	nextQprime, nextClaim, recombChal := proof.SumcheckProofs[layer].AssertValid(cs, proof.Claims[layer])
+	nextQprime, nextClaim, recombChal := proof.SumCheckProofs[layer].AssertValid(cs, proof.Claims[layer])
 	// 2 is because in practice, a gate cannot have more than two inputs with our designs
 	subClaims := make([]frontend.Variable, 0, 2)
 

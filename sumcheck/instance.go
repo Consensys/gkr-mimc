@@ -17,7 +17,7 @@ type instance struct {
 	degree int
 }
 
-// Evaluate the instance of the sumcheck
+// Evaluation the instance of the sumcheck
 func Evaluation(gate circuit.Gate, qPrime [][]fr.Element, claims []fr.Element, x ...poly.MultiLin) (res fr.Element) {
 
 	inst_ := instance{X: x, gate: gate, degree: gate.Degree() + 1, Eq: poly.MakeLarge(1 << len(qPrime[0]))}

@@ -43,8 +43,8 @@ func Parallelize(nbIterations int, work func(int, int), maxCpus ...int) {
 	wg.Wait()
 }
 
-// Split the large task in smaller chunks appropriately, and `dispatch` for all`.
-// Usefull to send jobs to a worker pool, returns `true`.
+// TryDispatch splits the large task in smaller chunks appropriately, and `dispatch` for all`.
+// Useful to send jobs to a worker pool, returns `true`.
 // If it's not practical to dispatch asynchronously, does nothing and returns `0`
 func TryDispatch(nbIteration, minTaskSize int, dispatch func(start, stop int)) int {
 
@@ -53,7 +53,7 @@ func TryDispatch(nbIteration, minTaskSize int, dispatch func(start, stop int)) i
 	nbIterationPerTasks := nbIteration / nbTasks
 
 	if nbIterationPerTasks < minTaskSize {
-		// Not enough iterations per tasks to make it worth it parallelizing at max
+		// Not enough iterations per tasks to make it worth parallelizing at max
 		// Make bigger tasks
 		nbIterationPerTasks = minTaskSize
 		nbTasks = nbIteration / nbIterationPerTasks

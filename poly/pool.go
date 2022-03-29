@@ -10,14 +10,14 @@ import (
 )
 
 // Sets a maximum for the array size we keep in pool
-const maxNForLargePool int = 1 << 22
+const maxNForLargePool int = 1 << 20
 const maxNForSmallPool int = 256
 
 // Aliases because it is annoying to use arrays in all the places
 type largeArr = [maxNForLargePool]fr.Element
 type smallArr = [maxNForSmallPool]fr.Element
 
-var rC sync.Map = sync.Map{}
+var rC = sync.Map{}
 
 var (
 	largePool = sync.Pool{
@@ -34,7 +34,7 @@ var (
 	}
 )
 
-// Clear the pool completely, shields against memory leaks
+// ClearPool completely, shields against memory leaks
 // Eg: if we forgot to dump a polynomial at some point, this will ensure the value get dumped eventually
 // Returns how many polynomials were cleared that way
 func ClearPool() int {
@@ -54,7 +54,7 @@ func ClearPool() int {
 	return res
 }
 
-// Returns the number of element in the pool
+// CountPool returns the number of element in the pool
 // Does not mutate it
 func CountPool() int {
 	res := 0
@@ -65,7 +65,7 @@ func CountPool() int {
 	return res
 }
 
-// Tries to find a reusable MultiLin or allocate a new one
+// MakeLarge tries to find a reusable MultiLin or allocate a new one
 func MakeLarge(n int) MultiLin {
 	if n > maxNForLargePool {
 		panic(fmt.Sprintf("been provided with size of %v but the maximum is %v", n, maxNForLargePool))
@@ -76,13 +76,13 @@ func MakeLarge(n int) MultiLin {
 	return (*ptr)[:n]
 }
 
-// Dumps a set of polynomials into the pool
+// DumpLarge a set of polynomials into the pool
 // Returns the number of deallocated large polys
 func DumpLarge(arrs ...MultiLin) int {
 	cnt := 0
 	for _, arr := range arrs {
 		ptr := arr.ptrLarge()
-		// If the rC did not registers, then
+		// If the rC did not register, then
 		// either the array was allocated somewhere else and its fine to ignore
 		// otherwise a double put and we MUST ignore
 		if _, ok := rC.Load(ptr); ok {
@@ -95,7 +95,7 @@ func DumpLarge(arrs ...MultiLin) int {
 	return cnt
 }
 
-// Tries to find a reusable MultiLin or allocate a new one
+// MakeSmall tries to find a reusable MultiLin or allocate a new one
 func MakeSmall(n int) MultiLin {
 	if n > maxNForSmallPool {
 		panic(fmt.Sprintf("want size of %v but the maximum is %v", n, maxNForSmallPool))
@@ -106,13 +106,13 @@ func MakeSmall(n int) MultiLin {
 	return (*ptr)[:n]
 }
 
-// Dumps a set of polynomials into the pool
+// DumpSmall dumps a set of polynomials into the pool
 // Returns the number of deallocated small polys
 func DumpSmall(arrs ...MultiLin) int {
 	cnt := 0
 	for _, arr := range arrs {
 		ptr := arr.ptrSmall()
-		// If the rC did not registers, then
+		// If the rC did not register, then
 		// either the multilin was allocated somewhere else and its fine to ignore
 		// otherwise a double put and we MUST ignore
 		if _, ok := rC.Load(ptr); ok {

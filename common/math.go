@@ -8,14 +8,6 @@ func Min(a int, b int) int {
 	return b
 }
 
-// Max returns the maximum of two number
-func Max(a int, b int) int {
-	if a >= b {
-		return a
-	}
-	return b
-}
-
 // Log2Floor computes the floored value of Log2
 func Log2Floor(a int) int {
 	res := 0

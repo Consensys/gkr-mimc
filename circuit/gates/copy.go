@@ -11,7 +11,7 @@ type IdentityGate struct{}
 // ID returns "CopyGate" as an ID for CopyGate
 func (c IdentityGate) ID() string { return "CopyGate" }
 
-// Eval returns for a range of inputs
+// EvalBatch copies first element of xs into res
 func (c IdentityGate) EvalBatch(res []fr.Element, xs ...[]fr.Element) {
 	copy(res, xs[0])
 }
@@ -22,7 +22,7 @@ func (c IdentityGate) Eval(res *fr.Element, xs ...*fr.Element) {
 }
 
 // GnarkEval performs the copy on gnark variable
-func (c IdentityGate) GnarkEval(cs frontend.API, x ...frontend.Variable) frontend.Variable {
+func (c IdentityGate) GnarkEval(_ frontend.API, x ...frontend.Variable) frontend.Variable {
 	return x[0]
 }
 

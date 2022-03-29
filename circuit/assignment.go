@@ -5,7 +5,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// Assigment for a GKR circuit
+// Assignment for a GKR circuit
 type Assignment []poly.MultiLin
 
 // Assign computes the full assignment
@@ -31,7 +31,7 @@ func (c Circuit) Assign(inps ...poly.MultiLin) (a Assignment) {
 	return a
 }
 
-// InputLayersOf returns the input layers of the layer l
+// InputsOfLayer returns the input layers of the layer l
 func (a Assignment) InputsOfLayer(c Circuit, l int) []poly.MultiLin {
 	positions := c[l].In
 	res := make([]poly.MultiLin, len(positions))
@@ -56,7 +56,7 @@ func (a Assignment) InputsOfLayer(c Circuit, l int) []poly.MultiLin {
 	return res
 }
 
-// InputLayersOf returns the input layers of the layer l
+// Dump assignment into large pool
 func (a Assignment) Dump() {
 	for _, p := range a {
 		poly.DumpLarge(p)

@@ -27,7 +27,7 @@ func MimcUpdateInplace(state *fr.Element, block fr.Element) {
 	state.Add(state, &block)
 }
 
-// Iterates the Mimc rounds functions over x with key k
+// MimcKeyedPermutation iterates the Mimc rounds functions over x with key k
 func MimcKeyedPermutation(x fr.Element, key fr.Element) fr.Element {
 	res := x
 	for i := 0; i < MimcRounds; i++ {
@@ -38,7 +38,7 @@ func MimcKeyedPermutation(x fr.Element, key fr.Element) fr.Element {
 	return res
 }
 
-// MimcBlockCipherInPlace applies the mimc permutation in place
+// MimcBlockCipher the mimc permutation in place
 // In the papier; E_k(x) = Perm_k(x) + k
 func MimcBlockCipher(msg fr.Element, key fr.Element) fr.Element {
 	res := MimcKeyedPermutation(msg, key)

@@ -30,7 +30,7 @@ func Verify(
 	}
 
 	// Pass the initial claim into the proof, because the prover does not compute it
-	// For a matter of immutability : the old value of the claim is saved so we can put it
+	// For a matter of immutability : the old value of the claim is saved, so we can put it
 	// back in place before returning
 	oldClaim := proof.Claims[nLayers-1]
 	proof.Claims[nLayers-1] = append(proof.Claims[nLayers-1], outputs.Evaluate(qPrime))

@@ -11,7 +11,7 @@ import (
 )
 
 func randomInputs(bN int) (keys, state []fr.Element) {
-	size := (1 << bN)
+	size := 1 << bN
 
 	return common.RandomFrArray(size), common.RandomFrArray(size)
 }

@@ -10,7 +10,6 @@ import (
 
 type Circuit []Layer
 
-// Variable describes a circuit variable
 type Layer struct {
 	// Variables indexes that are inputs to compute the current variable
 	// Empty, means this an input layer
@@ -36,7 +35,7 @@ func BuildCircuit(c Circuit) error {
 	// Counts the number of multi-instances
 	for l := range c {
 		if len(c[l].In) == 0 && len(c[l].Out) > 1 {
-			return fmt.Errorf("Layer %v is an input layer but has %v outputs", l, len(c[l].Out))
+			return fmt.Errorf("layer %v is an input layer but has %v outputs", l, len(c[l].Out))
 		}
 	}
 

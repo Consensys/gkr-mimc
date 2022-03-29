@@ -31,7 +31,7 @@ func TestGKR(t *testing.T) {
 
 		proof := Prove(c, a, qPrime)
 
-		// Check that the claims are consistents with the assignment
+		// Check that the claims are consistent with the assignment
 		for layer := len(c) - 1; layer >= 0; layer-- {
 
 			for j, claim := range proof.Claims[layer] {
@@ -43,7 +43,7 @@ func TestGKR(t *testing.T) {
 			}
 		}
 
-		// Check that the claims are consistents with the layers evaluations
+		// Check that the claims are consistent with the layers evaluations
 		for layer := len(c) - 1; layer >= 0; layer-- {
 			// Skip if this is an input layer
 			if c[layer].Gate == nil {
@@ -93,10 +93,10 @@ func benchmarkGkr(b *testing.B, bn int) {
 	c := examples.MimcCircuit()
 
 	block := common.RandomFrArray(1 << bn)
-	initstate := common.RandomFrArray(1 << bn)
+	initState := common.RandomFrArray(1 << bn)
 	qPrime := common.RandomFrArray(bn)
 
-	a := c.Assign(block, initstate)
+	a := c.Assign(block, initState)
 
 	b.ResetTimer()
 

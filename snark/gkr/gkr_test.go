@@ -23,17 +23,17 @@ import (
 type GKRMimcTestCircuit struct {
 	Circuit       circuit.Circuit
 	Proof         Proof
-	QInitialprime []frontend.Variable
+	QInitialPrime []frontend.Variable
 	Inputs        []poly.MultiLin
 	Output        poly.MultiLin
 }
 
 func AllocateGKRMimcTestCircuit(bN int) GKRMimcTestCircuit {
-	circuit := examples.MimcCircuit()
+	exampleCircuit := examples.MimcCircuit()
 	return GKRMimcTestCircuit{
-		Circuit:       circuit,
-		Proof:         AllocateProof(bN, circuit),
-		QInitialprime: make([]frontend.Variable, bN),
+		Circuit:       exampleCircuit,
+		Proof:         AllocateProof(bN, exampleCircuit),
+		QInitialPrime: make([]frontend.Variable, bN),
 		Output:        poly.AllocateMultilinear(bN),
 		Inputs: []poly.MultiLin{
 			poly.AllocateMultilinear(bN),
@@ -46,11 +46,11 @@ func (c *GKRMimcTestCircuit) Assign(
 	proof gkr.Proof,
 	inputs []polyFr.MultiLin,
 	outputs polyFr.MultiLin,
-	qInitialprime []fr.Element,
+	qInitialPrime []fr.Element,
 ) {
 	c.Proof.Assign(proof)
-	for i := range qInitialprime {
-		c.QInitialprime[i] = qInitialprime[i]
+	for i := range qInitialPrime {
+		c.QInitialPrime[i] = qInitialPrime[i]
 	}
 
 	for i := range inputs {
@@ -60,7 +60,7 @@ func (c *GKRMimcTestCircuit) Assign(
 }
 
 func (c *GKRMimcTestCircuit) Define(cs frontend.API) error {
-	c.Proof.AssertValid(cs, c.Circuit, c.QInitialprime, c.Inputs, c.Output)
+	c.Proof.AssertValid(cs, c.Circuit, c.QInitialPrime, c.Inputs, c.Output)
 	return nil
 }
 

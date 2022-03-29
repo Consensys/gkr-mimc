@@ -31,7 +31,7 @@ func EvalEq(qPrime, nextQPrime []fr.Element) fr.Element {
 	return res
 }
 
-// FoldedEqTable ought to start life as a sparse bookkeepingtable
+// FoldedEqTable ought to start life as a sparse bookkeeping table
 // depending on 2n variables and containing 2^n ones only
 // to be folded n times according to the values in qPrime.
 // The resulting table will no longer be sparse.
@@ -58,7 +58,7 @@ func FoldedEqTable(preallocated MultiLin, qPrime []fr.Element, multiplier ...fr.
 	return preallocated
 }
 
-// Computes only a chunk of the eqTable for a given chunkSize and chunkID
+// ChunkOfEqTable computes only a chunk of the eqTable for a given chunkSize and chunkID
 func ChunkOfEqTable(preallocatedEq []fr.Element, chunkID, chunkSize int, qPrime []fr.Element, multiplier ...fr.Element) {
 	nChunks := (1 << len(qPrime)) / chunkSize
 	logNChunks := common.Log2Ceil(nChunks)
