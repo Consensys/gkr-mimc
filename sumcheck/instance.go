@@ -6,18 +6,18 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// instance represents a sum-check multivariate polynomials evaluation
+// instance represents a sumcheck multivariate polynomials evaluation
 // gi(X) = \sum_{Y} (eq(X, Y) Gi(ai(Y), bi(Y))
 // X is the evaluation point
 type instance struct {
 	X    []poly.MultiLin
 	Eq   poly.MultiLin
 	gate circuit.Gate
-	// Overall degree of the sum-check instance
+	// Overall degree of the sumcheck instance
 	degree int
 }
 
-// Evaluation the instance of the sum-check
+// Evaluation the instance of the sumcheck
 func Evaluation(gate circuit.Gate, qPrime [][]fr.Element, claims []fr.Element, x ...poly.MultiLin) (res fr.Element) {
 
 	inst_ := instance{X: x, gate: gate, degree: gate.Degree() + 1, Eq: poly.MakeLarge(1 << len(qPrime[0]))}

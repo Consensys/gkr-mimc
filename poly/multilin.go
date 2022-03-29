@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-// MultiLin tracks the values of a (dense i.e. not sparse) multi-linear polynomial
+// MultiLin tracks the values of a (dense i.e. not sparse) multilinear polynomial
 type MultiLin []fr.Element
 
 func (m MultiLin) String() string {
@@ -36,7 +36,7 @@ func (m *MultiLin) FoldChunk(r fr.Element, start, stop int) {
 }
 
 // DeepCopy creates a deep copy of a bookkeeping table.
-// Both multi-linear interpolation and sum-check require folding an underlying
+// Both multilinear interpolation and sumcheck require folding an underlying
 // array, but folding changes the array. To do both one requires a deep copy
 // of the bookkeeping table.
 func (m MultiLin) DeepCopy() MultiLin {
@@ -45,7 +45,7 @@ func (m MultiLin) DeepCopy() MultiLin {
 	return tableDeepCopy
 }
 
-// DeepCopyLarge creates a deep copy of a multi-linear table.
+// DeepCopyLarge creates a deep copy of a multilinear table.
 func (m MultiLin) DeepCopyLarge() MultiLin {
 	tableDeepCopy := MakeLarge(len(m))
 	copy(tableDeepCopy, m)

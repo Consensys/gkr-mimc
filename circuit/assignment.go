@@ -41,7 +41,7 @@ func (a Assignment) InputsOfLayer(c Circuit, l int) []poly.MultiLin {
 		pos := positions[i]
 		// We want to know if current layer `l` is the first output of layer `pos`*
 		// Indeed, `Out` is guaranteed to be sorted in ascending order.
-		// It matters, because the result will be mutated by the sum-check prover
+		// It matters, because the result will be mutated by the sumcheck prover
 		// and we may need to use a layer's output more than once
 		isFirst := c[pos].Out[0] == l
 

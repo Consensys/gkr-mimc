@@ -52,7 +52,7 @@ func (proof *Proof) updateWithSumcheck(
 	layer int,
 ) {
 
-	// Sum-check proof
+	// sumcheck proof
 	sumPi, nextQPrime, finalClaims := sumcheck.Prove(
 		a.InputsOfLayer(c, layer),
 		proof.QPrimes[layer],

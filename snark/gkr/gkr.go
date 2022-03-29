@@ -107,7 +107,7 @@ func (proof *Proof) AssertValid(
 	for layer := nLayers - 1; layer >= 0; layer-- {
 		if len(c[layer].In) < 1 {
 			// It's an input layer
-			// No, more sum-check to verify
+			// No, more sumcheck to verify
 			break
 		}
 
@@ -128,7 +128,7 @@ func (proof *Proof) AssertValid(
 }
 
 func (proof Proof) testSumCheck(cs frontend.API, c circuit.Circuit, layer int) {
-	// First thing, test the sum-check
+	// First thing, test the sumcheck
 	nextQprime, nextClaim, recombChal := proof.SumCheckProofs[layer].AssertValid(cs, proof.Claims[layer])
 	// 2 is because in practice, a gate cannot have more than two inputs with our designs
 	subClaims := make([]frontend.Variable, 0, 2)
