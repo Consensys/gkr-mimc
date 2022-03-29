@@ -46,21 +46,21 @@ func Prove(c circuit.Circuit, a circuit.Assignment, qPrime []fr.Element) (proof 
 	return
 }
 
-func (p *Proof) updateWithSumcheck(
+func (proof *Proof) updateWithSumcheck(
 	c circuit.Circuit,
 	a circuit.Assignment,
 	layer int,
 ) {
 
-	// Sumcheck proof
+	// Sum-check proof
 	sumPi, nextQPrime, finalClaims := sumcheck.Prove(
 		a.InputsOfLayer(c, layer),
-		p.QPrimes[layer],
-		p.Claims[layer],
+		proof.QPrimes[layer],
+		proof.Claims[layer],
 		c[layer].Gate,
 	)
 
-	p.SumcheckProofs[layer] = sumPi
+	proof.SumcheckProofs[layer] = sumPi
 
 	// Then update the qPrimes and Claims for the upcoming sumchecks to use them
 	for i := 1; i < len(finalClaims); i++ {
@@ -68,10 +68,10 @@ func (p *Proof) updateWithSumcheck(
 		// Index of the corresponding input layer
 		inpL := c[layer].In[i-1]
 
-		if len(p.Claims[inpL]) < 1 {
+		if len(proof.Claims[inpL]) < 1 {
 			// Allocates the entire vectors once, so we can write at any index later
-			p.Claims[inpL] = make([]fr.Element, len(c[inpL].Out))
-			p.QPrimes[inpL] = make([][]fr.Element, len(c[inpL].Out))
+			proof.Claims[inpL] = make([]fr.Element, len(c[inpL].Out))
+			proof.QPrimes[inpL] = make([][]fr.Element, len(c[inpL].Out))
 		}
 
 		// Seach the position of `l` as an output of layer `inpL`
@@ -84,8 +84,8 @@ func (p *Proof) updateWithSumcheck(
 			panic(fmt.Sprintf("circuit misformatted, In and Out are inconsistent between layers %v and %v", layer, inpL))
 		}
 
-		p.Claims[inpL][writeAt] = finalClaims[i]
-		p.QPrimes[inpL][writeAt] = nextQPrime
+		proof.Claims[inpL][writeAt] = finalClaims[i]
+		proof.QPrimes[inpL][writeAt] = nextQPrime
 
 	}
 }

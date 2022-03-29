@@ -62,11 +62,14 @@ func genericTest(t *testing.T, X []poly.MultiLin, claims []fr.Element, qs [][]fr
 
 	_, err := frontend.Compile(ecc.BN254, backend.GROTH16, &circ)
 	if err != nil {
-		panic(err)
+		t.Fatalf("failed to compile circuit: %v", err)
 	}
 
 	witness := AllocateSumcheckCircuit(len(qs[0]), len(claims), gate)
-	witness.Assign(proof, claims, expectedQPrime)
+	err = witness.Assign(proof, claims, expectedQPrime)
+	if err != nil {
+		t.Fatalf("failed to assign: %v", err)
+	}
 
 	err = test.IsSolved(&circ, &witness, ecc.BN254, backend.GROTH16)
 	if err != nil {

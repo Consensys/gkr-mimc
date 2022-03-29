@@ -52,32 +52,32 @@ func AllocateProof(bN int, c circuit.Circuit) (proof Proof) {
 }
 
 // Assign the proof object
-func (p *Proof) Assign(proof gkr.Proof) {
+func (proof *Proof) Assign(input gkr.Proof) {
 	// sanity-check
-	if len(p.SumcheckProofs) != len(proof.SumcheckProofs) {
+	if len(proof.SumcheckProofs) != len(input.SumcheckProofs) {
 		panic("not the same number of layers")
 	}
 
-	for layer := range proof.SumcheckProofs {
-		p.SumcheckProofs[layer].Assign(proof.SumcheckProofs[layer])
+	for layer := range input.SumcheckProofs {
+		proof.SumcheckProofs[layer].Assign(input.SumcheckProofs[layer])
 
-		if len(proof.Claims[layer]) != len(p.Claims[layer]) {
+		if len(input.Claims[layer]) != len(proof.Claims[layer]) {
 			panic(fmt.Sprintf(
-				"panicked in Assign : at layer %v the gnark proof expects %v claims but the assignment contains %v",
-				layer, len(p.Claims[layer]), len(proof.Claims[layer]),
+				"panicked in Assign : at layer %v the gnark input expects %v claims but the assignment contains %v",
+				layer, len(proof.Claims[layer]), len(input.Claims[layer]),
 			))
 		}
 
 		// We might also allocate qPrime and the claim for the last layer
 		// But remember that they are passed by the user anyway, so they are
 		// guaranteed to be allocated aside from the verification runtime
-		for j := range proof.Claims[layer] {
-			p.Claims[layer][j] = proof.Claims[layer][j]
+		for j := range input.Claims[layer] {
+			proof.Claims[layer][j] = input.Claims[layer][j]
 		}
 
-		for j := range proof.QPrimes[layer] {
-			for k := range proof.QPrimes[layer][j] {
-				p.QPrimes[layer][j][k] = proof.QPrimes[layer][j][k]
+		for j := range input.QPrimes[layer] {
+			for k := range input.QPrimes[layer][j] {
+				proof.QPrimes[layer][j][k] = input.QPrimes[layer][j][k]
 			}
 		}
 	}
@@ -107,7 +107,7 @@ func (proof *Proof) AssertValid(
 	for layer := nLayers - 1; layer >= 0; layer-- {
 		if len(c[layer].In) < 1 {
 			// It's an input layer
-			// No, more sumcheck to verify
+			// No, more sum-check to verify
 			break
 		}
 
@@ -116,7 +116,10 @@ func (proof *Proof) AssertValid(
 	}
 
 	for layer := range inputs {
-		proof.testInitialRound(cs, inputs, layer)
+		err := proof.testInitialRound(cs, inputs, layer)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	// re-erase the claim. we added midway to revert the change and keep the proof invariant

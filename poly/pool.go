@@ -17,7 +17,7 @@ const maxNForSmallPool int = 256
 type largeArr = [maxNForLargePool]fr.Element
 type smallArr = [maxNForSmallPool]fr.Element
 
-var rC sync.Map = sync.Map{}
+var rC = sync.Map{}
 
 var (
 	largePool = sync.Pool{

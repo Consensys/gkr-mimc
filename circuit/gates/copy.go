@@ -22,7 +22,7 @@ func (c IdentityGate) Eval(res *fr.Element, xs ...*fr.Element) {
 }
 
 // GnarkEval performs the copy on gnark variable
-func (c IdentityGate) GnarkEval(cs frontend.API, x ...frontend.Variable) frontend.Variable {
+func (c IdentityGate) GnarkEval(_ frontend.API, x ...frontend.Variable) frontend.Variable {
 	return x[0]
 }
 
