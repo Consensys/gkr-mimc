@@ -10,4 +10,8 @@ func TestCountPool(t *testing.T) {
 
 	MakeSmall(10)
 
+	n = CountPool()
+	if n == 0 {
+		t.Fatalf("something should be in the pool")
+	}
 }

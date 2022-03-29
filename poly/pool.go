@@ -10,7 +10,7 @@ import (
 )
 
 // Sets a maximum for the array size we keep in pool
-const maxNForLargePool int = 1 << 22
+const maxNForLargePool int = 1 << 20
 const maxNForSmallPool int = 256
 
 // Aliases because it is annoying to use arrays in all the places
