@@ -21,7 +21,7 @@ func NewCipherGate(ark fr.Element) *CipherGate {
 // ID returns the id of the cipher gate and print the ark as well
 func (c *CipherGate) ID() string { return fmt.Sprintf("CipherGate-%v", c.Ark.String()) }
 
-// Eval returns (vR + c + vL)^7, on the range of output
+// EvalBatch fills res with (vR + c + vL)^7, on the range of output
 func (c *CipherGate) EvalBatch(res []fr.Element, xs ...[]fr.Element) {
 
 	ls := xs[0]

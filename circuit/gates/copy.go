@@ -11,7 +11,7 @@ type IdentityGate struct{}
 // ID returns "CopyGate" as an ID for CopyGate
 func (c IdentityGate) ID() string { return "CopyGate" }
 
-// Eval returns for a range of inputs
+// EvalBatch copies first element of xs into res
 func (c IdentityGate) EvalBatch(res []fr.Element, xs ...[]fr.Element) {
 	copy(res, xs[0])
 }

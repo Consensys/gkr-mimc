@@ -10,7 +10,6 @@ import (
 
 type Circuit []Layer
 
-// Variable describes a circuit variable
 type Layer struct {
 	// Variables indexes that are inputs to compute the current variable
 	// Empty, means this an input layer

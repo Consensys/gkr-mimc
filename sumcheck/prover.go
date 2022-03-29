@@ -141,7 +141,7 @@ func dispatchPartialEvals(inst *instance, callback chan []fr.Element) []fr.Eleme
 	return consumeAccumulate(callback, nTasks)
 }
 
-// Calls the folding by either passing to the worker pool if this is deemed usefull
+// Calls the folding by either passing to the worker pool if this is deemed useful
 // or synchronously if not
 func dispatchFolding(inst *instance, r fr.Element, callback chan []fr.Element) {
 	mid := len(inst.Eq) / 2

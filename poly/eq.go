@@ -58,7 +58,7 @@ func FoldedEqTable(preallocated MultiLin, qPrime []fr.Element, multiplier ...fr.
 	return preallocated
 }
 
-// Computes only a chunk of the eqTable for a given chunkSize and chunkID
+// ChunkOfEqTable computes only a chunk of the eqTable for a given chunkSize and chunkID
 func ChunkOfEqTable(preallocatedEq []fr.Element, chunkID, chunkSize int, qPrime []fr.Element, multiplier ...fr.Element) {
 	nChunks := (1 << len(qPrime)) / chunkSize
 	logNChunks := common.Log2Ceil(nChunks)
