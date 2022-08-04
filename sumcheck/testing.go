@@ -21,15 +21,7 @@ func InitializeCipherGateInstance(bn int) (X []poly.MultiLin, claims []fr.Elemen
 		R[i].SetUint64(uint64(i))
 	}
 
-	inst_ := instance{
-		X:      []poly.MultiLin{L, R},
-		gate:   gate,
-		degree: gate.Degree() + 1,
-		Eq:     poly.MakeLarge(1 << bn),
-	}
-	poly.FoldedEqTable(inst_.Eq, q)
 	claim := Evaluation(gate, [][]fr.Element{q}, []fr.Element{}, L, R)
-
 	return []poly.MultiLin{L, R}, []fr.Element{claim}, [][]fr.Element{q}, gate
 }
 

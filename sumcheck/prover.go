@@ -21,7 +21,28 @@ const (
 // Proof is the object produced by the prover
 type Proof [][]fr.Element
 
-// Prove contains the coordination logic for all workers contributing to the sumcheck proof
+// Prove contains the coordination logic for all workers contributing to a (multi)-sumcheck proof
+// The sum "proven" by the sumchecks is the following, for all `j`
+//
+// 		\sum_{i} eq(qPrime[j], i) * Gate(X[1][i], ..., X[n][i])
+//
+// INPUTS
+//
+// - `X[{k}][{i}]` is a double slice of field element. Each subslice `X[{k}]` represent a (multilinear) polynomial
+//		being part of the sumcheck. Each of those is expressed as a slice of evaluation over the hypercube
+//		in lexicographic order.
+// - `qPrime[{j}]` is a multilinear variable (so a tuple of field element). For all `k` and `j` we must have
+//		`2 ^ len(qPrime[j]) == len(X[k])
+// - `claims` is the list of alleged values of each of the sum. We must have `len(claims) == len(qPrime)`. It is
+//		only used for Fiat-Shamir
+// - `gate` is a `circuit.Gate` object. It represents a low-degree multivariate polynomial.
+//
+// OUTPUTS
+//
+// - `proof` contains all the intermediate prover messages generated during the sumcheck protocol
+// - `challenges` the challenges generated during the protocol
+// - `claims` contains the evaluation of each X_{i}(challenges). The last entry is the evaluation
+//		of `eq(qPrime, challenges)`
 func Prove(X []poly.MultiLin, qPrimes [][]fr.Element, claims []fr.Element, gate circuit.Gate) (proof Proof, challenges, finalClaims []fr.Element) {
 
 	// Define usefull constants & initializes the instance

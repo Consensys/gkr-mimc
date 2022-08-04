@@ -8,10 +8,27 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
-func Verify(claims []fr.Element, proof Proof) (qPrime []fr.Element, finalClaim, recombChal fr.Element, err error) {
+// Verifier of a sumcheck protocol. Performs all the steps except the
+// last one where the verifier is required to evaluate the inputs polynomial
+// at a single point.
+//
+// INPUTS
+//
+// claims : alleged value of the sum. Can be multiple values for multiple sums
+// proofs : the prover's message during the execution of the sumcheck protocol
+//
+// RETURNS
+//
+// - qPrime, the new challenges
+// - recombChal, the Fiat-Shamir challenge used to compute the linear combination
+//		of the `eq`s. Empty if len(qPrime) == 1
+// - err : nil if the verifier passes
+// - final claims : alleged evaluations of the inputs of the polynomial.
+//
+func Verify(claims []fr.Element, proof Proof) (challenges []fr.Element, finalClaim, recombChal fr.Element, err error) {
 	// Initalize the structures
 	bn := len(proof)
-	challenges := make([]fr.Element, bn)
+	challenges = make([]fr.Element, bn)
 
 	var expectedValue fr.Element
 	expectedValue, recombChal = recombineMultiClaims(claims)
