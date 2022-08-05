@@ -32,6 +32,9 @@ type instance struct {
 //		`2 ^ len(qPrime[j]) == len(X[k])
 // - `the claims`, this makes the function useless. But in practice it helps for testing because
 //		it will try to get the same result
+// - `x[{k}][{i}]` is a double slice of field element. Each subslice `X[{k}]` represent a (multilinear) polynomial
+//		being part of the sumcheck. Each of those is expressed as a slice of evaluation over the hypercube
+//		in lexicographic order.
 //
 // OUTPUT
 //
