@@ -19,8 +19,8 @@ import (
 //
 // RETURNS
 //
-// - qPrime, the new challenges
-// - recombChal, the Fiat-Shamir challenge used to compute the linear combination
+// - challenge : the new challenges
+// - recombChal : the Fiat-Shamir challenge used to compute the linear combination
 //		of the `eq`s. Empty if len(qPrime) == 1
 // - err : nil if the verifier passes
 // - final claims : alleged evaluations of the inputs of the polynomial.
